@@ -129,6 +129,10 @@ export const Patch = Schema.Struct({
   })
     .pipe(optional)
     .annotate({ description: "Plugin packages to add or remove" }),
+  // AccessCode: keys saved in the macOS Keychain, referred to in the config as {keychain:NAME}; null deletes one.
+  keychain: Schema.Record(Schema.String, Schema.NullOr(Schema.String)).pipe(optional).annotate({
+    description: "Secrets to save in the macOS Keychain by name; null deletes the secret",
+  }),
 }).annotate({ identifier: "Config.Patch" })
 export interface Patch extends Schema.Schema.Type<typeof Patch> {}
 

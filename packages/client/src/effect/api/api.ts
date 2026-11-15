@@ -2813,6 +2813,7 @@ export type ExperimentalConfigUpdateInput = {
   readonly plugins?:
     | { readonly add?: ReadonlyArray<string> | undefined; readonly remove?: ReadonlyArray<string> | undefined }
     | undefined
+  readonly keychain?: { readonly [x: string]: string | null } | undefined
 }
 export type ExperimentalConfigUpdateOutput = void
 export type ExperimentalConfigUpdateOperation<E = never> = (

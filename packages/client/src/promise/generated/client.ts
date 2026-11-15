@@ -1737,7 +1737,12 @@ export function make(options: ClientOptions) {
             {
               method: "PATCH",
               path: `/api/experimental/config`,
-              body: { shell: input?.["shell"], mcp: input?.["mcp"], plugins: input?.["plugins"] },
+              body: {
+                shell: input?.["shell"],
+                mcp: input?.["mcp"],
+                plugins: input?.["plugins"],
+                keychain: input?.["keychain"],
+              },
               successStatus: 204,
               declaredStatuses: [400, 401, 404],
               empty: true,

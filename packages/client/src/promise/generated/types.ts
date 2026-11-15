@@ -4946,6 +4946,7 @@ export type ExperimentalConfigUpdateInput = {
       }
     | undefined
   readonly plugins?: { readonly add?: ReadonlyArray<string>; readonly remove?: ReadonlyArray<string> } | undefined
+  readonly keychain?: { readonly [x: string]: string | null } | undefined
 }
 
 export type ExperimentalConfigUpdateOutput = void

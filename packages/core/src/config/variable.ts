@@ -5,6 +5,7 @@ import path from "path"
 import { Effect } from "effect"
 import { type ParseError, parse } from "jsonc-parser"
 import { FSUtil } from "@opencode/util/fs-util"
+import { ConfigKeychain } from "./keychain.js"
 
 type ParseSource =
   | {
@@ -22,19 +23,34 @@ type SubstituteInput = ParseSource & {
   env?: Record<string, string>
 }
 
-/** Apply {env:VAR} and {file:path} substitutions to config text. */
+/** Apply {keychain:NAME}, {env:VAR} and {file:path} substitutions to config text. */
 export const substitute = Effect.fn("ConfigVariable.substitute")(function* (input: SubstituteInput) {
+  const text = yield* substituteKeychain(input.text)
   const env = (escape: boolean) =>
-    input.text.replace(/\{env:([^}]+)\}/g, (_, name: string) => {
+    text.replace(/\{env:([^}]+)\}/g, (_, name: string) => {
       const value = (input.env?.[name] ?? process.env[name]) || ""
       return escape ? JSON.stringify(value).slice(1, -1) : value
     })
   // Escape only when raw values break the JSON (e.g. Windows paths), so configs that parse today keep their meaning.
   const raw = yield* substituteFiles(input, env(false))
   const errors: ParseError[] = []
-  if (input.text.includes("{env:")) parse(raw, errors, { allowTrailingComma: true })
+  if (text.includes("{env:")) parse(raw, errors, { allowTrailingComma: true })
   if (!errors.length) return raw
   return yield* substituteFiles(input, env(true))
+})
+
+// AccessCode: {keychain:NAME} reads a key saved from the Extensions page, JSON-escaped like a {file:} value.
+const substituteKeychain = Effect.fnUntraced(function* (text: string) {
+  const names = [...new Set(Array.from(text.matchAll(/\{keychain:([^}]+)\}/g), (match) => match[1]))]
+
+  if (!names.length) return text
+  const values = new Map(
+    yield* Effect.forEach(names, (name) =>
+      ConfigKeychain.read(name).pipe(Effect.map((value) => [name, value] as const)),
+    ),
+  )
+
+  return text.replace(/\{keychain:([^}]+)\}/g, (_, name: string) => JSON.stringify(values.get(name) ?? "").slice(1, -1))
 })
 
 const substituteFiles = Effect.fnUntraced(function* (input: SubstituteInput, text: string) {

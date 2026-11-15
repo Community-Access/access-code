@@ -4,7 +4,8 @@ import { patchText } from "../../src/config"
 
 describe("patchText", () => {
   test("adds and removes MCP servers by name and keeps comments", () => {
-    const text = '{\n  // my servers\n  "mcp": { "servers": { "old": { "type": "remote", "url": "https://old.example" } } }\n}\n'
+    const text =
+      '{\n  // my servers\n  "mcp": { "servers": { "old": { "type": "remote", "url": "https://old.example" } } }\n}\n'
     const added = patchText(text, {
       mcp: { github: { type: "remote", url: "https://api.githubcopilot.com/mcp/" }, old: null },
     })

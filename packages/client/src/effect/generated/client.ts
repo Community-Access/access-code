@@ -1955,7 +1955,12 @@ const adaptGroupConfig = (raw: RawClient["server.config"]) => ({
 const EndpointExperimentalConfigUpdate = (raw: RawClient["server.config"]) => (input?: ExperimentalConfigUpdateInput) =>
   preserveEffect<ExperimentalConfigUpdateOutput>()(
     raw["config.update"]({
-      payload: { shell: input?.["shell"], mcp: input?.["mcp"], plugins: input?.["plugins"] },
+      payload: {
+        shell: input?.["shell"],
+        mcp: input?.["mcp"],
+        plugins: input?.["plugins"],
+        keychain: input?.["keychain"],
+      },
     }).pipe(Effect.mapError(mapClientError)),
   )
 
