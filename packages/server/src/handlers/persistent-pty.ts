@@ -1,4 +1,6 @@
 import { PersistentPty } from "@opencode/core/persistent-pty"
+import { LocationServiceMap } from "@opencode/core/location-service-map"
+import { Plugin } from "@opencode/core/plugin"
 import { PtyTicket } from "@opencode/core/pty/ticket"
 import {
   ForbiddenError,
@@ -16,6 +18,7 @@ import { HttpServerRequest, HttpServerResponse } from "effect/http"
 import { HttpApiBuilder, HttpApiSchema } from "effect/http-api"
 import { Socket } from "effect/socket"
 import { Api } from "../api"
+import { locationErrors, requestRef, response } from "../location"
 import { CorsConfig, isAllowedRequestOrigin } from "../cors"
 import { makeArtifact } from "./artifact"
 import { makeJob } from "./job"
@@ -32,10 +35,17 @@ export const PersistentPtyHandler = HttpApiBuilder.group(Api, "server.experiment
     const job = yield* makeJob
     const mediaGet = yield* makeMediaGet
     const schedule = yield* makeSchedule
+    const locations = yield* LocationServiceMap.Service
 
     return handlers
       .handleRaw("media.get", (ctx) => mediaGet(ctx.params.hash, ctx.request))
       .handle("job.list", (ctx) => job.list(ctx.query))
+      .handle("plugin.ready", (ctx) =>
+        response(Plugin.Service.use((plugin) => plugin.ready).pipe(Effect.map((ready) => ({ ready })))).pipe(
+          Effect.provide(locations.get(requestRef(ctx.request))),
+          locationErrors,
+        ),
+      )
       .handle("artifacts.providers", (ctx) => artifact.providers(ctx.query, ctx.request))
       .handle("artifacts.list", (ctx) => artifact.list(ctx.query, ctx.request))
       .handle("artifacts.create", (ctx) => artifact.create(ctx.query, ctx.payload, ctx.request))

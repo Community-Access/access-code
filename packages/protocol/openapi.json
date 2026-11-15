@@ -541,99 +541,6 @@
         "summary": "List plugins"
       }
     },
-    "/api/experimental/plugin/ready": {
-      "get": {
-        "tags": ["plugin"],
-        "operationId": "experimental.plugin.ready",
-        "parameters": [
-          {
-            "name": "location",
-            "in": "query",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "directory": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
-            "required": false,
-            "style": "deepObject",
-            "explode": true
-          }
-        ],
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "location": {
-                      "$ref": "#/components/schemas/Location.PublicRef"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "ready": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": ["ready"],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": ["location", "data"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "InvalidRequestError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "UnauthorizedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorEncoded"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "LocationNotFoundError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocationNotFoundErrorEncoded"
-                }
-              }
-            }
-          }
-        },
-        "description": "Report whether the location's plugins have finished loading, without waiting. Lists such as models, agents and skills may be partial while `ready` is false. `plugin.updated` is published whenever it changes, so read it again on that event instead of polling. Experimental: may change without compatibility guarantees.",
-        "summary": "Check plugin readiness"
-      }
-    },
     "/api/plugin/gui": {
       "get": {
         "tags": ["plugin"],
@@ -13569,6 +13476,97 @@
         },
         "description": "List active and unconsumed background jobs, optionally filtered by owning session, descendants, or kind. Experimental: may change without compatibility guarantees.",
         "summary": "List background jobs"
+      }
+    },
+    "/api/experimental/plugin/ready": {
+      "get": {
+        "tags": ["experimental"],
+        "operationId": "experimental.plugin.ready",
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "required": false
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "$ref": "#/components/schemas/Location.PublicRef"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ready": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["ready"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["location", "data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorEncoded"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "LocationNotFoundError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationNotFoundErrorEncoded"
+                }
+              }
+            }
+          }
+        },
+        "description": "Report whether the location's plugins have finished loading, without waiting. Lists such as models, agents and skills may be partial while `ready` is false. `plugin.updated` is published whenever loading settles, so read it again on that event instead of polling. Experimental: may change without compatibility guarantees.",
+        "summary": "Check plugin readiness"
       }
     },
     "/api/shell": {

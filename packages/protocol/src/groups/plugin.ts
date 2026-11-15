@@ -2,7 +2,7 @@ import { Location } from "@opencode/schema/location"
 import { Plugin } from "@opencode/schema/plugin"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
-import { InvalidRequestError, PluginNotFoundError, ServiceUnavailableError } from "../errors.js"
+import { InvalidRequestError, LocationNotFoundError, PluginNotFoundError, ServiceUnavailableError } from "../errors.js"
 import { LocationQuery, locationQueryOpenApi } from "./location.js"
 
 export const PluginGroup = HttpApiGroup.make("server.plugin")
@@ -17,21 +17,6 @@ export const PluginGroup = HttpApiGroup.make("server.plugin")
           identifier: "plugin.list",
           summary: "List plugins",
           description: "Retrieve enabled server plugins and their current status.",
-        }),
-      ),
-  )
-  .add(
-    HttpApiEndpoint.get("plugin.ready", "/api/experimental/plugin/ready", {
-      query: LocationQuery,
-      success: Location.response(Schema.Struct({ ready: Schema.Boolean })),
-    })
-      .annotateMerge(locationQueryOpenApi)
-      .annotateMerge(
-        OpenApi.annotations({
-          identifier: "experimental.plugin.ready",
-          summary: "Check plugin readiness",
-          description:
-            "Report whether the location's plugins have finished loading, without waiting. Lists such as models, agents and skills may be partial while `ready` is false. `plugin.updated` is published whenever it changes, so read it again on that event instead of polling. Experimental: may change without compatibility guarantees.",
         }),
       ),
   )
@@ -91,5 +76,22 @@ export const PluginGroup = HttpApiGroup.make("server.plugin")
     OpenApi.annotations({
       title: "plugin",
       description: "Experimental plugin routes.",
+    }),
+  )
+
+/** Lives in the `server.experimental` group (see `groups/experimental.ts`). */
+export const PluginReadyEndpoint = HttpApiEndpoint.get("plugin.ready", "/api/experimental/plugin/ready", {
+  query: LocationQuery,
+  success: Location.response(Schema.Struct({ ready: Schema.Boolean })),
+  error: LocationNotFoundError,
+})
+  .annotateMerge(locationQueryOpenApi)
+  .annotateMerge(
+    OpenApi.annotations({
+      identifier: "experimental.plugin.ready",
+      summary: "Check plugin readiness",
+      description:
+        "Report whether the location's plugins have finished loading, without waiting. Lists such as models, agents and skills may be partial while `ready` is false. `plugin.updated` is published whenever loading settles, so read it again on that event instead of polling. Experimental: may change without compatibility guarantees.",
+      transform: (operation) => ({ ...operation, tags: ["experimental"] }),
     }),
   )

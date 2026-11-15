@@ -128,24 +128,6 @@ export interface PluginApi<E = never> {
   readonly gui: PluginGuiOperation<E>
   readonly check: PluginCheckOperation<E>
   readonly update: PluginUpdateOperation<E>
-
-  /** @deprecated Use `client.experimental.plugin.ready`. Removed in the next minor. */
-  readonly ready: ExperimentalPluginReadyOperation<E>
-}
-
-export type ExperimentalPluginReadyInput = {
-  readonly location?: { readonly directory?: string | undefined } | undefined
-}
-export type ExperimentalPluginReadyOutput = {
-  readonly location: Location.PublicRef
-  readonly data: { readonly ready: boolean }
-}
-export type ExperimentalPluginReadyOperation<E = never> = (
-  input?: ExperimentalPluginReadyInput,
-) => Effect.Effect<ExperimentalPluginReadyOutput, E>
-
-export interface ExperimentalPluginApi<E = never> {
-  readonly ready: ExperimentalPluginReadyOperation<E>
 }
 
 export type SessionListInput = {
@@ -2544,6 +2526,17 @@ export type ExperimentalJobListOperation<E = never> = (
   input?: ExperimentalJobListInput,
 ) => Effect.Effect<ExperimentalJobListOutput, E>
 
+export type ExperimentalPluginReadyInput = {
+  readonly location?: { readonly directory?: string | undefined } | undefined
+}
+export type ExperimentalPluginReadyOutput = {
+  readonly location: Location.PublicRef
+  readonly data: { readonly ready: boolean }
+}
+export type ExperimentalPluginReadyOperation<E = never> = (
+  input?: ExperimentalPluginReadyInput,
+) => Effect.Effect<ExperimentalPluginReadyOutput, E>
+
 export interface ExperimentalApi<E = never> {
   readonly persistentPty: {
     readonly read: ExperimentalPersistentPtyReadOperation<E>
@@ -2574,6 +2567,7 @@ export interface ExperimentalApi<E = never> {
     readonly delete: ExperimentalArtifactsDeleteOperation<E>
   }
   readonly job: { readonly list: ExperimentalJobListOperation<E> }
+  readonly plugin: { readonly ready: ExperimentalPluginReadyOperation<E> }
 }
 
 export type ShellListInput = { readonly location?: { readonly directory?: string | undefined } | undefined }
@@ -2835,15 +2829,6 @@ export interface ExperimentalConfigApi<E = never> {
   readonly update: ExperimentalConfigUpdateOperation<E>
 }
 
-/** @deprecated Use `ExperimentalPluginReadyInput`. Removed in the next minor. */
-export type PluginReadyInput = ExperimentalPluginReadyInput
-
-/** @deprecated Use `ExperimentalPluginReadyOutput`. Removed in the next minor. */
-export type PluginReadyOutput = ExperimentalPluginReadyOutput
-
-/** @deprecated Use `ExperimentalPluginReadyOperation`. Removed in the next minor. */
-export type PluginReadyOperation<E = never> = ExperimentalPluginReadyOperation<E>
-
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput
 
@@ -3080,8 +3065,8 @@ export interface AppApi<E = never> {
   readonly location: LocationApi<E>
   readonly agent: AgentApi<E>
   readonly plugin: PluginApi<E>
+  readonly session: SessionApi<E>
   readonly experimental: ExperimentalApi<E> & {
-    readonly plugin: ExperimentalPluginApi<E>
     readonly session: ExperimentalSessionApi<E>
     readonly generate: ExperimentalGenerateApi<E>
     readonly voice: ExperimentalVoiceApi<E>
@@ -3092,7 +3077,6 @@ export interface AppApi<E = never> {
     readonly usage: ExperimentalUsageApi<E>
     readonly config: ExperimentalConfigApi<E>
   }
-  readonly session: SessionApi<E>
   readonly message: MessageApi<E>
   readonly model: ModelApi<E>
   readonly provider: ProviderApi<E>
