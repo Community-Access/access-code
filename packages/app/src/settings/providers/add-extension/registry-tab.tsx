@@ -371,7 +371,7 @@ export function RegistryTab(props: {
       >
         <For each={groups()}>
           {(group) => (
-            <section class="flex flex-col" aria-labelledby={`mcp-group-${group.key}`}>
+            <section class="flex flex-col">
               <h2 id={`mcp-group-${group.key}`} class="text-13-medium text-v2-text-text-base">
                 {group.label}
               </h2>
@@ -420,21 +420,24 @@ export function RegistryTab(props: {
                               }
                             >
                               {(plan) => (
-                                <Button
-                                  size="small"
-                                  variant="neutral"
-                                  aria-busy={adding(row.server)}
-                                  aria-label={
-                                    adding(row.server)
-                                      ? undefined
-                                      : language.t("settings.extensions.add.registry.setup.label", { name: name() })
-                                  }
-                                  onClick={() => press(row.server, plan())}
-                                >
-                                  {adding(row.server)
-                                    ? language.t("settings.extensions.add.adding")
-                                    : language.t("settings.extensions.add.registry.setup")}
-                                </Button>
+                                // Something already added says so in its details; it has nothing to add again.
+                                <Show when={!added()}>
+                                  <Button
+                                    size="small"
+                                    variant="neutral"
+                                    aria-busy={adding(row.server)}
+                                    aria-label={
+                                      adding(row.server)
+                                        ? undefined
+                                        : language.t("settings.extensions.add.registry.setup.label", { name: name() })
+                                    }
+                                    onClick={() => press(row.server, plan())}
+                                  >
+                                    {adding(row.server)
+                                      ? language.t("settings.extensions.add.adding")
+                                      : language.t("settings.extensions.add.registry.setup")}
+                                  </Button>
+                                </Show>
                               )}
                             </Show>
                           </>

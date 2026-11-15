@@ -32,6 +32,8 @@ import { OauthRedirect } from "../oauth/redirect.js"
 import type { Integration } from "../integration.js"
 import { ErrorSummary } from "../util/error-summary.js"
 
+const CLIENT_NAME = "AccessCode"
+
 /** Client ID Metadata Document: servers that support CIMD accept this URL as the client_id without registration. */
 export const CLIENT_METADATA_URL = "https://opencode.ai/oauth/opencode/client.json"
 
@@ -164,15 +166,23 @@ const provider = (options: Options): OAuthClientProvider => {
     state: () => redirect.state,
     clientMetadata: {
       redirect_uris: redirect.registered,
-      client_name: "opencode",
-      client_uri: "https://opencode.ai",
-      logo_uri: "https://opencode.ai/web-app-manifest-512x512.png",
+      // AccessCode: sign-in pages show this name, so people approve AccessCode, not OpenCode.
+      client_name: CLIENT_NAME,
+      client_uri: "https://github.com/taylorarndt/access-code",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       token_endpoint_auth_method: client?.client_secret ? "client_secret_post" : "none",
       ...(oauth?.scope ? { scope: oauth.scope } : {}),
     },
-    clientInformation: async () => client ?? (await options.store.clientInformation()),
+    // A registration saved under another app name, such as one made before the rename, is made again so the sign-in
+    // page shows AccessCode.
+    clientInformation: async () =>
+      client ??
+      (await options.store
+        .clientInformation()
+        .then((info) =>
+          info && "client_name" in info && info.client_name && info.client_name !== CLIENT_NAME ? undefined : info,
+        )),
     saveClientInformation: (info) => options.store.saveClientInformation(info),
     tokens: () => options.store.tokens(),
     saveTokens: (tokens) => options.store.saveTokens(tokens),
