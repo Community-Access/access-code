@@ -2849,6 +2849,18 @@ export type ExperimentalConfigMcpRegistryOutput = {
                 readonly value?: string | undefined
               }>
             | undefined
+          readonly packageArguments?:
+            | ReadonlyArray<{
+                readonly type: string
+                readonly name?: string | undefined
+                readonly value?: string | undefined
+                readonly default?: string | undefined
+                readonly valueHint?: string | undefined
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+              }>
+            | undefined
         }>
       | undefined
     readonly remotes?:

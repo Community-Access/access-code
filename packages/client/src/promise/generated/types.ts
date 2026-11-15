@@ -4978,6 +4978,16 @@ export type ExperimentalConfigMcpRegistryOutput = {
         default?: string
         value?: string
       }>
+      packageArguments?: Array<{
+        type: string
+        name?: string
+        value?: string
+        default?: string
+        valueHint?: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+      }>
     }>
     remotes?: Array<{
       type: string

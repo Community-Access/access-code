@@ -15,6 +15,19 @@ export class Input extends Schema.Class<Input>("McpRegistry.Input")({
   value: Schema.String.pipe(optional),
 }) {}
 
+// A command-line argument the package's server needs, such as the `mcp serve` subcommand of a CLI that also does other
+// things. `positional` arguments are values; `named` ones are flags such as `--port`, followed by their value if any.
+export class Argument extends Schema.Class<Argument>("McpRegistry.Argument")({
+  type: Schema.String,
+  name: Schema.String.pipe(optional),
+  value: Schema.String.pipe(optional),
+  default: Schema.String.pipe(optional),
+  valueHint: Schema.String.pipe(optional),
+  description: Schema.String.pipe(optional),
+  isRequired: Schema.Boolean.pipe(optional),
+  isSecret: Schema.Boolean.pipe(optional),
+}) {}
+
 export class Package extends Schema.Class<Package>("McpRegistry.Package")({
   registryType: Schema.String,
   identifier: Schema.String,
@@ -22,6 +35,7 @@ export class Package extends Schema.Class<Package>("McpRegistry.Package")({
   runtimeHint: Schema.String.pipe(optional),
   transport: Schema.Struct({ type: Schema.String }).pipe(optional),
   environmentVariables: Input.pipe(Schema.Array, optional),
+  packageArguments: Argument.pipe(Schema.Array, optional),
 }) {}
 
 export class Remote extends Schema.Class<Remote>("McpRegistry.Remote")({

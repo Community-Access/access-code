@@ -21,6 +21,9 @@ function createRegion(politeness: Politeness) {
   const region = document.createElement("div")
   region.className = "sr-only"
   region.setAttribute("data-component", "announcer")
+  // A modal dialog hides the rest of the page from screen readers; Kobalte leaves elements with this attribute out,
+  // so announcements made while a dialog is open are still read.
+  region.setAttribute("data-live-announcer", "true")
   region.setAttribute("role", politeness === "assertive" ? "alert" : "status")
   region.setAttribute("aria-live", politeness)
   region.setAttribute("aria-atomic", "true")

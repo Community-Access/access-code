@@ -19,6 +19,7 @@ import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsList } from "@/settings/list"
 import { createExtensionLoad, ExtensionLoadFailed } from "@/settings/extension-load"
 import type { SettingsView } from "@/settings/surface"
+import { DialogAddExtension } from "./add-extension/dialog"
 import { ConsoleName, ConsoleReplaced, createConsoleSources } from "./console-link"
 import "@/settings/settings.css"
 import "@/shell/search-list.css"
@@ -101,7 +102,21 @@ export const SettingsExtensions: Component<{
             <h1 class="settings-tab-title">{language.t("settings.tab.extensions")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.extensions.description")}</span>
           </div>
-          <div class="settings-tab-header-actions">{props.headerAction}</div>
+          <div class="settings-tab-header-actions">
+            <Button
+              variant="neutral"
+              icon="plus"
+              aria-label={language.t("settings.extensions.add.button.label")}
+              onClick={() =>
+                dialog.show(() => (
+                  <DialogAddExtension directory={props.directory} existing={mcps().map((item) => item.name)} />
+                ))
+              }
+            >
+              {language.t("settings.extensions.add.button")}
+            </Button>
+            {props.headerAction}
+          </div>
         </div>
       </div>
 
