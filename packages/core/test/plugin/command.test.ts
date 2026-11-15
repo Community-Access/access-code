@@ -18,6 +18,8 @@ import { testEffect } from "../lib/effect"
 import { host } from "./host"
 import PROMPT_INITIALIZE from "../../src/plugin/command/initialize.txt"
 import PROMPT_REVIEW from "../../src/plugin/command/review.txt"
+import PROMPT_ADD from "../../src/plugin/command/add.txt"
+import { Global } from "@opencode/util/global"
 
 const directory = AbsolutePath.make("/repo/packages/app")
 const project = AbsolutePath.make("/repo")
@@ -110,6 +112,21 @@ describe("CommandPlugin.Plugin", () => {
           delivery: "steer",
         },
       })
+      expect(yield* command.get("add")).toMatchObject({ name: "add", description: "add a plugin or MCP server" })
+      yield* command.execute({
+        name: "add",
+        invocation: {
+          sessionID: Session.ID.make("ses_test"),
+          prompt: { text: "  the GitHub MCP server " },
+          delivery: "steer",
+        },
+      })
+      expect(prompts.at(-1)).toEqual({
+        text: PROMPT_ADD.replace("${path}", Global.Path.config).replaceAll("$ARGUMENTS", "the GitHub MCP server"),
+        files: undefined,
+        delivery: "steer",
+      })
+      prompts.pop()
       expect(prompts).toEqual([
         {
           text: PROMPT_INITIALIZE.replace("${path}", project).replaceAll("$ARGUMENTS", "extra context"),

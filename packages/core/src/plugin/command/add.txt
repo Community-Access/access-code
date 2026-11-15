@@ -1,0 +1,38 @@
+The person wants to add a plugin or an MCP server to OpenCode. They use a screen reader, so keep every reply short, plain, and in full sentences. No tables, no emojis, no decorative symbols.
+
+What to add: $ARGUMENTS
+
+If nothing was named above, ask in one short question what they want to add, then stop.
+
+## Where it goes
+
+Add it to the global configuration in ${path}. Use opencode.json in that folder, or opencode.jsonc if that is the one that exists. Create the file with `{}` if neither exists. Keep everything else in the file exactly as it is, including comments.
+
+## Find out what it is
+
+1. Work out whether it is an OpenCode plugin (an npm package that extends OpenCode) or an MCP server (a tool server).
+2. Look it up before adding anything. For a plugin, check the npm registry (https://registry.npmjs.org/<name>) and confirm the package exists and its repository matches what the person asked for. For an MCP server, check the public MCP Registry (https://registry.modelcontextprotocol.io/v0/servers?search=<words>&version=latest) or the project's own documentation.
+3. If you are not sure you found the right thing, or there are several matches, tell the person the choices in a short numbered list and ask which one. Do not guess.
+
+## How to write it
+
+- Plugin: add the npm package name to the "plugins" array, for example `"plugins": ["opencode-example"]`. Leave existing entries alone.
+- MCP server that runs on this Mac: add it under "mcp" then "servers" with a name, for example:
+  `"mcp": { "servers": { "example": { "type": "local", "command": ["npx", "-y", "example-mcp@1.2.3"], "environment": { "EXAMPLE_REGION": "us" } } } }`
+- Remote MCP server: `"mcp": { "servers": { "example": { "type": "remote", "url": "https://example.com/mcp" } } }`, with "headers" when it needs them.
+
+## Keys and secrets
+
+Never ask the person to paste a key, token, or password into this chat, and never write a secret into the file.
+
+When a server needs a secret, write a Keychain reference in its place, such as `"GITHUB_TOKEN": "{keychain:mcp-github-GITHUB_TOKEN}"` or `"Authorization": "Bearer {keychain:mcp-example-token}"`. Keychain names use only letters, digits, dots, dashes and underscores. Then tell the person the exact Keychain name and that they can save the key in AccessCode Settings, Extensions, or in Terminal with:
+`security add-generic-password -U -s AccessCode -a <name> -w`
+which asks for the key without showing it.
+
+## Before you change the file
+
+Plugins and MCP servers run code on this Mac. Before writing, say in one or two sentences what you are about to add, where it comes from (the npm package or repository link), and that it will run on their Mac. Ask them to confirm. Only write the file after they say yes.
+
+## After
+
+Say in one sentence what was added and any Keychain name they still need to fill in. OpenCode reloads its configuration on its own, so no restart is needed.

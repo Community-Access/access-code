@@ -7,6 +7,8 @@ import { Location } from "../location.js"
 import { Mcp } from "../mcp/index.js"
 import PROMPT_INITIALIZE from "./command/initialize.txt"
 import PROMPT_REVIEW from "./command/review.txt"
+import PROMPT_ADD from "./command/add.txt"
+import { Global } from "@opencode/util/global"
 
 export const Plugin = define({
   id: "opencode.command",
@@ -48,6 +50,20 @@ export const Plugin = define({
               ...input.prompt,
               sessionID: input.sessionID,
               text: append(PROMPT_REVIEW.replace("${path}", location.project.directory), input.prompt.text),
+              delivery: input.delivery,
+            })
+            .pipe(Effect.asVoid),
+      })
+      // AccessCode: /add asks the agent to add a plugin or MCP server to the global config, with keys kept in the Keychain.
+      editor.add({
+        name: "add",
+        description: "add a plugin or MCP server",
+        execute: (input) =>
+          ctx.session
+            .prompt({
+              ...input.prompt,
+              sessionID: input.sessionID,
+              text: append(PROMPT_ADD.replace("${path}", Global.Path.config), input.prompt.text),
               delivery: input.delivery,
             })
             .pipe(Effect.asVoid),
