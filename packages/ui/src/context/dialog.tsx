@@ -196,6 +196,8 @@ function init(container: () => HTMLElement | undefined) {
               <div
                 ref={ref}
                 data-dialog-layer={selectLayerIndex(machine(), attempt)}
+                // A dialog under another stays visible but out of reach, so focus and screen readers stay in the top one.
+                inert={selectTopDialog(machine())?.attempt !== attempt}
                 style={{
                   position: "fixed",
                   inset: "0",
