@@ -474,13 +474,7 @@ export const layer = (options?: Options) =>
             (yield* Effect.filter(candidates, fs.isFile)).at(-1) ?? path.join(directory, "opencode.jsonc")
           const text = (yield* fs.readFileStringSafe(filepath)) ?? "{}\n"
           const updated = yield* Effect.try({
-            try: () =>
-              applyEdits(
-                text,
-                modify(text, ["shell"], patch.shell ?? undefined, {
-                  formattingOptions: { tabSize: 2, insertSpaces: true },
-                }),
-              ),
+            try: () => patchText(text, patch),
             catch: (cause) => new FSUtil.FileSystemError({ method: "config.update", cause }),
           })
           yield* fs.writeWithDirs(filepath, updated.endsWith("\n") ? updated : `${updated}\n`)
@@ -531,3 +525,37 @@ export function configured(options?: Options) {
 }
 
 export const node = configured()
+
+// Applies a patch as text edits, so comments and formatting in opencode.json stay as the person wrote them.
+export function patchText(text: string, patch: Patch) {
+  const formattingOptions = { tabSize: 2, insertSpaces: true }
+  const edit = (current: string, path: (string | number)[], value: unknown) =>
+    applyEdits(current, modify(current, path, value, { formattingOptions }))
+  const withShell = "shell" in patch ? edit(text, ["shell"], patch.shell ?? undefined) : text
+  const withMcp = Object.entries(patch.mcp ?? {}).reduce(
+    (current, [name, server]) => edit(current, ["mcp", "servers", name], server ?? undefined),
+    withShell,
+  )
+
+  if (!patch.plugins) return withMcp
+  const remove = new Set(patch.plugins.remove ?? [])
+  const parsed: { plugins?: unknown; plugin?: unknown } = parse(withMcp) ?? {}
+  // Older files list plugins under "plugin"; the server reads both, so removal covers both.
+  const legacy = Array.isArray(parsed.plugin) ? parsed.plugin : []
+  const legacyKept = legacy.filter((item) => !remove.has(pluginPackage(item)))
+  const withLegacy = legacyKept.length === legacy.length ? withMcp : edit(withMcp, ["plugin"], legacyKept)
+  const existing = Array.isArray(parsed.plugins) ? parsed.plugins : []
+  const kept = existing.filter((item) => !remove.has(pluginPackage(item)))
+  const names = new Set([...legacyKept, ...kept].map(pluginPackage))
+  const added = (patch.plugins.add ?? []).filter((name) => !names.has(name))
+
+  if (!added.length && kept.length === existing.length) return withLegacy
+  return edit(withLegacy, ["plugins"], [...kept, ...added])
+}
+
+function pluginPackage(item: unknown) {
+  if (typeof item === "string") return item
+  if (Array.isArray(item) && typeof item[0] === "string") return item[0]
+  if (item && typeof item === "object" && "package" in item && typeof item.package === "string") return item.package
+  return ""
+}

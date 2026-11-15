@@ -4906,7 +4906,47 @@ export type ConfigGetOutput = Array<ConfigEntry>
 
 export type ConfigShellsOutput = Array<ConfigShellOption>
 
-export type ExperimentalConfigUpdateInput = { readonly shell: string | null }
+export type ExperimentalConfigUpdateInput = {
+  readonly shell?: string | null | undefined
+  readonly mcp?:
+    | {
+        readonly [x: string]:
+          | {
+              readonly type: "local"
+              readonly command: ReadonlyArray<string>
+              readonly cwd?: string
+              readonly environment?: { readonly [x: string]: string }
+              readonly disabled?: boolean
+              readonly codemode?: boolean
+              readonly timeout?: { readonly startup?: number; readonly catalog?: number; readonly execution?: number }
+              readonly protocol?: "legacy" | "auto" | "2026-07-28"
+              readonly pool?: boolean
+            }
+          | {
+              readonly type: "remote"
+              readonly url: string
+              readonly headers?: { readonly [x: string]: string }
+              readonly oauth?:
+                | {
+                    readonly client_id?: string
+                    readonly client_secret?: string
+                    readonly scope?: string
+                    readonly callback_port?: number
+                    readonly redirect_uri?: string
+                    readonly auth_server_metadata_url?: string
+                  }
+                | false
+              readonly disabled?: boolean
+              readonly codemode?: boolean
+              readonly timeout?: { readonly startup?: number; readonly catalog?: number; readonly execution?: number }
+              readonly protocol?: "legacy" | "auto" | "2026-07-28"
+              readonly pool?: boolean
+            }
+          | null
+      }
+    | undefined
+  readonly plugins?: { readonly add?: ReadonlyArray<string>; readonly remove?: ReadonlyArray<string> } | undefined
+}
 
 export type ExperimentalConfigUpdateOutput = void
 

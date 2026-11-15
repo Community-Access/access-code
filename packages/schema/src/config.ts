@@ -117,7 +117,18 @@ export class Info extends Schema.Class<Info>("Config.Info")({
 }) {}
 
 export const Patch = Schema.Struct({
-  shell: Schema.NullOr(Schema.String),
+  shell: Schema.NullOr(Schema.String).pipe(optional),
+  // AccessCode: add MCP servers by name, or remove one with null, without editing opencode.json by hand.
+  mcp: Schema.Record(Schema.String, Schema.NullOr(ConfigMCP.Server)).pipe(optional).annotate({
+    description: "MCP servers to add or replace by name; null removes the server",
+  }),
+  // AccessCode: add or remove plugin packages, keeping the order and options of the others.
+  plugins: Schema.Struct({
+    add: Schema.String.pipe(Schema.Array, optional),
+    remove: Schema.String.pipe(Schema.Array, optional),
+  })
+    .pipe(optional)
+    .annotate({ description: "Plugin packages to add or remove" }),
 }).annotate({ identifier: "Config.Patch" })
 export interface Patch extends Schema.Schema.Type<typeof Patch> {}
 
