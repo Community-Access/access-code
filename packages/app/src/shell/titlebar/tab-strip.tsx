@@ -813,7 +813,7 @@ export function TitlebarTabStrip(props: {
         label={label()}
         active={props.currentTab === tab && props.highlightActive !== false}
         orientation={vertical() ? "vertical" : "horizontal"}
-        title={language.t("session.tab.session")}
+        title={language.t("session.tab.draft")}
         shortcut={shortcut(visibleIndex())}
         onNavigate={(element) => {
           ref = element

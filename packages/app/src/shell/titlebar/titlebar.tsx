@@ -554,7 +554,7 @@ export function Titlebar(props: { verticalTabs?: { mount?: HTMLElement } }) {
 
               if (!tab) return language.t("home.title")
 
-              if (tab.type === "draft") return language.t("session.tab.session")
+              if (tab.type === "draft") return language.t("session.tab.draft")
               const value = session()
 
               return sessionTabTitle(
