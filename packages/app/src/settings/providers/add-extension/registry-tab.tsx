@@ -151,7 +151,7 @@ export function RegistryTab(props: {
             return (
               <li class="flex items-start gap-3 border-b border-v2-border-border-weak py-3 last:border-b-0">
                 <div class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span class="text-13-medium text-v2-text-text-base [overflow-wrap:anywhere]">{name()}</span>
+                  <h3 class="text-13-medium text-v2-text-text-base [overflow-wrap:anywhere]">{name()}</h3>
                   <Show when={row.server.title}>
                     <span class="text-12-regular text-v2-text-text-muted [overflow-wrap:anywhere]">
                       {row.server.name}
