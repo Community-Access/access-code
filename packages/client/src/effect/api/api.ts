@@ -2805,6 +2805,9 @@ export interface ConfigApi<E = never> {
 
   /** @deprecated Use `client.experimental.config.update`. Removed in the next minor. */
   readonly update: ExperimentalConfigUpdateOperation<E>
+
+  /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
+  readonly mcpRegistry: ExperimentalConfigMcpRegistryOperation<E>
 }
 
 export type ExperimentalConfigUpdateInput = {
@@ -2820,8 +2823,60 @@ export type ExperimentalConfigUpdateOperation<E = never> = (
   input?: ExperimentalConfigUpdateInput,
 ) => Effect.Effect<ExperimentalConfigUpdateOutput, E>
 
+export type ExperimentalConfigMcpRegistryInput = { readonly search?: string; readonly cursor?: string }
+export type ExperimentalConfigMcpRegistryOutput = {
+  readonly servers: ReadonlyArray<{
+    readonly name: string
+    readonly title?: string | undefined
+    readonly description?: string | undefined
+    readonly version?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly repository?: { readonly url?: string | undefined } | undefined
+    readonly packages?:
+      | ReadonlyArray<{
+          readonly registryType: string
+          readonly identifier: string
+          readonly version?: string | undefined
+          readonly runtimeHint?: string | undefined
+          readonly transport?: { readonly type: string } | undefined
+          readonly environmentVariables?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+    readonly remotes?:
+      | ReadonlyArray<{
+          readonly type: string
+          readonly url: string
+          readonly headers?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+  }>
+  readonly nextCursor?: string | undefined
+}
+export type ExperimentalConfigMcpRegistryOperation<E = never> = (
+  input?: ExperimentalConfigMcpRegistryInput,
+) => Effect.Effect<ExperimentalConfigMcpRegistryOutput, E>
+
 export interface ExperimentalConfigApi<E = never> {
   readonly update: ExperimentalConfigUpdateOperation<E>
+  readonly mcpRegistry: ExperimentalConfigMcpRegistryOperation<E>
 }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
@@ -3042,6 +3097,15 @@ export type ConfigUpdateOutput = ExperimentalConfigUpdateOutput
 
 /** @deprecated Use `ExperimentalConfigUpdateOperation`. Removed in the next minor. */
 export type ConfigUpdateOperation<E = never> = ExperimentalConfigUpdateOperation<E>
+
+/** @deprecated Use `ExperimentalConfigMcpRegistryInput`. Removed in the next minor. */
+export type ConfigMcpRegistryInput = ExperimentalConfigMcpRegistryInput
+
+/** @deprecated Use `ExperimentalConfigMcpRegistryOutput`. Removed in the next minor. */
+export type ConfigMcpRegistryOutput = ExperimentalConfigMcpRegistryOutput
+
+/** @deprecated Use `ExperimentalConfigMcpRegistryOperation`. Removed in the next minor. */
+export type ConfigMcpRegistryOperation<E = never> = ExperimentalConfigMcpRegistryOperation<E>
 
 /** @deprecated Use `ExperimentalGenerateApi`. Removed in the next minor. */
 export type GenerateApi<E = never> = ExperimentalGenerateApi<E>

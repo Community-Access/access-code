@@ -4951,6 +4951,50 @@ export type ExperimentalConfigUpdateInput = {
 
 export type ExperimentalConfigUpdateOutput = void
 
+export type ExperimentalConfigMcpRegistryInput = {
+  readonly search?: string | undefined
+  readonly cursor?: string | undefined
+}
+
+export type ExperimentalConfigMcpRegistryOutput = {
+  servers: Array<{
+    name: string
+    title?: string
+    description?: string
+    version?: string
+    websiteUrl?: string
+    repository?: { url?: string }
+    packages?: Array<{
+      registryType: string
+      identifier: string
+      version?: string
+      runtimeHint?: string
+      transport?: { type: string }
+      environmentVariables?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+    }>
+    remotes?: Array<{
+      type: string
+      url: string
+      headers?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+    }>
+  }>
+  nextCursor?: string
+}
+
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput
 
@@ -5100,3 +5144,9 @@ export type ConfigUpdateInput = ExperimentalConfigUpdateInput
 
 /** @deprecated Use `ExperimentalConfigUpdateOutput`. Removed in the next minor. */
 export type ConfigUpdateOutput = ExperimentalConfigUpdateOutput
+
+/** @deprecated Use `ExperimentalConfigMcpRegistryInput`. Removed in the next minor. */
+export type ConfigMcpRegistryInput = ExperimentalConfigMcpRegistryInput
+
+/** @deprecated Use `ExperimentalConfigMcpRegistryOutput`. Removed in the next minor. */
+export type ConfigMcpRegistryOutput = ExperimentalConfigMcpRegistryOutput

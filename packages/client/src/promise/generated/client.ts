@@ -320,6 +320,8 @@ import type {
   ConfigShellsOutput,
   ExperimentalConfigUpdateInput,
   ExperimentalConfigUpdateOutput,
+  ExperimentalConfigMcpRegistryInput,
+  ExperimentalConfigMcpRegistryOutput,
 } from "./types.js"
 import { ClientError } from "./client-error.js"
 
@@ -1749,6 +1751,18 @@ export function make(options: ClientOptions) {
             },
             requestOptions,
           ),
+        mcpRegistry: (input?: ExperimentalConfigMcpRegistryInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigMcpRegistryOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/mcp-registry`,
+              query: { search: input?.["search"], cursor: input?.["cursor"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
       },
     },
     message: {
@@ -2789,6 +2803,8 @@ export function make(options: ClientOptions) {
       ...client.config,
       /** @deprecated Use `client.experimental.config.update`. Removed in the next minor. */
       update: client.experimental.config.update,
+      /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
+      mcpRegistry: client.experimental.config.mcpRegistry,
     },
   }
 }

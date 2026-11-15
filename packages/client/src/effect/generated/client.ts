@@ -318,6 +318,8 @@ import type {
   ConfigShellsOutput,
   ExperimentalConfigUpdateInput,
   ExperimentalConfigUpdateOutput,
+  ExperimentalConfigMcpRegistryInput,
+  ExperimentalConfigMcpRegistryOutput,
 } from "../api/api.js"
 import { ClientError } from "./client-error.js"
 
@@ -1964,8 +1966,17 @@ const EndpointExperimentalConfigUpdate = (raw: RawClient["server.config"]) => (i
     }).pipe(Effect.mapError(mapClientError)),
   )
 
+const EndpointExperimentalConfigMcpRegistry =
+  (raw: RawClient["server.config"]) => (input?: ExperimentalConfigMcpRegistryInput) =>
+    preserveEffect<ExperimentalConfigMcpRegistryOutput>()(
+      raw["config.mcpRegistry"]({ query: { search: input?.["search"], cursor: input?.["cursor"] } }).pipe(
+        Effect.mapError(mapClientError),
+      ),
+    )
+
 const adaptGroupExperimentalConfig = (raw: RawClient["server.config"]) => ({
   update: EndpointExperimentalConfigUpdate(raw),
+  mcpRegistry: EndpointExperimentalConfigMcpRegistry(raw),
 })
 
 const adaptClient = (raw: RawClient) => {
@@ -2103,6 +2114,8 @@ const adaptClient = (raw: RawClient) => {
       ...client.config,
       /** @deprecated Use `client.experimental.config.update`. Removed in the next minor. */
       update: client.experimental.config.update,
+      /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
+      mcpRegistry: client.experimental.config.mcpRegistry,
     },
   }
 }

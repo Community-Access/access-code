@@ -1,5 +1,6 @@
 import { Config } from "@opencode/schema/config"
 import { ConfigShell } from "@opencode/schema/config/shell"
+import { McpRegistry } from "@opencode/schema/mcp-registry"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import { LocationQuery, locationQueryOpenApi } from "./location.js"
@@ -40,6 +41,22 @@ export const ConfigGroup = HttpApiGroup.make("server.config")
         identifier: "experimental.config.update",
         summary: "Update global configuration",
         description: "Patch supported fields in the highest-precedence global configuration document.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.mcpRegistry", "/api/experimental/config/mcp-registry", {
+      query: Schema.Struct({
+        search: Schema.String.pipe(Schema.optionalKey),
+        cursor: Schema.String.pipe(Schema.optionalKey),
+      }),
+      success: McpRegistry.SearchResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.mcpRegistry",
+        summary: "Search the MCP Registry",
+        description:
+          "Experimental: may change without compatibility guarantees. Search the public MCP Registry for servers to add.",
       }),
     ),
   )
