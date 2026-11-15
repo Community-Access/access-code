@@ -26,7 +26,7 @@ export const SettingsServerGeneral: Component<{ entry: SettingsServer; onAddServ
 
       <div class="settings-tab-body settings-tab-body--sectioned">
         <section class="settings-section settings-server-connection" data-component="settings-server-connection">
-          <h3 class="settings-section-title">{language.t("settings.server.section.connection")}</h3>
+          <h2 class="settings-section-title">{language.t("settings.server.section.connection")}</h2>
           <SettingsList>
             <ServerConnectionRow entry={props.entry} />
           </SettingsList>
@@ -35,7 +35,7 @@ export const SettingsServerGeneral: Component<{ entry: SettingsServer; onAddServ
         <Show when={serverPagesConnection(props.entry.availability)} keyed>
           {(server) => (
             <section class="settings-section">
-              <h3 class="settings-section-title">{language.t("settings.tab.preferences")}</h3>
+              <h2 class="settings-section-title">{language.t("settings.tab.preferences")}</h2>
               <SettingsList>
                 <ServerShell server={server} />
               </SettingsList>

@@ -249,7 +249,7 @@ export const SettingsGeneral: Component = () => {
 
   const GeneralSection = () => (
     <div class="settings-section">
-      <h3 class="settings-section-title">{language.t("settings.general.section.general")}</h3>
+      <h2 class="settings-section-title">{language.t("settings.general.section.general")}</h2>
       <SettingsList>
         <InterfaceModeSetting />
         <LanguageSetting />
@@ -324,8 +324,8 @@ export const SettingsGeneral: Component = () => {
       <div class="settings-tab-body settings-tab-body--sectioned">
         <GeneralSection />
 
-        <section class="settings-section" aria-label={language.t("settings.timeline.title")}>
-          <h3 class="settings-section-title">{language.t("settings.timeline.title")}</h3>
+        <section class="settings-section">
+          <h2 class="settings-section-title">{language.t("settings.timeline.title")}</h2>
           <SettingsList>
             <div class="border-b-[0.5px] border-v2-border-border-base py-5">
               <TimelineDetailControl

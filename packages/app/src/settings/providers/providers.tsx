@@ -459,7 +459,7 @@ export const SettingsProviders: Component<{
 
       <div class="settings-tab-body settings-tab-body--sectioned settings-providers">
         <div class="settings-section" data-component="connected-providers-section">
-          <h3 class="settings-section-title">{language.t("settings.providers.section.connected")}</h3>
+          <h2 class="settings-section-title">{language.t("settings.providers.section.connected")}</h2>
           <SettingsList variant="catalog">
             <Show
               when={displayed().length > 0}
@@ -602,7 +602,7 @@ export const SettingsProviders: Component<{
         </div>
 
         <div class="settings-section">
-          <h3 class="settings-section-title">{language.t("settings.providers.section.popular")}</h3>
+          <h2 class="settings-section-title">{language.t("settings.providers.section.popular")}</h2>
           <SettingsList variant="catalog">
             <For each={popular()}>
               {(item) => (

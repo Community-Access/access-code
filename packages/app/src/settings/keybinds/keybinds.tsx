@@ -521,7 +521,7 @@ function SettingsKeybindsView(props: {
             {(group) => (
               <Show when={(filtered().get(group) ?? []).length > 0}>
                 <div class="settings-section">
-                  <h3 class="settings-section-title">{language.t(groupKey[group])}</h3>
+                  <h2 class="settings-section-title">{language.t(groupKey[group])}</h2>
                   <SettingsList>
                     <For each={filtered().get(group) ?? []}>
                       {(id) => {

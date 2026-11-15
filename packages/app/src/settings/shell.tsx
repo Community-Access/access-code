@@ -80,8 +80,12 @@ export function SettingsScreen() {
   const global = useGlobal()
   let root: HTMLDivElement | undefined
 
+  // AccessCode: start on the selected section tab, so VoiceOver says where you are and arrows move between sections.
+  const focusStart = () =>
+    (root?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? root)?.focus({ preventScroll: true })
+
   onMount(() => {
-    root?.focus({ preventScroll: true })
+    focusStart()
     onCleanup(surface.search.attach(root!))
   })
   createEffect(() => surface.search.sync(surface.view()))
@@ -90,11 +94,12 @@ export function SettingsScreen() {
       createMemo(() => surface.view().type),
       () =>
         queueMicrotask(() => {
-          const target = surface.search.expanded()
+          const search = surface.search.expanded()
             ? root?.querySelector<HTMLInputElement>(".settings-search input")
-            : root
+            : undefined
 
-          target?.focus({ preventScroll: true })
+          if (search) return search.focus({ preventScroll: true })
+          focusStart()
         }),
       { defer: true },
     ),

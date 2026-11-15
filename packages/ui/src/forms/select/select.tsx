@@ -22,7 +22,7 @@ import {
   type JSX,
 } from "solid-js"
 import { MenuScroll } from "../../components/menu-scroll"
-import { useControlLabel } from "../../components/control-label"
+import { useClaimedControlLabel } from "../../components/control-label"
 import { createSelectHighlightState, transitionSelectHighlight, type SelectHighlightEvent } from "./machine"
 import "./select.css"
 
@@ -93,7 +93,9 @@ export type SelectProps<T> = Omit<
 }
 
 export function Select<T>(props: SelectProps<T>) {
-  const row = useControlLabel()
+  // Inside a settings row the row title and description name the pop-up, even when a caller also passed a label.
+  const row = useClaimedControlLabel(() => !!props["aria-labelledby"])
+  const rowNamed = () => !!row.labelledBy && !props["aria-labelledby"]
   const [local, others] = splitProps(props, [
     "class",
     "classList",
@@ -172,6 +174,8 @@ export function Select<T>(props: SelectProps<T>) {
       allowDuplicateSelectionEvents={false}
       disabled={local.disabled}
       data-component="select-v2-root"
+      // Kobalte makes the root an unnamed group around the one pop-up button, which VoiceOver reads as an extra stop.
+      role="presentation"
       placement={local.placement ?? "bottom-end"}
       gutter={local.gutter ?? 4}
       sameWidth={local.sameWidth ?? false}
@@ -227,8 +231,9 @@ export function Select<T>(props: SelectProps<T>) {
     >
       <Trigger
         as="div"
-        aria-label={props["aria-label"]}
-        aria-labelledby={props["aria-labelledby"] ?? (props["aria-label"] ? undefined : row.labelledBy)}
+        aria-label={rowNamed() ? undefined : props["aria-label"]}
+        aria-labelledby={props["aria-labelledby"] ?? (rowNamed() || !props["aria-label"] ? row.labelledBy : undefined)}
+        aria-describedby={rowNamed() ? row.describedBy : undefined}
         data-component="select-v2"
         data-appearance={local.appearance ?? "inline"}
         data-surface={local.appearance && local.appearance !== "inline" ? (local.surface ?? "base") : undefined}

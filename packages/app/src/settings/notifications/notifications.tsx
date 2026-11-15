@@ -79,7 +79,7 @@ export const SettingsNotifications: Component = () => {
 
       <div class="settings-tab-body settings-tab-body--sectioned">
         <div class="settings-section">
-          <h3 class="settings-section-title">{language.t("settings.general.section.notifications")}</h3>
+          <h2 class="settings-section-title">{language.t("settings.general.section.notifications")}</h2>
           <SettingsList>
             <SettingsRow
               title={language.t("settings.general.notifications.agent.title")}
@@ -135,7 +135,7 @@ export const SettingsNotifications: Component = () => {
         </div>
 
         <div class="settings-section">
-          <h3 class="settings-section-title">{language.t("settings.general.section.sounds")}</h3>
+          <h2 class="settings-section-title">{language.t("settings.general.section.sounds")}</h2>
           <SettingsList>
             <SoundSetting kind="agent" channel={sounds.agent} />
             <SoundSetting kind="permissions" channel={sounds.permissions} />

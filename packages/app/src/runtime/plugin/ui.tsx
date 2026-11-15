@@ -13,6 +13,7 @@ import { Select } from "@opencode/ui/select"
 import { Switch } from "@opencode/ui/switch"
 import { TextInput } from "@opencode/ui/text-input"
 import { Tooltip } from "@opencode/ui/tooltip"
+import { SettingsRow } from "@/settings/row"
 
 const loaderSize = { small: 14, normal: 16, large: 20 }
 
@@ -242,9 +243,9 @@ export const ui: Ui = {
     </>
   ),
   SettingsSection: (props) => (
-    <section class="settings-section" aria-label={props.title}>
+    <section class="settings-section">
       <Show when={props.title}>
-        <h3 class="settings-section-title">{props.title}</h3>
+        <h2 class="settings-section-title">{props.title}</h2>
       </Show>
       <div data-component="settings-list">{props.children}</div>
       {props.footer}
@@ -253,17 +254,11 @@ export const ui: Ui = {
   SettingsRow: (props) => {
     const description = children(() => props.description)
 
-    // Settings search reveals the row whose `data-action` is the entry it picked.
+    // The shared row names the control from its title and description, so VoiceOver reads each setting once.
     return (
-      <div data-component="settings-row" data-action={props.id}>
-        <div data-slot="settings-row-copy">
-          <div data-slot="settings-row-title">{props.title}</div>
-          <Show when={description()}>
-            <div data-slot="settings-row-description">{description()}</div>
-          </Show>
-        </div>
-        <div data-slot="settings-row-control">{props.children}</div>
-      </div>
+      <SettingsRow action={props.id} title={props.title} description={description()}>
+        {props.children}
+      </SettingsRow>
     )
   },
 }

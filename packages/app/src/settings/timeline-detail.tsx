@@ -42,7 +42,8 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
 
   return (
     <div data-component="timeline-detail-control">
-      <div data-slot="settings-row-copy">
+      {/* The slider is named by this title and described by this text, so VoiceOver reads them once, on the slider. */}
+      <div data-slot="settings-row-copy" aria-hidden="true">
         <label data-slot="settings-row-title" for={`${id}-slider`}>
           {language.t("settings.timeline.detail")}
         </label>
@@ -73,6 +74,7 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
           max={presets.length - 1}
           step="1"
           value={position()}
+          aria-label={language.t("settings.timeline.detail")}
           aria-valuetext={label()}
           aria-describedby={`${id}-description ${id}-preset-description`}
           onInput={(event) => props.onChange({ ...presets[event.currentTarget.valueAsNumber].value })}

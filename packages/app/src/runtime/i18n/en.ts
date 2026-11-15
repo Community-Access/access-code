@@ -1155,7 +1155,7 @@ export const dict = {
   "settings.timeline.category.commentary": "Commentary",
 
   "settings.general.row.language.title": "Language",
-  "settings.general.row.language.description": "Change the display language for OpenCode",
+  "settings.general.row.language.description": "Change the display language for AccessCode",
   "settings.general.row.shell.title": "Terminal shell",
   "settings.general.row.shell.description": "Shell used by the terminal and agent tools",
   "settings.general.row.shell.autoDefault": "Auto (Default)",

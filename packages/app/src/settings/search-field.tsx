@@ -1,6 +1,5 @@
-import { createEffect, on, onMount } from "solid-js"
+import { createEffect, on } from "solid-js"
 import { createStore } from "solid-js/store"
-import { makeEventListener } from "@solid-primitives/event-listener"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { Icon } from "@opencode/ui/icon"
 import { TextInput } from "@opencode/ui/text-input"
@@ -13,7 +12,6 @@ export function SettingsSearchField(props: {
   onInput: (value: string) => void
 }) {
   const [state, setState] = createStore({ overflow: { start: false, end: false } })
-  let root: HTMLDivElement | undefined
   let input: HTMLInputElement | undefined
 
   const updateOverflow = () => {
@@ -31,34 +29,11 @@ export function SettingsSearchField(props: {
   }
 
   createEffect(on(() => props.value, updateOverflow))
-  onMount(() => {
-    const screen = root?.closest<HTMLElement>(".settings-screen")
-
-    if (!screen) return
-    makeEventListener(screen, "keydown", (event) => {
-      if (
-        !props.active ||
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        event.key.length !== 1 ||
-        !event.key.trim() ||
-        (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable=true]"))
-      )
-        return
-      event.preventDefault()
-      event.stopPropagation()
-      const value = `${props.value}${event.key}`
-      props.onInput(value)
-      input?.focus({ preventScroll: true })
-      queueMicrotask(() => input?.setSelectionRange(value.length, value.length))
-    })
-  })
+  // AccessCode: no type-to-search. Letters typed on a switch or tab used to jump focus into this field, which broke
+  // keyboard and VoiceOver navigation. The field is still reachable with Tab.
 
   return (
-    <div ref={root} class="settings-tab-search settings-filter-search" data-component="settings-filter-search">
+    <div class="settings-tab-search settings-filter-search" data-component="settings-filter-search">
       <TextInput
         ref={(element) => {
           input = element
