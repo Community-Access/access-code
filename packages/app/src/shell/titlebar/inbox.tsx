@@ -22,9 +22,9 @@ import { Menu } from "@opencode/ui/menu"
 import { TextShimmer } from "@opencode/ui/text-shimmer"
 import { Tooltip } from "@opencode/ui/tooltip"
 import { Loader } from "@opencode/ui/loader"
-import { displayName } from "@opencode/ui/project-avatar"
 import { useServers } from "@/runtime/server/registry"
 import { useLanguage } from "@/runtime/i18n/language"
+import { projectLabel } from "@/shell/project-label"
 import { Persist, persisted } from "@/runtime/persistence/storage"
 import { SessionTabAvatarView } from "@/shell/layout/session-tab-avatar"
 import type { LocalProject } from "@/shell/state/layout"
@@ -655,7 +655,7 @@ export function InboxSessionCard(props: {
           </Show>
           <span class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-v2-icon-icon-muted">
             <span dir="auto" class="min-w-0 truncate text-v2-text-text-muted">
-              {displayName(props.project ?? { worktree: props.directory })}
+              {projectLabel(props.project ?? { worktree: props.directory }, language.t("project.rootFolder"))}
             </span>
             <Show when={props.worktree}>
               <Tooltip placement="right" value={props.directory} class="flex shrink-0">

@@ -2,6 +2,7 @@ import { HoverCard } from "@kobalte/core/hover-card"
 import { createComputed, createSignal, For, onCleanup, Show, untrack, type JSXElement } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
 import { createMediaQuery } from "@solid-primitives/media"
+import { isPointerHover } from "@opencode/ui/tooltip"
 import {
   INITIAL_TAB_PREVIEW_STATE,
   selectTabPreviewInstant,
@@ -59,6 +60,8 @@ export function TabPreviewPopover(props: {
   let triggerEl: HTMLDivElement | undefined
   const owner: TabPreviewOwner = { close: () => props.onOpenChange(false) }
   const open = () => props.open && !mobile()
+  // Only a pointer the person moved opens the preview, not VoiceOver placing the pointer on the tab or focus.
+  let hovered = false
 
   // Observe accepted, controlled state, including drag/menu suppression in TabNav. A computed commits the preview
   // before Kobalte mounts the card, so the card's ref and `data-instant` already see it.
@@ -76,7 +79,10 @@ export function TabPreviewPopover(props: {
   return (
     <HoverCard
       open={open()}
-      onOpenChange={props.onOpenChange}
+      onOpenChange={(value) => {
+        if (value && !hovered) return
+        props.onOpenChange(value)
+      }}
       // Kobalte reads openDelay when the pointer enters the trigger, so a streak skips it per hover.
       openDelay={selectTabPreviewOpenDelay(previewState())}
       closeDelay={CLOSE_DELAY}
@@ -90,6 +96,14 @@ export function TabPreviewPopover(props: {
         as="div"
         data-component="session-tab-popover-trigger"
         tabIndex={-1}
+        // Kobalte makes the trigger a link; the tab inside already has the one link, so this wrapper stays silent.
+        role="presentation"
+        onPointerEnter={(event: PointerEvent) => {
+          hovered = isPointerHover(event)
+        }}
+        onPointerLeave={() => {
+          hovered = false
+        }}
       >
         {props.trigger}
       </HoverCard.Trigger>
@@ -103,6 +117,8 @@ export function TabPreviewPopover(props: {
             if (theme) el.setAttribute("data-theme", theme)
           }}
           data-component="session-tab-popover"
+          // A visual preview of the tab's own title and path; screen readers already get those from the tab.
+          aria-hidden="true"
           // During a rapid tab-hopping streak the preview appears and disappears without animating; only the first,
           // cold preview animates, as browsers reuse one tab tooltip.
           data-instant={selectTabPreviewInstant(previewState()) || undefined}

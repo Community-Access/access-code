@@ -18,6 +18,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { useGlobal } from "@/runtime/server/runtime"
 import { useServers } from "@/runtime/server/registry"
 import { useTabs } from "@/shell/tabs/tabs"
+import { useCurrentRoute } from "@/shell/state/layout"
 import {
   CollapsedSidebarToggle,
   collapsedSidebarToggleEnd,
@@ -42,6 +43,7 @@ export default function Layout(props: ParentProps) {
   const global = useGlobal()
   const servers = useServers()
   const tabs = useTabs()
+  const route = useCurrentRoute()
   const mobile = createMediaQuery("(max-width: 767px)")
 
   createTipToasts()
@@ -57,6 +59,17 @@ export default function Layout(props: ParentProps) {
     tabsAside: undefined,
     tabsPanel: undefined,
   })
+
+  // None of these pages has its own h1; the connect screen does, and the components lab is a dev tool.
+  const pageHeading = () => {
+    const type = route().type
+
+    if (type === "home") return "shell.heading.home"
+
+    if (type === "settings") return "shell.heading.settings"
+
+    if (type === "session" || type === "draft") return "shell.heading.session"
+  }
 
   const verticalTabs = () => preferences.appearance.tabLayout() !== "horizontal" && !mobile()
 
@@ -253,6 +266,7 @@ export default function Layout(props: ParentProps) {
           <aside
             id="vertical-tabs-sidebar"
             data-slot="vertical-tabs-sidebar"
+            aria-label={language.t("shell.sidebar.label")}
             data-state={preferences.appearance.sidebarOpen() ? "open" : "closed"}
             data-peek={peek.shown() ? "" : undefined}
             style={{ "--sidebar-peek-width": `${state.tabsWidth}px` }}
@@ -323,6 +337,8 @@ export default function Layout(props: ParentProps) {
               : "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))",
           }}
         >
+          {/* Each page starts with a heading, so a screen reader can jump to where the page begins. */}
+          <Show when={pageHeading()}>{(heading) => <h1 class="sr-only">{language.t(heading())}</h1>}</Show>
           <PluginServerCover>
             <Suspense>{props.children}</Suspense>
           </PluginServerCover>

@@ -10,12 +10,13 @@ import { Menu } from "@opencode/ui/menu"
 import { useServerCtx } from "@/runtime/server/runtime"
 import { useLanguage } from "@/runtime/i18n/language"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
-import { displayName, ProjectAvatar } from "@opencode/ui/project-avatar"
+import { ProjectAvatar } from "@opencode/ui/project-avatar"
 import { SessionTabAvatarView } from "@/shell/layout/session-tab-avatar"
 import type { SessionInfo } from "@opencode/client/promise"
 import { showToast } from "@/shell/notifications/toast"
 import { createSessionExporter } from "@/session/commands/export-session"
 import { SessionReadMenuItem } from "@/session/session-read-menu-item"
+import { projectLabel } from "@/shell/project-label"
 import { sessionTabTitle } from "./tab-title"
 import { TabPreviewPopover } from "./tab-popover"
 import {
@@ -175,7 +176,7 @@ export function TabNavItem(
 
     if (!session) return
 
-    return displayName(project() ?? { worktree: session.location.directory })
+    return projectLabel(project() ?? { worktree: session.location.directory }, language.t("project.rootFolder"))
   })
 
   const previewPath = createMemo(() => {
@@ -495,7 +496,8 @@ export function TabNavItem(
         }}
         class="flex h-full min-w-0 flex-1 flex-row items-center gap-1.5 text-[13px] font-medium text-v2-text-text-faint group-data-[active='true']:text-v2-text-text-base group-data-[editing='true']:text-v2-text-text-base [-webkit-user-drag:none]"
       >
-        <span data-slot="project-avatar-slot" class="flex size-4 shrink-0 items-center justify-center">
+        {/* Decorative: the link reads as the session title alone, not the project's initial or the shortcut number. */}
+        <span data-slot="project-avatar-slot" aria-hidden="true" class="flex size-4 shrink-0 items-center justify-center">
           <Show
             when={props.session?.location.directory ?? props.fallbackDirectory}
             fallback={
@@ -589,7 +591,7 @@ export function TabNavItem(
             }}
             onClick={closeTab}
             icon={<Icon name="xmark-small" />}
-            aria-label={language.t("common.closeTab")}
+            aria-label={language.t("common.closeTabNamed", { title: title() })}
           />
         </Show>
       </div>
@@ -729,6 +731,7 @@ export function DraftTabItem(
           aria-expanded={menu.open}
           data-slot="tab-link"
           data-titlebar-tab-link
+          aria-current={props.active ? "page" : undefined}
           href={props.href}
           draggable={false}
           onDragStart={(event) => {
@@ -753,7 +756,7 @@ export function DraftTabItem(
           }}
           class="flex h-full min-w-0 flex-1 flex-row items-center gap-1.5 text-[13px] font-medium text-v2-text-text-faint group-data-[active='true']:text-v2-text-text-base [-webkit-user-drag:none]"
         >
-          <span class="relative flex size-4 shrink-0 items-center justify-center">
+          <span aria-hidden="true" class="relative flex size-4 shrink-0 items-center justify-center">
             <svg
               data-slot="tab-icon-face"
               class="text-v2-icon-icon-muted group-data-[active='true']:text-v2-icon-icon-base"
@@ -809,7 +812,7 @@ export function DraftTabItem(
             class="hover-reveal relative z-10"
             onClick={closeTab}
             icon={<Icon name="xmark-small" />}
-            aria-label={language.t("common.closeTab")}
+            aria-label={language.t("common.closeTabNamed", { title: props.title })}
           />
         </div>
       </div>

@@ -54,6 +54,8 @@ export interface ScrollViewProps extends ComponentProps<"div"> {
   onBeforeScroll?: () => void
   /** Offset/extent correction for a virtualized vertical scrollbar. */
   verticalScrollAdjustment?: number
+  /** Exposes the viewport as a labeled region landmark. Pass false where an enclosing landmark already names the area. */
+  region?: boolean
 }
 
 export const scrollKey = (event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">) => {
@@ -193,6 +195,7 @@ export function ScrollView(props: ScrollViewProps) {
       "thumbHoverTarget",
       "onBeforeScroll",
       "verticalScrollAdjustment",
+      "region",
       "style",
     ],
     [
@@ -544,8 +547,8 @@ export function ScrollView(props: ScrollViewProps) {
         onPointerDown={events.onPointerDown}
         onClick={events.onClick}
         tabIndex={0}
-        role="region"
-        aria-label={i18n.t("ui.scrollView.ariaLabel")}
+        role={local.region === false ? undefined : "region"}
+        aria-label={local.region === false ? undefined : i18n.t("ui.scrollView.ariaLabel")}
         onKeyDown={(e) => {
           onKeyDown(e)
           forward(events.onKeyDown, e)

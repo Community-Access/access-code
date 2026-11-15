@@ -4,7 +4,6 @@ import { Icon } from "@opencode/ui/icon"
 import { Menu } from "@opencode/ui/menu"
 import { Tooltip } from "@opencode/ui/tooltip"
 import {
-  displayName,
   getProjectAvatarGenerated,
   getProjectAvatarSource,
   getProjectAvatarVariant,
@@ -40,6 +39,7 @@ import { sessionHref } from "@/shell/routes/session"
 import { showToast } from "@/shell/notifications/toast"
 import { sessionTitle } from "./title"
 import { SessionHeaderSeparator } from "./header/separator"
+import { projectLabel } from "@/shell/project-label"
 import { createSessionHeaderFit } from "./header/fit"
 import { SessionWorkingIndicator } from "./header/session-working-indicator"
 import { CollapsedSidebarToggleSpace } from "@/shell/sidebar-toggle"
@@ -116,7 +116,9 @@ export function SessionLocation(props: {
   const collapse = useContext(SessionHeaderCollapse)
   const [store, setStore] = createStore({ open: false })
 
-  const projectName = createMemo(() => displayName(props.project ?? { worktree: props.directory ?? "" }))
+  const projectName = createMemo(() =>
+    projectLabel(props.project ?? { worktree: props.directory ?? "" }, language.t("project.rootFolder")),
+  )
 
   const worktree = createMemo(() => {
     const directory = props.directory
@@ -215,7 +217,9 @@ export function SessionLocation(props: {
         >
           <Menu.Trigger
             data-slot="session-location-trigger"
-            aria-label={label()}
+            aria-label={language.t("session.location.trigger", {
+              location: [projectName(), worktree()].filter(Boolean).join(", "),
+            })}
             class="relative flex h-7 min-w-0 max-w-full shrink items-center gap-2 overflow-hidden rounded-[6px] px-1.5 text-start text-[13px] font-normal leading-[var(--line-height-compact)] tracking-[-0.04px] text-v2-text-text-muted transition-colors hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-base focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-text-text-base focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-hover data-[expanded]:text-v2-text-text-base"
           >
             <ProjectAvatar

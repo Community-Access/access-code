@@ -12,13 +12,13 @@ import { Icon } from "@opencode/ui/icon"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Menu } from "@opencode/ui/menu"
 import { ScrollView } from "@opencode/ui/scroll-view"
-import { displayName } from "@opencode/ui/project-avatar"
 import { homeSessionsQuery } from "@/home/sessions/queries"
 import { createProjectActions } from "@/home/projects/actions"
 import { ProjectMenuItems } from "@/home/projects/menu"
 import { buildHomeSessionRecords } from "@/home/sessions/records"
 import { arrayMove } from "@/runtime/array-move"
 import { useLanguage } from "@/runtime/i18n/language"
+import { projectLabel } from "@/shell/project-label"
 import { Persistence } from "@/runtime/persistence/schema"
 import { Persist, persisted } from "@/runtime/persistence/storage"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
@@ -411,7 +411,7 @@ function ProjectRow(props: {
             <ProjectIcon project={props.project} />
           </span>
           <span class="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap" dir="auto">
-            {displayName(props.project)}
+            {projectLabel(props.project, language.t("project.rootFolder"))}
           </span>
         </button>
         <span

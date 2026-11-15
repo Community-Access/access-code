@@ -6,9 +6,9 @@ import type { SessionInfo } from "@opencode/client/promise"
 import { Button } from "@opencode/ui/button"
 import { Icon } from "@opencode/ui/icon"
 import { IconButton } from "@opencode/ui/icon-button"
-import { displayName } from "@opencode/ui/project-avatar"
 import { homeSessionsQuery } from "@/home/sessions/queries"
 import { useLanguage } from "@/runtime/i18n/language"
+import { projectLabel } from "@/shell/project-label"
 import { Persistence } from "@/runtime/persistence/schema"
 import { Persist, persisted } from "@/runtime/persistence/storage"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
@@ -309,7 +309,7 @@ export function SidebarCustomized(props: {
     global.servers.list().map((conn) => ({ key: ServerConnection.key(conn), label: servers.label(conn) }))
 
   const projectOptions = () =>
-    [...projectLabels().values()].map((project) => ({ id: project.id, label: displayName(project) }))
+    [...projectLabels().values()].map((project) => ({ id: project.id, label: projectLabel(project, language.t("project.rootFolder")) }))
 
   const showLabel = (row: Row, group: SidebarGroup<Row> | undefined) => {
     if (!view.show.serverLabels || !row.conn) return
@@ -560,7 +560,7 @@ export function SidebarCustomized(props: {
 
       const value = project()
 
-      return value ? displayName(value) : language.t("sidebar.view.other")
+      return value ? projectLabel(value, language.t("project.rootFolder")) : language.t("sidebar.view.other")
     }
 
     // A new session starts in the project on this group's server, or on the current server when it spans several.

@@ -2,6 +2,7 @@ import type { FileDiffInfo, SessionMessageUser } from "@opencode/client/promise"
 import { HoverCard } from "@kobalte/core/hover-card"
 import { ComponentProps, For, Match, Show, createMemo, createSignal, splitProps, Switch } from "solid-js"
 import { useI18n } from "@opencode/ui/context/i18n"
+import { isPointerHover } from "@opencode/ui/tooltip"
 
 export function MessageNav(
   props: ComponentProps<"ul"> & {
@@ -26,6 +27,7 @@ export function MessageNav(
   ])
 
   const [hovercardOpen, setHovercardOpen] = createSignal(false)
+  let hovered = false
 
   const selectMessage = (message: SessionMessageUser) => {
     setHovercardOpen(false)
@@ -86,7 +88,11 @@ export function MessageNav(
       <Match when={local.size === "compact"}>
         <HoverCard
           open={hovercardOpen()}
-          onOpenChange={setHovercardOpen}
+          onOpenChange={(value: boolean) => {
+            // VoiceOver places the pointer on the list as it reads; only a pointer the person moved opens the card.
+            if (value && !hovered) return
+            setHovercardOpen(value)
+          }}
           openDelay={0}
           closeDelay={120}
           placement="right-start"
@@ -94,7 +100,18 @@ export function MessageNav(
           overflowPadding={24}
           fitViewport
         >
-          <HoverCard.Trigger as="div" data-component="message-nav-hovercard" class={local.class}>
+          <HoverCard.Trigger
+            as="div"
+            data-component="message-nav-hovercard"
+            class={local.class}
+            role="presentation"
+            onPointerEnter={(event: PointerEvent) => {
+              hovered = isPointerHover(event)
+            }}
+            onPointerLeave={() => {
+              hovered = false
+            }}
+          >
             {content()}
           </HoverCard.Trigger>
           <HoverCard.Portal>

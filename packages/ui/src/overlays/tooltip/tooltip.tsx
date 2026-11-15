@@ -45,6 +45,7 @@ type TriggerHandlers = {
   onFocus: (event: FocusEvent) => void
   onBlur: (event: FocusEvent) => void
   onClick: (event: MouseEvent) => void
+  "aria-describedby"?: string
 }
 
 // Expanded panels still need tooltips; only an open popup suppresses its trigger's tooltip.
@@ -81,6 +82,33 @@ function listenForTab() {
   })
 }
 
+// VoiceOver moves the mouse pointer to each item it reads, so a hover popup opens under it and gets read twice. Its
+// pointer jumps straight onto the item, where a real mouse slides there: a hover counts only when the pointer was
+// already moving close by a moment before it entered.
+const HOVER_MOVE_WINDOW_MS = 100
+const HOVER_MOVE_DISTANCE = 100
+
+let lastMove: { time: number; x: number; y: number } | undefined
+
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "pointermove",
+    (event) => {
+      lastMove = { time: event.timeStamp, x: event.clientX, y: event.clientY }
+    },
+    { capture: true, passive: true },
+  )
+}
+
+/** Whether a pointerenter came from a pointer the person moved there, rather than one a screen reader placed. */
+export function isPointerHover(event: PointerEvent) {
+  if (event.pointerType === "touch" || !lastMove) return false
+
+  if (event.timeStamp - lastMove.time > HOVER_MOVE_WINDOW_MS) return false
+
+  return Math.hypot(event.clientX - lastMove.x, event.clientY - lastMove.y) <= HOVER_MOVE_DISTANCE
+}
+
 export function Tooltip(props: TooltipProps) {
   return (
     <Show when={!props.inactive} fallback={props.children}>
@@ -97,6 +125,11 @@ function ActiveTooltip(props: TooltipProps) {
   let observer: MutationObserver | undefined
 
   let kobalte: TooltipContextValue | undefined
+
+  // Kobalte opens on any pointerenter; these say whether a real hover or a Tab focus asked for it.
+  let hovered = false
+
+  let focused = false
 
   const [local, others] = splitProps(props, [
     "children",
@@ -205,7 +238,8 @@ function ActiveTooltip(props: TooltipProps) {
     // Kobalte owns the open state attributes from here, and spread never removes an attribute it did not set, so a
     // tooltip that mounts open would keep the closed marker.
     ref.removeAttribute("data-closed")
-    const [, rest] = splitProps(triggerProps, ["onFocus", "onBlur", "onClick"])
+    // The tip is hidden from assistive tech, so the trigger never points at it; its own label names it.
+    const [, rest] = splitProps(triggerProps, ["onFocus", "onBlur", "onClick", "aria-describedby"])
     spread(ref, rest, false, true)
 
     return null
@@ -224,14 +258,20 @@ function ActiveTooltip(props: TooltipProps) {
         data-component="tooltip-v2-trigger"
         class={local.class}
         onPointerEnter={(event) => {
-          if (event.pointerType !== "touch") dispatch(POINTER_ENTERED, event)
+          hovered = isPointerHover(event)
+
+          if (hovered) dispatch(POINTER_ENTERED, event)
         }}
         onFocusIn={(event) => {
           if (!tabbing && (event.target !== ref || selectTooltipDismissed(untrack(tooltip)))) return
+          focused = true
           dispatch(FOCUSED)
           handlers?.onFocus(event)
         }}
-        onFocusOut={(event) => handlers?.onBlur(event)}
+        onFocusOut={(event) => {
+          focused = false
+          handlers?.onBlur(event)
+        }}
         onClick={(event) => {
           if (event instanceof PointerEvent && event.pointerType === "touch") return
           handlers?.onClick(event)
@@ -248,7 +288,10 @@ function ActiveTooltip(props: TooltipProps) {
           closeDelay={0}
           ignoreSafeArea={local.ignoreSafeArea ?? true}
           open={selectTooltipOpen(tooltip())}
-          onOpenChange={(open) => dispatch(open ? KOBALTE_OPENED : KOBALTE_CLOSED)}
+          onOpenChange={(open) => {
+            if (open && !hovered && !focused) return
+            dispatch(open ? KOBALTE_OPENED : KOBALTE_CLOSED)
+          }}
         >
           {/* Kobalte calls these inside its own listeners. As separate listeners, the leave microtask would close the
               tooltip before Kobalte's listener ran, which then skipped the skip-delay window. */}
@@ -267,6 +310,8 @@ function ActiveTooltip(props: TooltipProps) {
 
                 if (theme) el.setAttribute("data-theme", theme)
               }}
+              // The trigger already carries its own name, so reading the tip would only repeat it.
+              aria-hidden="true"
               data-component="tooltip-v2"
               data-appearance={local.appearance ?? "compact"}
               data-placement={props.placement}
