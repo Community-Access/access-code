@@ -1,5 +1,5 @@
 import { Content, List, Root, Trigger } from "@kobalte/core/tabs"
-import { createContext, Show, splitProps, useContext, type JSX } from "solid-js"
+import { createContext, onCleanup, onMount, Show, splitProps, useContext, type JSX } from "solid-js"
 import type { Component, ComponentProps, ParentProps } from "solid-js"
 import { useI18n } from "../../context/i18n"
 import "./tabs-current.css"
@@ -92,6 +92,19 @@ function TabsTrigger(props: ParentProps<TabsTriggerProps>) {
     "dir",
   ])
 
+  // AccessCode: each tab sits in its own wrapper, so VoiceOver counted every tab as "1 of 1". The tab says its real
+  // place in the whole list instead, and the numbers follow tabs that are added or removed later.
+  let trigger: HTMLElement | undefined
+  onMount(() => {
+    const list = trigger?.closest<HTMLElement>('[role="tablist"]')
+
+    if (!list) return
+    numberTabs(list)
+    const observer = new MutationObserver(() => numberTabs(list))
+    observer.observe(list, { childList: true, subtree: true })
+    onCleanup(() => observer.disconnect())
+  })
+
   const wrapperSlot = () => (ctx.current() ? "tabs-v2-trigger-wrapper" : "tabs-trigger-wrapper")
   const triggerSlot = () => (ctx.current() ? "tabs-v2-trigger" : "tabs-trigger")
   const closeSlot = () => (ctx.current() ? "tabs-v2-trigger-close-button" : "tabs-trigger-close-button")
@@ -116,6 +129,10 @@ function TabsTrigger(props: ParentProps<TabsTriggerProps>) {
     >
       <Trigger
         {...rest}
+        ref={(element: HTMLElement) => {
+          trigger = element
+          if (typeof rest.ref === "function") rest.ref(element)
+        }}
         dir={local.dir ?? "auto"}
         data-slot={triggerSlot()}
         data-value={props.value}
@@ -210,3 +227,16 @@ export const Tabs = Object.assign(TabsRoot, {
   Content: TabsContent,
   SectionTitle: TabsSectionTitle,
 })
+
+function numberTabs(list: HTMLElement) {
+  const tabs = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"]')).filter(
+    (tab) => tab.closest('[role="tablist"]') === list,
+  )
+  const size = String(tabs.length)
+
+  tabs.forEach((tab, index) => {
+    const position = String(index + 1)
+    if (tab.getAttribute("aria-posinset") !== position) tab.setAttribute("aria-posinset", position)
+    if (tab.getAttribute("aria-setsize") !== size) tab.setAttribute("aria-setsize", size)
+  })
+}
