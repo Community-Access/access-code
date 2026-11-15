@@ -185,7 +185,9 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
   }
 
   return (
-    <aside
+    // AccessCode: a plain container. The visible Projects heading names it, so a landmark would say the name twice.
+    // The dropdown has no heading, so it stays a named group.
+    <div
       class={
         props.dropdown
           ? "flex max-h-[min(60dvh,calc(var(--kb-popper-content-available-height)-12px))] min-h-0 min-w-0 flex-col overflow-hidden"
@@ -194,7 +196,8 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
         lg:sticky lg:top-14 lg:mt-14 lg:h-[calc(100cqh-56px)] lg:self-start lg:pt-[52px]
       `
       }
-      aria-label={props.language.t("home.projects")}
+      role={props.dropdown ? "group" : undefined}
+      aria-label={props.dropdown ? props.language.t("home.projects") : undefined}
       onWheel={(event) => {
         if (event.target === event.currentTarget) return
         props.onWheel(event)
@@ -336,7 +339,7 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
         onOpenHelp={props.onOpenHelp}
         language={props.language}
       />
-    </aside>
+    </div>
   )
 }
 

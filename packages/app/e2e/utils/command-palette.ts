@@ -50,7 +50,7 @@ export async function openPaletteWorkspace(page: Page, home = false, sessions = 
 
   if (home) {
     await expect(
-      page.getByRole("region", { name: "Recent sessions" }).getByRole("button", { name: /Palette fixture session/ }),
+      page.getByRole("main").getByRole("button", { name: /Palette fixture session/ }),
     ).toBeEnabled({ timeout: APP_READY_TIMEOUT })
   }
 

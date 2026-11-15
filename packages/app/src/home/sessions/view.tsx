@@ -227,11 +227,8 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
   onCleanup(() => dispatchRow({ type: "disposed" }))
 
   return (
-    <section
-      ref={props.onSetHoverTarget}
-      class="min-h-0 min-w-0 flex-1 flex flex-col"
-      aria-label={props.language.t("sidebar.project.recentSessions")}
-    >
+    // AccessCode: a plain container. Its Recent sessions heading names it, so a landmark would say the name twice.
+    <div ref={props.onSetHoverTarget} class="min-h-0 min-w-0 flex-1 flex flex-col">
       <h2 class="sr-only">{props.language.t("sidebar.project.recentSessions")}</h2>
       <div
         class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-1 pt-6 md:pb-3 lg:pt-12"
@@ -347,7 +344,7 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
           </Match>
         </Switch>
       </div>
-    </section>
+    </div>
   )
 }
 
