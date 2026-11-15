@@ -1,5 +1,5 @@
 import type { McpServer, PluginInfo, SkillInfo } from "@opencode/client/promise"
-import { Component, For, Show, createEffect, createMemo, on, onCleanup, type JSX } from "solid-js"
+import { Component, For, Show, createEffect, createMemo, createResource, on, onCleanup, type JSX } from "solid-js"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { Icon } from "@opencode/ui/icon"
 import { Button } from "@opencode/ui/button"
@@ -20,6 +20,7 @@ import { SettingsList } from "@/settings/list"
 import { createExtensionLoad, ExtensionLoadFailed } from "@/settings/extension-load"
 import type { SettingsView } from "@/settings/surface"
 import { DialogAddExtension } from "./add-extension/dialog"
+import { serverSlug, serverTitle } from "./add-extension/mcp-plan"
 import { ConsoleName, ConsoleReplaced, createConsoleSources } from "./console-link"
 import { mcpKeychain, mcpOrigin, mcpRuns, pluginOrigin, skillOrigin, type Origin } from "./extension-origin"
 import { DialogRemoveExtension, RemoveFailed } from "./remove-dialog"
@@ -60,6 +61,15 @@ export const SettingsExtensions: Component<{
 }> = (props) => {
   const language = useLanguage()
   const serverSdk = useServerSDK()
+  // AccessCode: servers are saved under short names like "notion". Show the real name, "Notion", from the popular
+  // list the Add dialog uses, and a tidied name for anything else, so VoiceOver never reads "Remove notion".
+  const [popular] = createResource(() =>
+    serverSdk.api.experimental.config.mcpPopular().catch(() => ({ servers: [] as { name: string; title?: string }[] })),
+  )
+  const titles = createMemo(
+    () => new Map((popular()?.servers ?? []).map((server) => [serverSlug(server.name), serverTitle(server)] as const)),
+  )
+  const mcpTitle = (name: string) => titles().get(name) ?? serverTitle({ name })
   const data = useData()
   const dialog = useDialog()
   const platform = usePlatform()
@@ -413,13 +423,15 @@ export const SettingsExtensions: Component<{
                               <h3 class="flex min-w-0">
                                 <Show
                                   when={managed() && links()}
-                                  fallback={<TruncatedText text={item.name} class="settings-extension-name" />}
+                                  fallback={
+                                    <TruncatedText text={mcpTitle(item.name)} class="settings-extension-name" />
+                                  }
                                 >
-                                  {(current) => <ConsoleName name={item.name} href={current().manage} />}
+                                  {(current) => <ConsoleName name={mcpTitle(item.name)} href={current().manage} />}
                                 </Show>
                               </h3>
                               <Show when={sources.mcp(item.name)?.overridden && links()}>
-                                {(current) => <ConsoleReplaced name={item.name} href={current().manage} />}
+                                {(current) => <ConsoleReplaced name={mcpTitle(item.name)} href={current().manage} />}
                               </Show>
                             </div>
                             <Show when={info()?.line}>
@@ -439,7 +451,7 @@ export const SettingsExtensions: Component<{
                             <Button
                               size="small"
                               variant="ghost-muted"
-                              aria-label={language.t("dialog.mcp.error.viewLabel", { name: item.name })}
+                              aria-label={language.t("dialog.mcp.error.viewLabel", { name: mcpTitle(item.name) })}
                               onClick={() =>
                                 dialog.show(() => <DialogMcp directory={location().directory} server={item.name} />)
                               }
@@ -470,7 +482,7 @@ export const SettingsExtensions: Component<{
                                   disabled={busy()}
                                   aria-busy={busy()}
                                   data-sign-in={item.name}
-                                  aria-label={language.t("dialog.mcp.signIn.open", { name: item.name })}
+                                  aria-label={language.t("dialog.mcp.signIn.open", { name: mcpTitle(item.name) })}
                                   onClick={() => toggle(item, true)}
                                 >
                                   {language.t(busy() ? "dialog.mcp.signingIn" : "dialog.mcp.signIn")}
@@ -482,7 +494,9 @@ export const SettingsExtensions: Component<{
                               <Button
                                 size="small"
                                 variant="ghost-muted"
-                                aria-label={language.t("settings.extensions.console.connect", { name: item.name })}
+                                aria-label={language.t("settings.extensions.console.connect", {
+                                  name: mcpTitle(item.name),
+                                })}
                                 onClick={() => platform.openExternal(href())}
                               >
                                 {language.t("common.connect")}
@@ -490,7 +504,7 @@ export const SettingsExtensions: Component<{
                             )}
                           </Show>
                           <Show when={info()?.removable}>
-                            {removeButton("mcps", item.name, item.name, () => removeMcp(item.name))}
+                            {removeButton("mcps", mcpTitle(item.name), item.name, () => removeMcp(item.name))}
                           </Show>
                         </div>
                       </div>
