@@ -59,6 +59,8 @@ export function RadioItem(props: RadioItemProps) {
   return (
     <Item
       {...others}
+      // AccessCode: Kobalte wraps each option in an unnamed group, an extra stop for VoiceOver.
+      role="presentation"
       data-slot="radio-v2-item"
       classList={{
         ...local.classList,
@@ -71,7 +73,8 @@ export function RadioItem(props: RadioItemProps) {
           <ItemIndicator data-slot="radio-v2-item-indicator" />
         </ItemControl>
       </div>
-      <ItemLabel data-slot="radio-v2-item-label" classList={{ "sr-only": local.hideLabel }}>
+      {/* The radio is named by this label; hiding the label's own text stops VoiceOver reading the option twice. */}
+      <ItemLabel data-slot="radio-v2-item-label" classList={{ "sr-only": local.hideLabel }} aria-hidden="true">
         <div data-slot="radio-v2-item-text">
           <span data-slot="radio-v2-item-label-text">{local.label}</span>
           <Show when={local.description}>

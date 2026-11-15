@@ -111,6 +111,9 @@ function TabsTrigger(props: ParentProps<TabsTriggerProps>) {
 
   return (
     <div
+      // AccessCode: VoiceOver counts a tab among its parent's children, so the wrapper must not be in the accessibility
+      // tree or every tab reads "1 of 1". With it presentational the tabs sit directly in the tab list.
+      role="presentation"
       data-slot={wrapperSlot()}
       data-value={props.value}
       classList={{

@@ -345,7 +345,8 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
     }
 
     const plural = (key: PluralKey, count: number, params?: Record<string, string | number | boolean>) =>
-      pluralForm(key, pluralCategory(intl(), count), { ...params, count })
+      // AccessCode: counts read with digit grouping, so a screen reader says "290,396", not one long number.
+      pluralForm(key, pluralCategory(intl(), count), { ...params, count: new Intl.NumberFormat(intl()).format(count) })
 
     // "2 subagents · 1 shell", or one group alone, as the iOS app's background-work capsule reads.
     const activitySummary = (counts: { subagents: number; shells: number }) => {
