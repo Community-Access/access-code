@@ -6,6 +6,8 @@ export function DockPrompt(props: {
   header: JSX.Element
   children: JSX.Element
   footer: JSX.Element
+  /** The id of the dock's title, which names it as a region so screen readers can find it. */
+  titleID?: string
   ref?: (el: HTMLDivElement) => void
   onKeyDown?: JSX.EventHandlerUnion<HTMLDivElement, KeyboardEvent>
 }) {
@@ -16,6 +18,8 @@ export function DockPrompt(props: {
       data-component="dock-prompt"
       data-kind={props.kind}
       data-variant={props.variant}
+      role={props.titleID ? "region" : undefined}
+      aria-labelledby={props.titleID}
       ref={props.ref}
       onKeyDown={props.onKeyDown}
     >

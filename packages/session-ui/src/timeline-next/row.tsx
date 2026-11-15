@@ -679,6 +679,28 @@ export function createNextTimelineRowRenderer(input: {
 
   const gaps = createMemo(() => timelineGaps(input.projection.rows(), input.projection.messageByID()))
 
+  // The first assistant row of each turn carries the reply's heading, so screen reader users can jump between messages.
+  const replyStarts = createMemo(() => {
+    const seen = new Set<string>()
+
+    return new Set(
+      input.projection.rows().flatMap((row) => {
+        if (!Predicate.isTagged(row, "AssistantPart") && !Predicate.isTagged(row, "Thinking")) return []
+
+        if (seen.has(row.userMessageID)) return []
+        seen.add(row.userMessageID)
+
+        return [TimelineRow.key(row)]
+      }),
+    )
+  })
+
+  const ReplyHeading = (props: { row: TimelineRow.TimelineRow }) => (
+    <Show when={replyStarts().has(TimelineRow.key(props.row))}>
+      <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.assistant")}</h2>
+    </Show>
+  )
+
   // Each row's space above comes from its block, and none of its own. A message joining the user's message above
   // already sits its run's 4 px below it.
   const gap = (row: FramedTimelineRow) => {
@@ -835,6 +857,7 @@ export function createNextTimelineRowRenderer(input: {
           {(objective) => (
             <div data-slot="session-turn-message-container" class={`w-full ${inset()}`}>
               <div data-component="user-message" data-goal="">
+                <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
                 <div data-slot="user-message-body">
                   <div data-slot="user-message-text" dir="auto">
                     <Badge data-slot="user-message-goal-badge" dir="ltr">
@@ -928,7 +951,14 @@ export function createNextTimelineRowRenderer(input: {
               }
             >
               {(switched) => (
-                <div data-slot="session-timeline-notice" data-type={message()?.type} class={`w-full ${inset()}`}>
+                // The Model and Agent buttons already say the current value, so a pile of these notes only repeats it for
+                // screen readers.
+                <div
+                  data-slot="session-timeline-notice"
+                  data-type={message()?.type}
+                  class={`w-full ${inset()}`}
+                  aria-hidden="true"
+                >
                   <Separator label={switched().label} providerID={switched().providerID} variant={switched().variant} />
                 </div>
               )}
@@ -1108,6 +1138,7 @@ export function createNextTimelineRowRenderer(input: {
                   {...hoverZone(message().id)}
                 >
                   <div data-slot="session-turn-message-content" aria-live="off">
+                    <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
                     <SessionUserMessage
                       sessionID={input.sessionID()}
                       message={message()}
@@ -1227,6 +1258,7 @@ export function createNextTimelineRowRenderer(input: {
       return (
         <Frame row={current()}>
           <div data-slot="session-turn-message-container" class={`w-full ${padding()}`}>
+            <ReplyHeading row={current()} />
             <div data-slot="session-turn-assistant-content">
               {content}
             </div>
@@ -1256,6 +1288,7 @@ export function createNextTimelineRowRenderer(input: {
       return (
         <Frame row={current()}>
           <div data-slot="session-turn-message-container" class={`w-full ${padding()}`}>
+            <ReplyHeading row={current()} />
             <div data-slot="session-turn-thinking-row" data-live-slot="">
               <Show when={content()}>
                 {(content) => (

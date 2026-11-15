@@ -1,10 +1,11 @@
 import { Option, Schema } from "effect"
-import { For, Show } from "solid-js"
+import { For, Show, createUniqueId, onMount } from "solid-js"
 import type { PermissionRequest } from "@opencode/client/promise"
 import { Button } from "@opencode/ui/button"
 import { DockPrompt } from "@opencode/session-ui/dock-prompt"
 import { Icon } from "@opencode/ui/icon"
 import { useLanguage } from "@/runtime/i18n/language"
+import { announceOnce } from "@/session/announce"
 
 const decodeToolInput = Schema.decodeUnknownOption(Schema.Record(Schema.String, Schema.Unknown))
 
@@ -34,15 +35,31 @@ export function SessionPermissionDock(props: {
         Object.entries(value).map(([key, item]) => `${key}: ${isString(item) ? item : JSON.stringify(item)}`),
     })
 
+  const titleID = createUniqueId()
+
+  onMount(() =>
+    announceOnce(
+      `permission:${props.request.id}`,
+      language.t("session.request.announce.permission", {
+        title: language.t("notification.permission.title"),
+        detail: [toolDescription() || props.request.action, props.request.message].filter(Boolean).join(". "),
+      }),
+      "assertive",
+    ),
+  )
+
   return (
     <DockPrompt
       kind="permission"
+      titleID={titleID}
       header={
         <div data-slot="permission-row" data-variant="header">
           <span data-slot="permission-icon">
             <Icon name="warning" size="normal" />
           </span>
-          <div data-slot="permission-header-title">{language.t("notification.permission.title")}</div>
+          <div data-slot="permission-header-title" id={titleID} role="heading" aria-level="2">
+            {language.t("notification.permission.title")}
+          </div>
         </div>
       }
       footer={

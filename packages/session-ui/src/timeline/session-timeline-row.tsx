@@ -684,6 +684,28 @@ export function createSessionTimelineRowRenderer(input: {
     return { label: message.description ?? message.text }
   }
 
+  // The first assistant row of each turn carries the reply's heading, so screen reader users can jump between messages.
+  const replyStarts = createMemo(() => {
+    const seen = new Set<string>()
+
+    return new Set(
+      input.projection.rows().flatMap((row) => {
+        if (!Predicate.isTagged(row, "AssistantPart") && !Predicate.isTagged(row, "Thinking")) return []
+
+        if (seen.has(row.userMessageID)) return []
+        seen.add(row.userMessageID)
+
+        return [TimelineRow.key(row)]
+      }),
+    )
+  })
+
+  const ReplyHeading = (props: { row: TimelineRow.TimelineRow }) => (
+    <Show when={replyStarts().has(TimelineRow.key(props.row))}>
+      <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.assistant")}</h2>
+    </Show>
+  )
+
   const Frame = (props: { row: FramedTimelineRow; grow?: boolean; children: JSX.Element }) => (
     <div
       ref={(el) => {
@@ -897,7 +919,13 @@ export function createSessionTimelineRowRenderer(input: {
               }
             >
               {(model) => (
-                <div data-slot="session-timeline-notice" data-type="model-switched" class={`w-full py-2 ${inset()}`}>
+                // The Model button already says the current model, so a pile of these notes only repeats it for screen readers.
+                <div
+                  data-slot="session-timeline-notice"
+                  data-type="model-switched"
+                  class={`w-full py-2 ${inset()}`}
+                  aria-hidden="true"
+                >
                   <TimelineSeparator label={model().label} providerID={model().providerID} variant={model().variant} />
                 </div>
               )}
@@ -1095,6 +1123,7 @@ export function createSessionTimelineRowRenderer(input: {
                   {...hoverZone(message().id)}
                 >
                   <div data-slot="session-turn-message-content" aria-live="off">
+                    <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
                     <SessionUserMessage
                       sessionID={input.sessionID()}
                       message={message()}
@@ -1216,6 +1245,7 @@ export function createSessionTimelineRowRenderer(input: {
       return (
         <Frame row={current()}>
           <div data-slot="session-turn-message-container" class={`w-full ${padding()}`}>
+            <ReplyHeading row={current()} />
             <div data-slot="session-turn-assistant-content">
               {content}
             </div>
@@ -1243,6 +1273,7 @@ export function createSessionTimelineRowRenderer(input: {
       return (
         <Frame row={current()}>
           <div data-slot="session-turn-message-container" class={`w-full ${padding()}`}>
+            <ReplyHeading row={current()} />
             <div data-slot="session-turn-thinking-row">
               <Show when={content()}>
                 {(content) => (

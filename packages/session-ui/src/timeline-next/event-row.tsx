@@ -1,6 +1,7 @@
 import { Badge } from "@opencode/ui/badge"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { For, Match, Show, Switch, createMemo } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { BasicTool } from "../components/basic-tool"
 import { useData } from "../context/data"
 import { taskAgentName } from "../tools/tool-renderer"
@@ -117,15 +118,17 @@ export function TimelineEventItem(props: {
     return props.event.verb
   }
 
+  // An event that opens nothing is plain text, not a dimmed link.
   return (
-    <a
+    <Dynamic
+      component={clickable() || href() ? "a" : "div"}
       data-slot="timeline-event-item"
       data-kind={props.event.kind}
+      data-static={clickable() ? undefined : "true"}
       href={href()}
       role={clickable() && !href() ? (props.event.kind === "subagent" ? "link" : "button") : undefined}
       tabIndex={clickable() ? 0 : undefined}
-      aria-disabled={clickable() ? undefined : "true"}
-      onClick={(event) => {
+      onClick={(event: MouseEvent) => {
         if (event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 
         if (href() && !data.navigateToSession) return
@@ -134,7 +137,7 @@ export function TimelineEventItem(props: {
         event.preventDefault()
         open()
       }}
-      onKeyDown={(event) => {
+      onKeyDown={(event: KeyboardEvent) => {
         if (!clickable() || href() || (event.key !== "Enter" && event.key !== " ")) return
         event.preventDefault()
         open()
@@ -158,7 +161,7 @@ export function TimelineEventItem(props: {
       <Show when={props.event.failed && props.event.kind === "shell"}>
         <Badge variant="danger">{i18n.t("ui.toolErrorCard.failed")}</Badge>
       </Show>
-    </a>
+    </Dynamic>
   )
 }
 

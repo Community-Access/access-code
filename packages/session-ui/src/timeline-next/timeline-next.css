@@ -257,7 +257,7 @@
     text-decoration: none;
     cursor: default;
 
-    &[aria-disabled] {
+    &[data-static] {
       pointer-events: none;
     }
 

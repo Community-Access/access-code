@@ -149,6 +149,7 @@ type CodeLabels = {
   copy: string
   copied: string
   maximize: string
+  code: string
 }
 
 type CodeButtonState = {
@@ -300,9 +301,13 @@ function codeKind(language: string | undefined) {
   if (shellLanguages.has(value)) return "shell"
 }
 
-function applyCodeMetadata(wrapper: HTMLElement, language: string | undefined) {
+function applyCodeMetadata(wrapper: HTMLElement, language: string | undefined, label: string) {
   if (language) wrapper.dataset.language = language
   else delete wrapper.dataset.language
+
+  // A named group lets screen readers say where a code block starts and what language it is in.
+  wrapper.setAttribute("role", "group")
+  wrapper.setAttribute("aria-label", language ? `${label}, ${language}` : label)
 
   const kind = codeKind(language)
 
@@ -1090,6 +1095,7 @@ export function Markdown(
       copy: i18n.t("ui.message.copy"),
       copied: i18n.t("ui.message.copied"),
       maximize: i18n.t("ui.diagramPreview.open"),
+      code: i18n.t("ui.markdown.code"),
     }
 
     const nextCodeKeys = new Set(content.filter((block) => block.mode === "code").map((block) => block.key))
@@ -1154,6 +1160,11 @@ export function Markdown(
       container
         .querySelectorAll<HTMLElement>(codeButtons)
         .forEach((button) => codeButtonState.get(button)?.setLabels(labels))
+
+    if (appliedLabels && appliedLabels.code !== labels.code)
+      container
+        .querySelectorAll<HTMLElement>('[data-component="markdown-code"]')
+        .forEach((wrapper) => applyCodeMetadata(wrapper, wrapper.dataset.language, labels.code))
 
     appliedLabels = labels
 
@@ -1343,6 +1354,7 @@ function updateBlock(
         Array.from(code.classList)
           .find((name) => name.startsWith("language-"))
           ?.slice(9),
+        labels.code,
       )
       pre.replaceWith(wrapper)
       wrapper.appendChild(pre)
@@ -1390,7 +1402,7 @@ function updateCodeBlock(
   if (code instanceof HTMLElement) {
     const wrapper = code.closest('[data-component="markdown-code"]')
 
-    if (wrapper instanceof HTMLElement) applyCodeMetadata(wrapper, block.language)
+    if (wrapper instanceof HTMLElement) applyCodeMetadata(wrapper, block.language, labels.code)
     code.className = `language-${block.language}`
     const previous = renderedCodeTokens.get(next)
 
@@ -1427,7 +1439,7 @@ function updateCodeBlock(
 
   const wrapper = document.createElement("div")
   wrapper.setAttribute("data-component", "markdown-code")
-  applyCodeMetadata(wrapper, block.language)
+  applyCodeMetadata(wrapper, block.language, labels.code)
   const pre = document.createElement("pre")
   pre.className = "highlights"
   const codeElement = document.createElement("code")

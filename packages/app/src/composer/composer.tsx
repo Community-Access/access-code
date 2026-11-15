@@ -77,6 +77,14 @@ export function Composer(props: {
             preview={!!props.model.model.preview}
             paid={props.model.model.paid}
             title={language.t("command.model.choose")}
+            name={
+              modelLabel().provider
+                ? language.t("composer.model.current", {
+                    model: modelLabel().model,
+                    provider: modelLabel().provider ?? "",
+                  })
+                : language.t("composer.model.currentNoProvider", { model: modelLabel().model })
+            }
             keybind={command.keybindParts("model.choose")}
             model={props.model.model.selection}
             label={modelLabel()}
@@ -94,6 +102,8 @@ function ComposerModelControl(props: {
   preview: boolean
   paid: boolean
   title: string
+  /** The accessible name, which says the current model and provider rather than reading the chip's slash. */
+  name: string
   keybind: string[]
   model: ComposerModel["model"]["selection"]
   label: ComposerModelLabel
@@ -203,6 +213,7 @@ function ComposerModelControl(props: {
               classList={{ "animate-in fade-in": shouldAnimate() }}
               style={{ height: "28px" }}
               aria-busy={pending() || undefined}
+              aria-label={props.name}
               onMouseDown={(event: MouseEvent) => event.preventDefault()}
               onClick={(event: MouseEvent) =>
                 dispatch({
@@ -230,6 +241,7 @@ function ComposerModelControl(props: {
                 classList={{ "animate-in fade-in": shouldAnimate() }}
                 data-action="composer-model"
                 data-control-type="drawer"
+                aria-label={props.name}
               >
                 {content()}
               </Button>

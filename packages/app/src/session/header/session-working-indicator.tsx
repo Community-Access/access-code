@@ -26,7 +26,8 @@ export function SessionWorkingIndicator(props: { sessionID?: string }) {
     <Show when={presence.present()}>
       <span
         ref={(element) => setElements("indicator", element)}
-        role="status"
+        // Not a live region: the timeline's status announcer already says Working, so this would say it twice.
+        role="img"
         aria-label={language.t("session.timeline.working")}
         data-visible={presence.show()}
         // Cancel the header's 2px gap at the end of the collapse so unmounting doesn't nudge the title.

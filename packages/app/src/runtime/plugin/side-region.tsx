@@ -33,6 +33,7 @@ import { closedTabsModifier, type ClosedSideTab } from "./closed-tabs"
 import { ClosedTabsSection, createDeferredMenu, NewTabButton } from "./closed-tabs-view"
 import { selectDeferredMenuOpen } from "./deferred-menu-machine"
 import type { PaneDrag } from "./pane-drag"
+import { announce } from "@/session/announce"
 
 const PANE_HEIGHT_MIN = 120
 
@@ -97,6 +98,15 @@ export function SideRegion(props: {
     target: () => document.querySelector<HTMLElement>('[data-slot="session-review-toggle"] button') ?? undefined,
   })
 
+  // Closing from inside the panel hands focus to the composer, where the reader was working, and says so.
+  const close = () => {
+    if (!tabsOpen()) return
+    props.region.toggle()
+    const row = root()?.closest("[data-pane-row]") ?? document
+    row.querySelector<HTMLElement>('[data-component="composer-editor"]')?.focus()
+    announce(language.t("session.review.closed"))
+  }
+
   return (
     <Show when={isDesktop() && !!params.id}>
       <aside
@@ -105,6 +115,14 @@ export function SideRegion(props: {
         tabIndex={-1}
         aria-label={language.t("session.panel.reviewAndFiles")}
         aria-hidden={!tabsOpen()}
+        // Once fully closed, nothing inside can take focus. It flips only after the close motion, when the screen
+        // already skips the region, so the restyle the comment below warns about costs nothing.
+        inert={!tabsVisible() || undefined}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || event.defaultPrevented || !escapeCloses(event.target)) return
+          event.preventDefault()
+          close()
+        }}
         data-focused={props.region.focus.focused() || undefined}
         class="relative h-full shrink-0 min-w-0 flex overflow-hidden bg-v2-background-bg-base rounded-[10px] shadow-[var(--v2-elevation-raised)] outline-none"
         classList={{ "flex-1": tabsVisible() }}
@@ -163,6 +181,7 @@ export function SideRegion(props: {
                       animate={() => !props.size.active()}
                       placeholder={index() === 0}
                       actions={index() === 0}
+                      onClose={close}
                       drag={props.drag}
                     />
                   </div>
@@ -195,6 +214,8 @@ export function PaneTabs(props: {
   actions?: boolean
   /** Controls after the strip, e.g. the bottom pane's hide button. */
   end?: JSX.Element
+  /** Closes the side region, from a button screen reader and keyboard users can reach inside it. */
+  onClose?: () => void
 }) {
   const language = useLanguage()
   const { tabs } = useSessionLayout()
@@ -407,6 +428,16 @@ export function PaneTabs(props: {
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
+          <Show when={props.onClose}>
+            <button
+              type="button"
+              data-action="session-review-close"
+              class="sr-only focus-visible:not-sr-only focus-visible:shrink-0 focus-visible:rounded-md focus-visible:px-2 focus-visible:py-1 focus-visible:text-13-regular focus-visible:text-v2-text-text-base"
+              onClick={() => props.onClose?.()}
+            >
+              {language.t("session.review.close")}
+            </button>
+          </Show>
           <Show when={props.actions}>
             <PluginSlot
               at="session.panel.end"
@@ -623,4 +654,14 @@ function LauncherRow(props: { item: SessionPanelMenuItem; onChoose: () => void }
       </Show>
     </button>
   )
+}
+
+// Escape closes the panel unless something inside it uses the key: a field, an editor, a terminal, or an open menu or
+// dialog.
+function escapeCloses(target: EventTarget | null) {
+  if (document.querySelector('[role="menu"], [role="dialog"][aria-modal="true"]')) return false
+
+  if (!(target instanceof HTMLElement)) return true
+
+  return !target.isContentEditable && !/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
 }

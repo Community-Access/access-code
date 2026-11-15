@@ -55,21 +55,17 @@ export const TextShimmer = <T extends ValidComponent = "span">(props: {
       data-component="text-shimmer"
       data-active={selectTextShimmerActive(state()) ? "true" : "false"}
       class={props.class}
-      aria-label={text()}
       style={{
         "--text-shimmer-swap": `${TEXT_SHIMMER_SWAP_MS}ms`,
         "--text-shimmer-index": `${props.offset ?? 0}`,
       }}
     >
-      <span data-slot="text-shimmer-char">
-        <span data-slot="text-shimmer-char-base" aria-hidden="true">
-          {text()}
-        </span>
-        <span
-          data-slot="text-shimmer-char-shimmer"
-          data-run={selectTextShimmerRunning(state()) ? "true" : "false"}
-          aria-hidden="true"
-        >
+      {/* VoiceOver ignores aria-label on a plain span, so the text is exposed once as an sr-only copy and the
+          animated layers below stay hidden. */}
+      <span class="sr-only">{text()}</span>
+      <span data-slot="text-shimmer-char" aria-hidden="true">
+        <span data-slot="text-shimmer-char-base">{text()}</span>
+        <span data-slot="text-shimmer-char-shimmer" data-run={selectTextShimmerRunning(state()) ? "true" : "false"}>
           {text()}
           <span data-slot="text-shimmer-sweep">
             <span data-slot="text-shimmer-sweep-text">{text()}</span>

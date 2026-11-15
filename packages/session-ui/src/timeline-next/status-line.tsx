@@ -28,7 +28,8 @@ export function StatusLane(props: {
     >
       <Show when={props.label}>
         {(label) => (
-          <div data-component="session-working" role="status" aria-label={label()}>
+          // The host reads status changes through one live region outside the virtualized rows, so this stays quiet.
+          <div data-component="session-working">
             <span data-slot="timeline-status-label">
               <TextShimmer text={label()} active />
             </span>

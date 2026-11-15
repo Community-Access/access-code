@@ -18,6 +18,7 @@ import {
 } from "solid-js"
 import "./segmented-control.css"
 import { prefersReducedMotion } from "../../motion"
+import { useControlLabel } from "../../components/control-label"
 import {
   HIDDEN_INDICATOR,
   selectIndicatorReady,
@@ -94,6 +95,7 @@ export type SegmentedControlProps = Omit<ComponentProps<"div">, "onChange"> &
   }>
 
 export function SegmentedControl(props: SegmentedControlProps) {
+  const row = useControlLabel()
   const isControlled = createMemo(() => Object.hasOwn(props, "value"))
   const merged = mergeProps({ allowDeselect: false, disabled: false }, props)
 
@@ -241,6 +243,7 @@ export function SegmentedControl(props: SegmentedControlProps) {
         {...rest}
         ref={assignRef}
         role="group"
+        aria-labelledby={rest["aria-labelledby"] ?? (rest["aria-label"] ? undefined : row.labelledBy)}
         data-component="segmented-control-v2"
         data-slot="segmented-control-v2"
         data-ready={selectIndicatorReady(indicator()) ? "" : undefined}

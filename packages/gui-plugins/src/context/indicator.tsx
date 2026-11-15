@@ -144,7 +144,7 @@ export function SessionContextUsage(props: {
           variant="ghost-muted"
           class="group shrink-0"
           style={{ padding: "0 6px", color: "var(--v2-text-text-faint)" }}
-          aria-label={ctx.t("usage.view")}
+          aria-label={ctx.t("usage.used", { percent: context()?.usage ?? 0 })}
         >
           {compactCircle()}
         </Menu.Trigger>
@@ -175,7 +175,7 @@ export function SessionContextUsage(props: {
                 style={{ padding: "0 6px", color: "var(--v2-text-text-faint)" }}
                 onClick={openContext}
                 aria-expanded={layout.state(`${ctx.id}:main`, props.session) === "visible"}
-                aria-label={ctx.t("usage.toggle")}
+                aria-label={ctx.t("usage.used", { percent: context()?.usage ?? 0 })}
               >
                 <span class="flex items-center gap-2 whitespace-nowrap group-active:text-v2-text-text-muted">
                   {compactCircle()}

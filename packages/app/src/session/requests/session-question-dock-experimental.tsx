@@ -1,4 +1,14 @@
-import { For, Show, batch, createEffect, createMemo, onCleanup, onMount, type Component } from "solid-js"
+import {
+  For,
+  Show,
+  batch,
+  createEffect,
+  createMemo,
+  createUniqueId,
+  onCleanup,
+  onMount,
+  type Component,
+} from "solid-js"
 import { createStore } from "solid-js/store"
 import { Button } from "@opencode/ui/button"
 import { IconButton } from "@opencode/ui/icon-button"
@@ -12,6 +22,7 @@ import { frameLoop, Spring, type DurationOptions } from "@opencode/ui/motion"
 import { motionTuning } from "@opencode/ui/motion-tuning"
 import type { FormInfo } from "@opencode/client/promise"
 import { useLanguage } from "@/runtime/i18n/language"
+import { announceOnce } from "@/session/announce"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useCommand } from "@/shell/commands/command"
@@ -323,6 +334,19 @@ export const SessionQuestionDockExperimental: Component<{ request: FormInfo; onS
   })
 
   const customLabel = () => language.t("ui.question.custom.answerPlaceholder")
+
+  const titleID = createUniqueId()
+
+  onMount(() =>
+    announceOnce(
+      `question:${props.request.id}`,
+      language.t("session.request.announce.question", {
+        title: summary().join(String(current())),
+        question: question()?.question ?? "",
+      }),
+      "assertive",
+    ),
+  )
 
   const last = createMemo(() => form.tab() >= total() - 1)
   // The question text and the answers box follow their measured heights on springs, so the dock grows and shrinks with
@@ -1042,12 +1066,13 @@ export const SessionQuestionDockExperimental: Component<{ request: FormInfo; onS
       <DockPrompt
         kind="question"
         variant="experimental"
+        titleID={titleID}
         ref={(el) => (root = el)}
         onKeyDown={nav}
         header={
           <>
             <div data-slot="question-header-top">
-              <div data-slot="question-header-title">
+              <div data-slot="question-header-title" id={titleID} role="heading" aria-level="2">
                 <bdi>
                   {summary()[0]}
                   <Show when={summary().length > 1}>

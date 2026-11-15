@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, onCleanup, onMount, type Component } from "solid-js"
+import { For, Show, createEffect, createMemo, createUniqueId, onCleanup, onMount, type Component } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Button } from "@opencode/ui/button"
 import { IconButton } from "@opencode/ui/icon-button"
@@ -12,6 +12,7 @@ import { useSpring } from "@opencode/ui/motion-spring"
 import { observeReducedMotion, prefersReducedMotion } from "@opencode/ui/motion"
 import type { FormInfo } from "@opencode/client/promise"
 import { useLanguage } from "@/runtime/i18n/language"
+import { announceOnce } from "@/session/announce"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useCommand } from "@/shell/commands/command"
@@ -163,6 +164,16 @@ export const SessionQuestionDockClassic: Component<{ request: FormInfo; onSubmit
   })
 
   const customLabel = () => language.t("ui.question.custom.answerPlaceholder")
+
+  const titleID = createUniqueId()
+
+  onMount(() =>
+    announceOnce(
+      `question:${props.request.id}`,
+      language.t("session.request.announce.question", { title: summary(), question: question()?.question ?? "" }),
+      "assertive",
+    ),
+  )
 
   const last = createMemo(() => form.tab() >= total() - 1)
 
@@ -484,12 +495,13 @@ export const SessionQuestionDockClassic: Component<{ request: FormInfo; onSubmit
     >
       <DockPrompt
         kind="question"
+        titleID={titleID}
         ref={(el) => (root = el)}
         onKeyDown={nav}
         header={
           <>
             <div data-slot="question-header-top">
-              <div data-slot="question-header-title">
+              <div data-slot="question-header-title" id={titleID} role="heading" aria-level="2">
                 <bdi>{summary()}</bdi>
               </div>
               <div data-slot="question-header-actions">

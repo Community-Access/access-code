@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup, Show, type Accessor, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, Show, type Accessor, type JSX } from "solid-js"
 import { Predicate } from "effect"
 import { abort } from "@opencode/util/abort"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
@@ -40,6 +40,7 @@ import {
 import { SessionHeaderSpacer } from "@/session/header/session-header"
 import { SessionHeaderGap } from "@/session/header/drag-area"
 import { SessionWorkingIndicator } from "@/session/header/session-working-indicator"
+import { announce } from "@/session/announce"
 
 type BlockingTask = { type: "shell"; partID: string; id?: string; label?: string; started: number }
 
@@ -450,7 +451,6 @@ function MessageTimelineView(
   // In the New timeline, the status line is the one live indicator: it stays below the turn while it works and says
   // the most useful thing happening, in place of each group showing its own.
   const nextStatus = createMemo(() => {
-    if (!props.next) return
     const id = sessionID()
     const active = projection.activeMessageID()
 
@@ -491,6 +491,37 @@ function MessageTimelineView(
     return !!status && (status !== "working" || !liveThought())
   }
 
+  // One live region outside the virtualized rows says what the turn is doing. Rows mount and unmount as the timeline
+  // scrolls, so a status inside one would be read unreliably, or twice.
+  const spokenStatus = createMemo(() => {
+    if (props.active === false) return ""
+    // Shell waits come and go with each command, so they are spoken as Working to avoid a stream of repeats.
+    const status = nextStatus() === "waitingShell" ? "working" : nextStatus()
+
+    return status ? language.t(`session.timeline.status.${status}`) : ""
+  })
+
+  // A finished reply is read once, as its turn stops working, so a re-render or scrolling back never reads it again.
+  createEffect(
+    on(
+      () => ({ id: sessionID(), idle: sessionStatus().type === "idle" }),
+      (now, before) => {
+        if (!now.idle || before?.idle !== false || before.id !== now.id || props.active === false) return
+        const active = projection.activeMessageID()
+
+        if (!active) return
+
+        const reply = (projection.assistantMessagesByParent().get(active) ?? [])
+          .flatMap((message) => message.content)
+          .findLast((content) => content.type === "text" && !!content.text.trim())
+
+        if (reply?.type !== "text") return
+        announce(language.t("session.timeline.reply", { text: plainText(reply.text) }))
+      },
+      { defer: true },
+    ),
+  )
+
   // Undelivered input waits below the work the model has seen, so live status moves into the row above it.
   const activityRow = createMemo(() => projection.rows().some((row) => Predicate.isTagged(row, "Activity")))
 
@@ -525,7 +556,7 @@ function MessageTimelineView(
         fallback={
           <div class={`flex h-9 items-center gap-2 pt-3 text-[13px] font-[530] leading-text-compact ${turnPadding()}`}>
             <Show when={live() && showWorking()}>
-              <div data-component="session-working" role="status">
+              <div data-component="session-working">
                 <TextShimmer text={language.t("session.timeline.working")} active />
               </div>
             </Show>
@@ -549,198 +580,214 @@ function MessageTimelineView(
   )
 
   return (
-    <VirtualizedTimeline
-      bottomSpacer={activity(() => !activityRow())}
-      deferred={(row) => {
-        if (!Predicate.isTagged(row, "AssistantPart") || row.group.type !== "part") return false
-        const content = Timeline.resolveContent(messageByID().get(row.group.ref.messageID), row.group.ref.partID)
+    <>
+      <p data-component="session-status-announcer" class="sr-only" role="status" aria-atomic="true">
+        {spokenStatus()}
+      </p>
+      <VirtualizedTimeline
+        bottomSpacer={activity(() => !activityRow())}
+        deferred={(row) => {
+          if (!Predicate.isTagged(row, "AssistantPart") || row.group.type !== "part") return false
+          const content = Timeline.resolveContent(messageByID().get(row.group.ref.messageID), row.group.ref.partID)
 
-        return content?.type === "tool" && ["edit", "write"].includes(content.name)
-      }}
-      renderRow={(row, onSizeChange) => (
-        <Show
-          when={Predicate.isTagged(row(), "Activity")}
-          fallback={<rowRenderer.Row row={row} onSizeChange={onSizeChange} />}
-        >
-          {(_) => {
-            // This row sits above input still waiting for delivery. Until live status first shows, it takes no room,
-            // so the waiting input keeps the place delivery leaves it. Once shown, the lane stays for the life of the
-            // row: Working hides and returns several times in one step, and each change would move that input 36px.
-            const shown = createMemo((was) => was || working() || backgroundHintPresence.present(), false)
+          return content?.type === "tool" && ["edit", "write"].includes(content.name)
+        }}
+        renderRow={(row, onSizeChange) => (
+          <Show
+            when={Predicate.isTagged(row(), "Activity")}
+            fallback={<rowRenderer.Row row={row} onSizeChange={onSizeChange} />}
+          >
+            {(_) => {
+              // This row sits above input still waiting for delivery. Until live status first shows, it takes no room,
+              // so the waiting input keeps the place delivery leaves it. Once shown, the lane stays for the life of the
+              // row: Working hides and returns several times in one step, and each change would move that input 36px.
+              const shown = createMemo((was) => was || working() || backgroundHintPresence.present(), false)
 
-            return <Show when={shown()}>{activity(() => true, true)}</Show>
-          }}
-        </Show>
-      )}
-      header={
-        <Show when={!props.hideHeader}>
-          <SessionTitleHeader>
-            <SessionHeaderLayout
-              title={title().editing ? title().draft : childTitle()}
-              location={
-                <>
-                  <SessionLocation
-                    project={headerProject()}
-                    directory={sessionDirectory()}
-                    compact={!!parentID()}
-                    trailing={!!(parentID() || childTitle() || title().editing)}
-                    context={{
-                      get session() {
-                        return props.view
-                      },
-                      get screen() {
-                        return props.screen
-                      },
-                    }}
-                  />
-                  <Show when={parentID()}>
-                    {(id) => (
-                      <SessionAncestorTrail
-                        sessionID={sessionID() ?? ""}
-                        parentID={id()}
-                        parentTitle={parentTitle()}
-                        trailing={!!(childTitle() || title().editing)}
-                      />
+              return <Show when={shown()}>{activity(() => true, true)}</Show>
+            }}
+          </Show>
+        )}
+        header={
+          <Show when={!props.hideHeader}>
+            <SessionTitleHeader>
+              <SessionHeaderLayout
+                title={title().editing ? title().draft : childTitle()}
+                location={
+                  <>
+                    <SessionLocation
+                      project={headerProject()}
+                      directory={sessionDirectory()}
+                      compact={!!parentID()}
+                      trailing={!!(parentID() || childTitle() || title().editing)}
+                      context={{
+                        get session() {
+                          return props.view
+                        },
+                        get screen() {
+                          return props.screen
+                        },
+                      }}
+                    />
+                    <Show when={parentID()}>
+                      {(id) => (
+                        <SessionAncestorTrail
+                          sessionID={sessionID() ?? ""}
+                          parentID={id()}
+                          parentTitle={parentTitle()}
+                          trailing={!!(childTitle() || title().editing)}
+                        />
+                      )}
+                    </Show>
+                  </>
+                }
+                actions={(fit) => (
+                  <Show when={sessionID()} keyed>
+                    {(_id) => (
+                      <>
+                        {props.search}
+                        <PluginSlot
+                          at="session.header"
+                          input={{
+                            get session() {
+                              return props.view
+                            },
+                            get screen() {
+                              return props.screen
+                            },
+                            get active() {
+                              return props.active !== false
+                            },
+                            get compact() {
+                              return fit.compact
+                            },
+                          }}
+                        />
+                        <SessionHeaderSpacer visible={props.reserveReviewToggle} />
+                      </>
                     )}
                   </Show>
-                </>
-              }
-              actions={(fit) => (
-                <Show when={sessionID()} keyed>
-                  {(_id) => (
+                )}
+              >
+                <Show when={parentID() && childTitle()}>
+                  {(value) => (
                     <>
-                      {props.search}
-                      <PluginSlot
-                        at="session.header"
-                        input={{
-                          get session() {
-                            return props.view
-                          },
-                          get screen() {
-                            return props.screen
-                          },
-                          get active() {
-                            return props.active !== false
-                          },
-                          get compact() {
-                            return fit.compact
-                          },
-                        }}
-                      />
-                      <SessionHeaderSpacer visible={props.reserveReviewToggle} />
+                      <SessionWorkingIndicator sessionID={sessionID()} />
+                      <h1
+                        data-slot="session-title-child"
+                        dir="auto"
+                        class="max-w-[45%] shrink-0 w-fit truncate rounded-[6px] px-1 py-1.5 text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base"
+                      >
+                        {value()}
+                      </h1>
                     </>
                   )}
                 </Show>
-              )}
-            >
-              <Show when={parentID() && childTitle()}>
-                {(value) => (
-                  <>
-                    <SessionWorkingIndicator sessionID={sessionID()} />
-                    <h1
+                <Show when={!parentID() && (childTitle() || title().editing)}>
+                  <Show
+                    when={title().editing}
+                    fallback={
+                      <h1
+                        data-slot="session-title-child"
+                        class="truncate text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base w-fit rounded-[6px] px-1 py-1.5 hover:bg-v2-overlay-simple-overlay-hover"
+                        classList={{ "max-w-[45%] shrink-0": !!parentID() }}
+                        onClick={props.title.edit}
+                      >
+                        {childTitle()}
+                      </h1>
+                    }
+                  >
+                    <InlineInput
+                      ref={props.title.setInput}
                       data-slot="session-title-child"
                       dir="auto"
-                      class="max-w-[45%] shrink-0 w-fit truncate rounded-[6px] px-1 py-1.5 text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base"
-                    >
-                      {value()}
-                    </h1>
-                  </>
-                )}
-              </Show>
-              <Show when={!parentID() && (childTitle() || title().editing)}>
-                <Show
-                  when={title().editing}
-                  fallback={
-                    <h1
-                      data-slot="session-title-child"
-                      class="truncate text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base w-fit rounded-[6px] px-1 py-1.5 hover:bg-v2-overlay-simple-overlay-hover"
+                      value={title().draft}
+                      disabled={title().saving}
+                      class="block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base field-sizing-content rounded-[6px] px-1 py-1.5"
                       classList={{ "max-w-[45%] shrink-0": !!parentID() }}
-                      onClick={props.title.edit}
-                    >
-                      {childTitle()}
-                    </h1>
-                  }
-                >
-                  <InlineInput
-                    ref={props.title.setInput}
-                    data-slot="session-title-child"
-                    dir="auto"
-                    value={title().draft}
-                    disabled={title().saving}
-                    class="block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base field-sizing-content rounded-[6px] px-1 py-1.5"
-                    classList={{ "max-w-[45%] shrink-0": !!parentID() }}
-                    style={{
-                      "text-align": "start",
-                    }}
-                    onInput={(event) => props.title.change(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      event.stopPropagation()
+                      style={{
+                        "text-align": "start",
+                      }}
+                      onInput={(event) => props.title.change(event.currentTarget.value)}
+                      onKeyDown={(event) => {
+                        event.stopPropagation()
 
-                      if (event.isComposing || event.keyCode === 229) return
+                        if (event.isComposing || event.keyCode === 229) return
 
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        props.title.submit()
-
-                        return
-                      }
-
-                      if (event.key === "Escape") {
-                        event.preventDefault()
-                        props.title.cancel()
-                      }
-                    }}
-                    onBlur={props.title.submit}
-                  />
-                </Show>
-              </Show>
-              <Show when={!parentID() && sessionID()} keyed>
-                {(id) => (
-                  <Menu
-                    gutter={6}
-                    placement="bottom-start"
-                    open={title().menuOpen}
-                    onOpenChange={props.title.toggleMenu}
-                  >
-                    <Menu.Trigger
-                      as={IconButton}
-                      icon={<Icon name="outline-dots" />}
-                      variant="ghost-muted"
-                      size="large"
-                      class="shrink-0"
-                      aria-label={language.t("common.moreOptions")}
-                      aria-expanded={title().menuOpen}
-                    />
-                    <Menu.Portal>
-                      <Menu.Content
-                        class="session-options-menu w-max"
-                        style={{ "min-width": "0" }}
-                        onCloseAutoFocus={(event) => {
-                          if (!title().editOnMenuClose) return
+                        if (event.key === "Enter") {
                           event.preventDefault()
-                          props.title.menuClosed()
-                        }}
-                      >
-                        <Menu.Item onSelect={props.title.chooseRename}>{language.t("common.rename")}</Menu.Item>
-                        <Menu.Item disabled={props.action.exporting(id)} onSelect={() => props.action.export(id)}>
-                          {language.t("common.export")}…
-                        </Menu.Item>
-                        <Menu.Separator />
-                        <Menu.Item onSelect={() => props.action.showDelete(id)}>
-                          {language.t("common.delete")}…
-                        </Menu.Item>
-                      </Menu.Content>
-                    </Menu.Portal>
-                  </Menu>
-                )}
-              </Show>
-              <Show when={!title().editing}>
-                <SessionHeaderGap active={props.active !== false} register={props.registerHeaderGap} />
-              </Show>
-            </SessionHeaderLayout>
-          </SessionTitleHeader>
-        </Show>
-      }
-    />
+                          props.title.submit()
+
+                          return
+                        }
+
+                        if (event.key === "Escape") {
+                          event.preventDefault()
+                          props.title.cancel()
+                        }
+                      }}
+                      onBlur={props.title.submit}
+                    />
+                  </Show>
+                </Show>
+                <Show when={!parentID() && sessionID()} keyed>
+                  {(id) => (
+                    <Menu
+                      gutter={6}
+                      placement="bottom-start"
+                      open={title().menuOpen}
+                      onOpenChange={props.title.toggleMenu}
+                    >
+                      <Menu.Trigger
+                        as={IconButton}
+                        icon={<Icon name="outline-dots" />}
+                        variant="ghost-muted"
+                        size="large"
+                        class="shrink-0"
+                        aria-label={language.t("common.moreOptions")}
+                        aria-expanded={title().menuOpen}
+                      />
+                      <Menu.Portal>
+                        <Menu.Content
+                          class="session-options-menu w-max"
+                          style={{ "min-width": "0" }}
+                          onCloseAutoFocus={(event) => {
+                            if (!title().editOnMenuClose) return
+                            event.preventDefault()
+                            props.title.menuClosed()
+                          }}
+                        >
+                          <Menu.Item onSelect={props.title.chooseRename}>{language.t("common.rename")}</Menu.Item>
+                          <Menu.Item disabled={props.action.exporting(id)} onSelect={() => props.action.export(id)}>
+                            {language.t("common.export")}…
+                          </Menu.Item>
+                          <Menu.Separator />
+                          <Menu.Item onSelect={() => props.action.showDelete(id)}>
+                            {language.t("common.delete")}…
+                          </Menu.Item>
+                        </Menu.Content>
+                      </Menu.Portal>
+                    </Menu>
+                  )}
+                </Show>
+                <Show when={!title().editing}>
+                  <SessionHeaderGap active={props.active !== false} register={props.registerHeaderGap} />
+                </Show>
+              </SessionHeaderLayout>
+            </SessionTitleHeader>
+          </Show>
+        }
+      />
+    </>
   )
+}
+
+// Reads a reply aloud as words, without the markdown marks around them.
+function plainText(text: string) {
+  return text
+    .replace(/```[^\n]*\n?/g, "")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/\*{1,3}|`+|~~/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
 }

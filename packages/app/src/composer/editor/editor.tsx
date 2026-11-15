@@ -216,6 +216,20 @@ export function ComposerEditor(props: ComposerEditorProps) {
     }
   }
 
+  const popoverOpen = () => !view.draftOnly && isComposerPopoverOpen(state)
+
+  const activeOption = () => {
+    const id = composerPopoverActiveID(state)
+
+    return popoverOpen() && id ? suggestionOptionID(suggestionsID, id) : undefined
+  }
+
+  const placeholder = () =>
+    view.placeholder?.() ??
+    (mode() === "shell"
+      ? i18n.t("ui.promptInput.placeholder.shell")
+      : i18n.t("ui.promptInput.placeholder.normal", { slash: "/", at: "@" }))
+
   return (
     <div class={`relative size-full flex flex-col gap-0 ${props.class ?? ""}`}>
       <input
@@ -282,7 +296,9 @@ export function ComposerEditor(props: ComposerEditorProps) {
               comments={props.controller.comments()}
               files={props.controller.files()}
               activeCommentID={state.activeContextID}
-              removeLabel={i18n.t("ui.promptInput.removeAttachment")}
+              removeLabel={(name) =>
+                name ? i18n.t("ui.promptInput.removeNamed", { name }) : i18n.t("ui.promptInput.removeAttachment")
+              }
               onAttachmentClick={props.controller.openAttachment}
               preview={props.controller.previewAttachment}
               onAttachmentRemove={(attachment) => props.controller.removeAttachment(attachment.id)}
@@ -315,7 +331,13 @@ export function ComposerEditor(props: ComposerEditorProps) {
               role="textbox"
               aria-multiline="true"
               aria-label={i18n.t("ui.promptInput.label")}
-              aria-controls={state.popover.type === "history" ? suggestionsID : undefined}
+              aria-placeholder={props.controller.value() ? undefined : placeholder()}
+              // Arrowing through slash and @ suggestions keeps focus here, so the highlighted option is named through
+              // aria-activedescendant for screen readers.
+              aria-autocomplete={popoverOpen() ? "list" : undefined}
+              aria-expanded={popoverOpen()}
+              aria-controls={popoverOpen() ? suggestionsID : undefined}
+              aria-activedescendant={activeOption()}
               dir={mode() === "normal" ? "auto" : "ltr"}
               contenteditable={!props.disabled && !props.readOnly}
               autocapitalize={mode() === "normal" ? "sentences" : "off"}
@@ -428,16 +450,15 @@ export function ComposerEditor(props: ComposerEditorProps) {
               onFocus={() => props.controller.dispatch({ type: "focus.editor" })}
             />
             <Show when={!props.controller.value()}>
+              {/* The editor carries this text as aria-placeholder, so the visual copy stays out of the reading order. */}
               <div
                 dir={mode() === "normal" ? "auto" : "ltr"}
                 class="pointer-events-none absolute inset-x-0 top-0 ps-4 pe-[var(--composer-scroll-end)] pt-4 text-[13px] font-[440] leading-5 text-v2-text-text-faint"
                 classList={{ "font-mono! tracking-[-0.04px]": mode() === "shell" }}
                 style={{ "unicode-bidi": mode() === "normal" ? "plaintext" : undefined, "text-align": "start" }}
+                aria-hidden="true"
               >
-                {view.placeholder?.() ??
-                  (mode() === "shell"
-                    ? i18n.t("ui.promptInput.placeholder.shell")
-                    : i18n.t("ui.promptInput.placeholder.normal", { slash: "/", at: "@" }))}
+                {placeholder()}
               </div>
             </Show>
           </div>
@@ -487,6 +508,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
                   <ComposerEditorConfiguredSelect
                     fitMenuToOptions
                     title={i18n.t("ui.promptInput.chooseAgent")}
+                    name={(value) => i18n.t("ui.promptInput.agentCurrent", { agent: value })}
                     keybind={["Mod", "."]}
                     control={control}
                     dataAction="composer-agent"
@@ -501,6 +523,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
                       <ComposerEditorConfiguredSelect
                         mobileDrawer
                         title={i18n.t("ui.promptInput.chooseVariant")}
+                        name={(value) => i18n.t("ui.promptInput.variantCurrent", { variant: value })}
                         keybind={["Shift", "Mod", "D"]}
                         control={control}
                         dataAction="composer-variant"
@@ -739,7 +762,8 @@ function ComposerAttachments(props: {
   // Files attached without a mention, such as one restored from a prompt another client sent.
   files?: Extract<ComposerComment, { type: "file" }>[]
   activeCommentID?: string
-  removeLabel: string
+  /** Names each remove button after its attachment, so a list of them is not all "Remove attachment". */
+  removeLabel: (name: string | undefined) => string
   onAttachmentClick?: (attachment: ComposerAttachment, origin: HTMLElement) => void
   preview: (attachment: ComposerAttachment) => Promise<string | undefined>
   onAttachmentRemove: (attachment: ComposerAttachment) => void
@@ -818,7 +842,7 @@ function ComposerAttachments(props: {
                   type="button"
                   onClick={() => props.onCommentRemove?.(comment)}
                   class="absolute -top-1 -end-1 size-4 rounded-full bg-v2-icon-icon-muted outline-solid outline-1 outline-v2-icon-icon-contrast flex items-center justify-center hover-reveal group-hover:opacity-100"
-                  aria-label={props.removeLabel}
+                  aria-label={props.removeLabel(quoteTitle(comment))}
                 >
                   <Icon name="outline-xmark" class="text-v2-icon-icon-contrast" />
                 </button>
@@ -847,7 +871,7 @@ function ComposerAttachments(props: {
                   type="button"
                   onClick={() => props.onFileRemove?.(file)}
                   class="absolute -top-1 -end-1 size-4 rounded-full bg-v2-icon-icon-muted outline-solid outline-1 outline-v2-icon-icon-contrast flex items-center justify-center hover-reveal group-hover:opacity-100"
-                  aria-label={props.removeLabel}
+                  aria-label={props.removeLabel(file.name ?? getFilename(file.path))}
                 >
                   <Icon name="outline-xmark" class="text-v2-icon-icon-contrast" />
                 </button>
@@ -895,7 +919,7 @@ function ComposerAttachments(props: {
                     type="button"
                     onClick={() => props.onAttachmentRemove(attachment)}
                     class="absolute -top-1 -end-1 size-4 rounded-full bg-v2-icon-icon-muted outline-solid outline-1 outline-v2-icon-icon-contrast flex items-center justify-center hover-reveal group-hover:opacity-100"
-                    aria-label={props.removeLabel}
+                    aria-label={props.removeLabel(attachment.filename)}
                   >
                     <Icon name="outline-xmark" class="text-v2-icon-icon-contrast" />
                   </button>
@@ -1069,6 +1093,8 @@ function ComposerEditorConfiguredSelect(props: {
   mobileDrawer?: boolean
   fitMenuToOptions?: boolean
   title: string
+  /** Names the trigger after its current value, such as "Agent: Build". */
+  name?: (value: string) => string
   keybind?: string[]
   control: ComposerSelectControl
   model?: boolean
@@ -1083,6 +1109,7 @@ function ComposerEditorConfiguredSelect(props: {
       mobileDrawer={props.mobileDrawer}
       fitMenuToOptions={props.fitMenuToOptions}
       title={props.title}
+      name={props.name}
       class={props.class}
       dataAction={props.dataAction}
       keybind={props.control.keybind?.() ?? props.keybind}
@@ -1103,6 +1130,7 @@ function ComposerEditorSelect(props: {
   /** Size the menu to its longest option instead of the shared 160px minimum, with room before the check. */
   fitMenuToOptions?: boolean
   title: string
+  name?: (value: string) => string
   keybind?: string[]
   options: ComposerOption[]
   current: string
@@ -1128,12 +1156,14 @@ function ComposerEditorSelect(props: {
     if (!mobile() && store.open) setOpen(false)
   })
 
+  const currentLabel = () => props.options.find((option) => option.id === props.current)?.label ?? props.current
+  // The value shows capitalized, so the spoken name matches it.
+  const triggerName = () => props.name?.(currentLabel().charAt(0).toUpperCase() + currentLabel().slice(1))
+
   const content = () => (
     <>
       {props.currentIcon}
-      <span class="truncate capitalize leading-5">
-        {props.options.find((option) => option.id === props.current)?.label ?? props.current}
-      </span>
+      <span class="truncate capitalize leading-5">{currentLabel()}</span>
       <span class="-ms-0.5 -me-1 flex shrink-0">
         <Icon name="chevron-down" />
       </span>
@@ -1162,6 +1192,7 @@ function ComposerEditorSelect(props: {
               size="normal"
               class={`max-w-[220px] justify-start ![font-weight:440] ${props.class ?? ""}`}
               data-action={props.dataAction}
+              aria-label={triggerName()}
             >
               {content()}
             </Menu.Trigger>
@@ -1196,6 +1227,7 @@ function ComposerEditorSelect(props: {
           size="normal"
           class={`max-w-[220px] justify-start ![font-weight:440] ${props.class ?? ""}`}
           data-action={props.dataAction}
+          aria-label={triggerName()}
           aria-haspopup="dialog"
           aria-expanded={store.open}
           onClick={() => setOpen(true)}
@@ -1333,7 +1365,7 @@ function ComposerEditorPopover(props: {
                 aria-expanded="true"
                 aria-autocomplete="list"
                 aria-controls={listID}
-                aria-activedescendant={props.activeID ? `${listID}-${props.activeID}` : undefined}
+                aria-activedescendant={props.activeID ? suggestionOptionID(listID, props.activeID) : undefined}
                 onInput={(event) => search().onValueChange(event.currentTarget.value)}
                 onKeyDown={(event) => search().onKeyDown(event)}
                 onMouseDown={(event) => event.stopPropagation()}
@@ -1350,7 +1382,7 @@ function ComposerEditorPopover(props: {
               <For each={props.items}>
                 {(item) => (
                   <button
-                    id={`${listID}-${item.id}`}
+                    id={suggestionOptionID(listID, item.id)}
                     type="button"
                     role="option"
                     aria-selected={props.activeID === item.id}
@@ -1394,6 +1426,11 @@ function ComposerEditorPopover(props: {
                 aria-label={search().label}
                 placeholder={search().placeholder}
                 class="w-full bg-transparent text-[13px] leading-5 text-v2-text-text-base outline-none placeholder:text-v2-text-text-faint"
+                role="combobox"
+                aria-expanded="true"
+                aria-autocomplete="list"
+                aria-controls={listID}
+                aria-activedescendant={props.activeID ? suggestionOptionID(listID, props.activeID) : undefined}
                 onInput={(event) => search().onValueChange(event.currentTarget.value)}
                 onKeyDown={(event) => search().onKeyDown(event)}
                 onMouseDown={(event) => event.stopPropagation()}
@@ -1405,38 +1442,49 @@ function ComposerEditorPopover(props: {
           when={props.items.length > 0}
           fallback={<div class="px-2 py-1 text-v2-text-text-muted">{props.emptyLabel}</div>}
         >
-          <Key each={props.items} by="id">
-            {(item) => (
-              <button
-                type="button"
-                data-suggestion-id={item().id}
-                data-active={active(item().id) ? "" : undefined}
-                class="flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 py-1 text-start"
-                classList={{ "bg-v2-overlay-simple-overlay-hover": active(item().id) }}
-                onPointerMove={(event) => {
-                  if (event.movementX || event.movementY) props.onActiveChange(item())
-                }}
-                onClick={() => props.onSelect(item())}
-              >
-                <div class="flex min-w-0 flex-1 items-center gap-2">
-                  <ComposerSuggestionIcon item={item()} />
-                  <bdi dir="auto" class="shrink-0 text-v2-text-text-base">
-                    {item().label}
-                  </bdi>
-                  <Show when={item().description}>
-                    <span class="min-w-0 truncate text-v2-text-text-muted">{item().description}</span>
+          <div id={listID} role="listbox" aria-label={i18n.t("ui.promptInput.suggestions")} class="flex flex-col">
+            <Key each={props.items} by="id">
+              {(item) => (
+                <button
+                  id={suggestionOptionID(listID, item().id)}
+                  type="button"
+                  role="option"
+                  aria-selected={active(item().id)}
+                  tabindex={-1}
+                  data-suggestion-id={item().id}
+                  data-active={active(item().id) ? "" : undefined}
+                  class="flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 py-1 text-start"
+                  classList={{ "bg-v2-overlay-simple-overlay-hover": active(item().id) }}
+                  onPointerMove={(event) => {
+                    if (event.movementX || event.movementY) props.onActiveChange(item())
+                  }}
+                  onClick={() => props.onSelect(item())}
+                >
+                  <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <ComposerSuggestionIcon item={item()} />
+                    <bdi dir="auto" class="shrink-0 text-v2-text-text-base">
+                      {item().label}
+                    </bdi>
+                    <Show when={item().description}>
+                      <span class="min-w-0 truncate text-v2-text-text-muted">{item().description}</span>
+                    </Show>
+                  </div>
+                  <Show when={item().keybind?.length}>
+                    <span class="shrink-0 text-v2-text-text-muted">{item().keybind?.join("+")}</span>
                   </Show>
-                </div>
-                <Show when={item().keybind?.length}>
-                  <span class="shrink-0 text-v2-text-text-muted">{item().keybind?.join("+")}</span>
-                </Show>
-              </button>
-            )}
-          </Key>
+                </button>
+              )}
+            </Key>
+          </div>
         </Show>
       </Show>
     </div>
   )
+}
+
+// Suggestion ids can be file paths, and an id reference cannot hold a space.
+function suggestionOptionID(listID: string, id: string) {
+  return `${listID}-${encodeURIComponent(id)}`
 }
 
 function composerSuggestionMaxHeight(boundaryHeight: number, search: boolean, history = false) {

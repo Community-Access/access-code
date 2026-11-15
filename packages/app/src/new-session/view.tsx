@@ -389,11 +389,13 @@ function NewSessionLocation(props: {
               type="button"
               data-action="prompt-project"
               aria-haspopup="dialog"
+              aria-label={language.t("session.new.project.trigger.label", { project: displayName(props.project) })}
               aria-description={language.t("session.new.project.trigger.tooltip")}
               class={`${TRIGGER} min-w-0`}
               onClick={props.onClick}
             >
               <ProjectAvatar
+                aria-hidden="true"
                 class="shrink-0"
                 fallback={displayName(props.project)}
                 src={getProjectAvatarSource(props.project.id, props.project.icon)}

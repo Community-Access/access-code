@@ -437,7 +437,7 @@ export function CurrentUserMessageDisplay(props: {
             variant="ghost-muted"
             onMouseDown={(event: MouseEvent) => event.preventDefault()}
             onClick={(event: MouseEvent) => event.stopPropagation()}
-            aria-label={i18n.t("ui.message.moreActions")}
+            aria-label={i18n.t("ui.message.messageActions")}
           />
           <Menu.Portal>
             <Menu.Content>
@@ -578,6 +578,14 @@ export function CurrentUserMessageDisplay(props: {
               return "height" in current ? current.height : undefined
             }
 
+            const openImage = (origin: HTMLElement) => {
+              const src = mediaView().src
+
+              if (src) return dialog.show(() => <ImagePreview src={src} alt={name()} origin={origin} />)
+
+              if (mediaView().canRetry) dispatchMedia({ type: "retry.requested", target: mediaTarget() })
+            }
+
             const placeholderStyle = () =>
               imageAttachmentPlaceholderStyle({
                 width: width(),
@@ -597,13 +605,16 @@ export function CurrentUserMessageDisplay(props: {
                     data-width={width()}
                     data-height={height()}
                     style={placeholderStyle()}
-                    onClick={(event) => {
-                      const src = mediaView().src
-                      const origin = event.currentTarget
-
-                      if (src) return dialog.show(() => <ImagePreview src={src} alt={name()} origin={origin} />)
-
-                      if (mediaView().canRetry) dispatchMedia({ type: "retry.requested", target: mediaTarget() })
+                    role={mediaView().clickable ? "button" : undefined}
+                    tabIndex={mediaView().clickable ? 0 : undefined}
+                    aria-label={
+                      mediaView().clickable ? i18n.t("ui.message.imageAttachment", { name: name() }) : undefined
+                    }
+                    onClick={(event) => openImage(event.currentTarget)}
+                    onKeyDown={(event) => {
+                      if (!mediaView().clickable || (event.key !== "Enter" && event.key !== " ")) return
+                      event.preventDefault()
+                      openImage(event.currentTarget)
                     }}
                   >
                     <Switch>

@@ -143,7 +143,6 @@ export function TextReveal(props: {
       data-swapping={selectTextRevealSwapping(machine()) ? "true" : "false"}
       data-truncate={props.truncate ? "true" : "false"}
       class={props.class}
-      aria-label={props.text ?? ""}
       style={{
         "--text-reveal-duration": css(props.duration, 450, "ms"),
         "--text-reveal-edge": pct(props.edge, 17),
@@ -156,7 +155,7 @@ export function TextReveal(props: {
         <span data-slot="text-reveal-entering" ref={inRef}>
           {selectTextRevealEntering(machine())}
         </span>
-        <span data-slot="text-reveal-leaving" ref={outRef}>
+        <span data-slot="text-reveal-leaving" ref={outRef} aria-hidden="true">
           {selectTextRevealLeaving(machine())}
         </span>
       </span>

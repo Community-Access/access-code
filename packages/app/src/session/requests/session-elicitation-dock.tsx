@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch as Branch } from "solid-js"
+import { For, Match, Show, Switch as Branch, createUniqueId, onMount } from "solid-js"
 import { Option, Schema } from "effect"
 import type { FormInfo, FormStringField, LocationRef } from "@opencode/client/promise"
 import { Button } from "@opencode/ui/button"
@@ -9,6 +9,7 @@ import { TextInput } from "@opencode/ui/text-input"
 import { DockPrompt } from "@opencode/session-ui/dock-prompt"
 import { LinkedText } from "@opencode/session-ui/linked-text"
 import { useLanguage } from "@/runtime/i18n/language"
+import { announceOnce } from "@/session/announce"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
@@ -40,11 +41,21 @@ export function SessionElicitationDock(props: {
   })
 
   const message = () => Option.getOrUndefined(decodeMessage(props.request.metadata?.message))
+  const titleID = createUniqueId()
+
+  onMount(() =>
+    announceOnce(
+      `question:${props.request.id}`,
+      language.t("session.request.announce.question", { title: props.request.title, question: message() ?? "" }),
+      "assertive",
+    ),
+  )
 
   return (
     <div data-component="session-elicitation-dock">
       <DockPrompt
         kind="question"
+        titleID={titleID}
         onKeyDown={(event) => {
           if (event.defaultPrevented) return
 
@@ -63,7 +74,7 @@ export function SessionElicitationDock(props: {
         header={
           <>
             <div data-slot="question-header-top">
-              <div data-slot="question-header-title">
+              <div data-slot="question-header-title" id={titleID} role="heading" aria-level="2">
                 <bdi>{props.request.title}</bdi>
               </div>
             </div>
