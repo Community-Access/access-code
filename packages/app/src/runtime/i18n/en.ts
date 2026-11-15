@@ -991,11 +991,11 @@ export const dict = {
   "settings.about.firstPublished": "First published in Missouri, USA",
   "settings.about.firstIllustrated": "First illustrated in London, England",
   "settings.about.website": "www.opencode.ai",
-  "settings.about.description": "OpenCode, the open source coding agent",
+  "settings.about.description": "AccessCode, OpenCode with accessibility fixes for screen readers",
   "settings.about.trademark": "OpenCode is a registered trademark of Anomaly Innovations, Inc.",
   "settings.about.typeset": "Typeset in Inter and IBM Plex Mono",
   "settings.about.notices.title": "Third-party notices",
-  "settings.about.notices.description": "OpenCode includes the following open source software.",
+  "settings.about.notices.description": "AccessCode includes the following open source software.",
   "settings.about.notices.license": "License text",
   "settings.about.notices.fonts.title": "Fonts in the Office previews",
   "settings.about.notices.fonts.description":
