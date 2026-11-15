@@ -1621,13 +1621,7 @@ ToolRegistry.register({
         }}
       >
         <Show when={props.output}>
-          <div
-            data-component="tool-output"
-            data-scrollable
-            tabIndex={0}
-            role="region"
-            aria-label={i18n.t("ui.scrollView.ariaLabel")}
-          >
+          <div data-component="tool-output" data-scrollable tabIndex={0}>
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -1654,13 +1648,7 @@ ToolRegistry.register({
         }}
       >
         <Show when={props.output}>
-          <div
-            data-component="tool-output"
-            data-scrollable
-            tabIndex={0}
-            role="region"
-            aria-label={i18n.t("ui.scrollView.ariaLabel")}
-          >
+          <div data-component="tool-output" data-scrollable tabIndex={0}>
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -1692,13 +1680,7 @@ ToolRegistry.register({
         }}
       >
         <Show when={props.output}>
-          <div
-            data-component="tool-output"
-            data-scrollable
-            tabIndex={0}
-            role="region"
-            aria-label={i18n.t("ui.scrollView.ariaLabel")}
-          >
+          <div data-component="tool-output" data-scrollable tabIndex={0}>
             <Markdown text={props.output!} />
           </div>
         </Show>
@@ -1884,13 +1866,7 @@ export function ConsoleOutput(props: { command?: string; output: string }) {
 
   return (
     <div data-component="bash-output" data-variant="shell" dir="ltr">
-      <div
-        data-slot="bash-scroll"
-        data-scrollable
-        tabIndex={0}
-        role="region"
-        aria-label={i18n.t("ui.scrollView.ariaLabel")}
-      >
+      <div data-slot="bash-scroll" data-scrollable tabIndex={0}>
         <Show when={props.command}>
           {(command) => (
             <div data-slot="bash-command">

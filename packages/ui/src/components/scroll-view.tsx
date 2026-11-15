@@ -54,7 +54,7 @@ export interface ScrollViewProps extends ComponentProps<"div"> {
   onBeforeScroll?: () => void
   /** Offset/extent correction for a virtualized vertical scrollbar. */
   verticalScrollAdjustment?: number
-  /** Exposes the viewport as a labeled region landmark. Pass false where an enclosing landmark already names the area. */
+  /** Exposes the viewport as a labeled region landmark. Off by default: AccessCode removes the generic "scrollable content" region VoiceOver kept landing on. */
   region?: boolean
 }
 
@@ -547,8 +547,8 @@ export function ScrollView(props: ScrollViewProps) {
         onPointerDown={events.onPointerDown}
         onClick={events.onClick}
         tabIndex={0}
-        role={local.region === false ? undefined : "region"}
-        aria-label={local.region === false ? undefined : i18n.t("ui.scrollView.ariaLabel")}
+        role={local.region ? "region" : undefined}
+        aria-label={local.region ? i18n.t("ui.scrollView.ariaLabel") : undefined}
         onKeyDown={(e) => {
           onKeyDown(e)
           forward(events.onKeyDown, e)
