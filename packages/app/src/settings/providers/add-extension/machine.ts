@@ -3,6 +3,7 @@ import type { McpConfig, McpPlan, RegistryServer } from "./mcp-plan"
 /** What one save sends to the server: a plugin package, or an MCP server with the keys it keeps in the Keychain. */
 export type SaveRequest =
   | { type: "plugin"; label: string; pkg: string }
+  | { type: "skill"; label: string; source: string; skill: string }
   | { type: "mcp"; label: string; name: string; config: McpConfig; keychain: Record<string, string> }
 
 export type Save =
@@ -12,16 +13,23 @@ export type Save =
 
 export type PluginTarget = { name: string; pkg: string; url?: string }
 
-/** Browse shows the three tabs; confirm and setup replace them until the person goes back or the save succeeds. */
+/** A skill from skills.sh: `source` is its GitHub `owner/repo`, `skill` its name there, `url` its skills.sh page. */
+export type SkillTarget = { name: string; source: string; skill: string; url: string }
+
+/** What a confirm step installs. */
+export type ConfirmTarget = ({ type: "plugin" } & PluginTarget) | ({ type: "skill" } & SkillTarget)
+
+/** Browse shows the tabs; confirm and setup replace them until the person goes back or the save succeeds. */
 export type Step =
   | { type: "browse"; save: Save }
-  | { type: "confirm"; plugin: PluginTarget; save: Save }
+  | { type: "confirm"; target: ConfirmTarget; save: Save }
   | { type: "setup"; server: RegistryServer; plan: McpPlan; save: Save }
 
 export type AddState = { step: Step; attempt: number }
 
 export type AddEvent =
   | { type: "plugin.chosen"; plugin: PluginTarget }
+  | { type: "skill.chosen"; skill: SkillTarget }
   | { type: "server.chosen"; server: RegistryServer; plan: McpPlan }
   | { type: "back" }
   | { type: "save.requested"; request: SaveRequest }
@@ -44,11 +52,13 @@ export function transitionAdd(state: AddState, event: AddEvent): { state: AddSta
   const same = { state, effects: [] }
   const saving = state.step.save.status === "saving"
 
-  if (event.type === "plugin.chosen") {
+  if (event.type === "plugin.chosen" || event.type === "skill.chosen") {
     if (saving || state.step.type !== "browse") return same
+    const target: ConfirmTarget =
+      event.type === "plugin.chosen" ? { type: "plugin", ...event.plugin } : { type: "skill", ...event.skill }
 
     return {
-      state: { ...state, step: { type: "confirm", plugin: event.plugin, save: IDLE } },
+      state: { ...state, step: { type: "confirm", target, save: IDLE } },
       effects: [{ type: "step.shown", step: "confirm" }],
     }
   }

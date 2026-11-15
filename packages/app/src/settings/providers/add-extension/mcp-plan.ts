@@ -138,7 +138,10 @@ function planEntry(kind: "env" | "header", input: RegistryInput) {
 }
 
 function planArgument(argument: RegistryArgument, index: number) {
-  const fixed = argument.value ?? argument.default
+  // A required value with a hint and a default, such as the folder Filesystem may use, is a field filled with the
+  // default; any other default is used as is.
+  const editable = argument.isRequired && argument.valueHint !== undefined && argument.value === undefined
+  const fixed = argument.value ?? (editable ? undefined : argument.default)
   const flag = argument.type === "named" && argument.name ? [[text(argument.name)]] : []
 
   if (fixed !== undefined) return { segments: [...flag, [text(fixed)]], inputs: [] }
@@ -158,7 +161,7 @@ function planArgument(argument: RegistryArgument, index: number) {
         description: argument.description,
         required: true,
         secret: argument.isSecret ?? false,
-        initial: "",
+        initial: argument.default ?? "",
       },
     ],
   }

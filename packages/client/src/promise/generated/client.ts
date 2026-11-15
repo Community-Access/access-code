@@ -322,6 +322,16 @@ import type {
   ExperimentalConfigUpdateOutput,
   ExperimentalConfigMcpRegistryInput,
   ExperimentalConfigMcpRegistryOutput,
+  ExperimentalConfigMcpPopularOutput,
+  ExperimentalConfigMcpDockerInput,
+  ExperimentalConfigMcpDockerOutput,
+  ExperimentalConfigSkillSearchInput,
+  ExperimentalConfigSkillSearchOutput,
+  ExperimentalConfigSkillInstallInput,
+  ExperimentalConfigSkillInstallOutput,
+  ExperimentalConfigSkillRemoveInput,
+  ExperimentalConfigSkillRemoveOutput,
+  ExperimentalConfigExtensionPathsOutput,
 } from "./types.js"
 import { ClientError } from "./client-error.js"
 
@@ -1763,6 +1773,76 @@ export function make(options: ClientOptions) {
             },
             requestOptions,
           ),
+        mcpPopular: (requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigMcpPopularOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/mcp-popular`,
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        mcpDocker: (input?: ExperimentalConfigMcpDockerInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigMcpDockerOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/mcp-docker`,
+              query: { search: input?.["search"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        skillSearch: (input?: ExperimentalConfigSkillSearchInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigSkillSearchOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/skills`,
+              query: { search: input?.["search"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        skillInstall: (input: ExperimentalConfigSkillInstallInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigSkillInstallOutput>(
+            {
+              method: "POST",
+              path: `/api/experimental/config/skills`,
+              body: { source: input["source"], skill: input["skill"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        skillRemove: (input: ExperimentalConfigSkillRemoveInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigSkillRemoveOutput>(
+            {
+              method: "POST",
+              path: `/api/experimental/config/skills/remove`,
+              body: { skill: input["skill"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        extensionPaths: (requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigExtensionPathsOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/extension-paths`,
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
       },
     },
     message: {
@@ -2805,6 +2885,18 @@ export function make(options: ClientOptions) {
       update: client.experimental.config.update,
       /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
       mcpRegistry: client.experimental.config.mcpRegistry,
+      /** @deprecated Use `client.experimental.config.mcpPopular`. Removed in the next minor. */
+      mcpPopular: client.experimental.config.mcpPopular,
+      /** @deprecated Use `client.experimental.config.mcpDocker`. Removed in the next minor. */
+      mcpDocker: client.experimental.config.mcpDocker,
+      /** @deprecated Use `client.experimental.config.skillSearch`. Removed in the next minor. */
+      skillSearch: client.experimental.config.skillSearch,
+      /** @deprecated Use `client.experimental.config.skillInstall`. Removed in the next minor. */
+      skillInstall: client.experimental.config.skillInstall,
+      /** @deprecated Use `client.experimental.config.skillRemove`. Removed in the next minor. */
+      skillRemove: client.experimental.config.skillRemove,
+      /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
+      extensionPaths: client.experimental.config.extensionPaths,
     },
   }
 }

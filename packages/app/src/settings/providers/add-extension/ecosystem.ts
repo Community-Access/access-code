@@ -109,7 +109,7 @@ async function fetchEcosystem() {
 }
 
 /** Accepts the link text as the npm package only when that package says it comes from the same GitHub repo. */
-async function resolvePackage(name: string, link: string) {
+export async function resolvePackage(name: string, link: string) {
   if (!validPackageName(name)) return
   const response = await fetch(`${NPM_URL}/${name.replace("/", "%2f")}/latest`, {
     signal: AbortSignal.timeout(TIMEOUT_MS),

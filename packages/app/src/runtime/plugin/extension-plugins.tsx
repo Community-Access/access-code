@@ -1,6 +1,6 @@
 import type { PluginInfo } from "@opencode/client"
 import { Predicate } from "effect"
-import { createMemo, createSignal, createUniqueId, For, Show } from "solid-js"
+import { createMemo, createSignal, createUniqueId, For, Show, type JSX } from "solid-js"
 import { Badge } from "@opencode/ui/badge"
 import { Button } from "@opencode/ui/button"
 import { Icon } from "@opencode/ui/icon"
@@ -15,11 +15,15 @@ import { builtins } from "./builtins"
 import { usePluginHost } from "./host"
 import { useReservedPlugins } from "./root"
 
+/** What the Extensions page adds to a plugin's row: where it comes from, and Remove when it can be removed there. */
+export type PluginRowDetails = (plugin: PluginInfo) => { lines: (string | undefined)[]; actions?: JSX.Element }
+
 /**
  * The plugins a server lists, for the Plugins tab of Extensions. Only the desktop app's own server (`own`) runs its
  * plugins' GUIs in this window, so only its rows add the window's controls; other servers and the web list names.
+ * Each name is a heading, so heading navigation moves between plugins as it does in the Add extension dialog.
  */
-export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: boolean }) {
+export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: boolean; details?: PluginRowDetails }) {
   const listed = () => props.plugins.filter((plugin) => plugin.source.type !== "builtin")
 
   return (
@@ -28,20 +32,38 @@ export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: b
       fallback={
         <SettingsList variant="catalog">
           <For each={listed()}>
-            {(plugin) => (
-              <div class="settings-extension-row">
-                <div class="settings-extension-lead">
-                  <Icon name="cube" class="text-v2-icon-icon-muted shrink-0" />
-                  <span class="settings-extension-name truncate">{pluginLabel(plugin)}</span>
+            {(plugin) => {
+              const details = createMemo(() => props.details?.(plugin))
+
+              return (
+                <div class="settings-extension-row">
+                  <div class="settings-extension-lead">
+                    <Icon name="cube" class="text-v2-icon-icon-muted shrink-0" />
+                    <div class="flex min-w-0 flex-col gap-0.5">
+                      <h3 class="settings-extension-name truncate">{pluginLabel(plugin)}</h3>
+                      <RowLines lines={details()?.lines} />
+                    </div>
+                  </div>
+                  <Show when={details()?.actions}>
+                    {(actions) => <div class="settings-servers-actions">{actions()}</div>}
+                  </Show>
                 </div>
-              </div>
-            )}
+              )
+            }}
           </For>
         </SettingsList>
       }
     >
-      <OwnServerPlugins plugins={listed()} />
+      <OwnServerPlugins plugins={listed()} details={props.details} />
     </Show>
+  )
+}
+
+function RowLines(props: { lines?: (string | undefined)[] }) {
+  return (
+    <For each={(props.lines ?? []).filter((line): line is string => !!line)}>
+      {(line) => <span class="text-11-regular text-v2-text-text-muted [overflow-wrap:anywhere]">{line}</span>}
+    </For>
   )
 }
 
@@ -50,7 +72,7 @@ export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: b
  * switch that turns off only the desktop UI, Reload, status and errors, and rows for plugins main lists that the
  * server list does not name. Built-ins always run and stay hidden unless they failed, which only this list reports.
  */
-function OwnServerPlugins(props: { plugins: readonly PluginInfo[] }) {
+function OwnServerPlugins(props: { plugins: readonly PluginInfo[]; details?: PluginRowDetails }) {
   const language = useLanguage()
   const host = usePluginHost()
   const bridge = usePlatform().plugins
@@ -136,10 +158,11 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[] }) {
     run(bridge?.manager.reload(id))
   }
 
-  const row = (input: { id: string | undefined; name: string; builtin?: boolean }) => {
+  const row = (input: { id: string | undefined; name: string; builtin?: boolean; plugin?: PluginInfo }) => {
     const state = () => (input.builtin ? "loaded" : kind(input.id))
     const part = input.builtin ? "builtin" : "config"
     const live = () => (state() === "loaded" ? input.id : undefined)
+    const details = createMemo(() => (input.plugin ? props.details?.(input.plugin) : undefined))
 
     return (
       <div class="settings-extension-row">
@@ -147,9 +170,9 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[] }) {
           <Icon name="cube" class="text-v2-icon-icon-muted shrink-0" />
           <div class="flex min-w-0 flex-col gap-0.5">
             <div class="settings-provider-main">
-              <bdi dir="ltr" class="settings-extension-name truncate">
-                {input.name}
-              </bdi>
+              <h3 class="settings-extension-name truncate">
+                <bdi dir="ltr">{input.name}</bdi>
+              </h3>
               <Show when={live()}>
                 {(id) => (
                   <>
@@ -182,11 +205,16 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[] }) {
             <Show when={state() === "reserved"}>
               <span class="settings-server-dialog-error">{language.t("settings.plugins.reserved")}</span>
             </Show>
+            <RowLines lines={details()?.lines} />
           </div>
         </div>
+        <Show when={!live() && details()?.actions}>
+          {(actions) => <div class="settings-servers-actions">{actions()}</div>}
+        </Show>
         <Show when={live()}>
           {(id) => (
             <div class="settings-servers-actions">
+              {details()?.actions}
               <Button size="small" variant="ghost" onClick={() => reload(id())}>
                 {language.t("settings.plugins.reload")}
               </Button>
@@ -206,7 +234,7 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[] }) {
   return (
     <>
       <SettingsList variant="catalog">
-        <For each={props.plugins}>{(plugin) => row({ id: plugin.id, name: pluginLabel(plugin) })}</For>
+        <For each={props.plugins}>{(plugin) => row({ id: plugin.id, name: pluginLabel(plugin), plugin })}</For>
         <For each={unnamed()}>{(id) => row({ id, name: id })}</For>
         <For each={failedBuiltins()}>{(id) => row({ id, name: id, builtin: true })}</For>
       </SettingsList>

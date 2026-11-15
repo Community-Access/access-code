@@ -1,4 +1,3 @@
-import { Button } from "@opencode/ui/button"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { Dialog, DialogBody, DialogHeader } from "@opencode/ui/dialog"
 import { Icon } from "@opencode/ui/icon"
@@ -11,17 +10,28 @@ import { formatServerError } from "@/runtime/server/errors"
 import { ServerConnection } from "@/runtime/server/registry"
 import { announce } from "@/session/announce"
 import { useTabs } from "@/shell/tabs/tabs"
+import { ExternalLink } from "@/runtime/platform/external-link"
+import { ConfirmStep } from "./confirm-step"
 import { CustomTab } from "./custom-tab"
-import { createAddState, saveView, transitionAdd, type AddEffect, type AddEvent, type SaveRequest } from "./machine"
+import {
+  createAddState,
+  saveView,
+  transitionAdd,
+  type AddEffect,
+  type AddEvent,
+  type ConfirmTarget,
+  type SaveRequest,
+} from "./machine"
 import { PluginsTab } from "./plugins-tab"
 import { RegistryTab } from "./registry-tab"
-import { SaveError } from "./save-error"
 import { SetupStep } from "./setup-step"
+import { SkillsTab } from "./skills-tab"
 
-type Tab = "plugins" | "registry" | "custom"
+type Tab = "plugins" | "registry" | "skills" | "custom"
 
 /**
- * Adds a community plugin, an MCP Registry server or a hand-entered one to the global opencode.json. The tabs stay
+ * Adds a community plugin, an MCP server or a hand-entered one to the global opencode.json, or installs a skill into
+ * the global OpenCode skills folder. The tabs stay
  * mounted behind the confirm and setup steps, so going back keeps the search and returns focus to the row's button.
  */
 export function DialogAddExtension(props: { directory?: string; existing: string[] }) {
@@ -67,6 +77,38 @@ export function DialogAddExtension(props: { directory?: string; existing: string
   }
 
   const save = (attempt: number, request: SaveRequest) => {
+    const fail = (reason: string) => {
+      if (live.disposed) return
+      dispatch({
+        type: "save.failed",
+        attempt,
+        error: language.t("settings.extensions.add.failed", { name: request.label, error: reason }),
+      })
+    }
+
+    const succeed = () => {
+      if (!live.disposed) return dispatch({ type: "save.succeeded", attempt })
+      // The dialog closed while saving, but the server still added it, so say so.
+      announce(language.t("settings.extensions.add.added", { name: request.label }))
+    }
+
+    const unknown = (error: unknown) =>
+      fail(formatServerError(error, language.t, language.t("settings.extensions.add.failedUnknown")))
+
+    if (request.type === "skill") {
+      void serverSdk.api.experimental.config
+        .skillInstall({ source: request.source, skill: request.skill })
+        .then((result) => {
+          if (!result.ok) return fail(result.output || language.t("settings.extensions.add.failedUnknown"))
+          // The skills folder is watched, so the list updates by itself; reading it again covers a missed event.
+          data.location.skill.invalidate()
+          void data.location.skill.sync().catch(() => undefined)
+          succeed()
+        }, unknown)
+
+      return
+    }
+
     const update =
       request.type === "plugin"
         ? { plugins: { add: [request.pkg] } }
@@ -75,22 +117,7 @@ export function DialogAddExtension(props: { directory?: string; existing: string
             ...(Object.keys(request.keychain).length > 0 ? { keychain: request.keychain } : {}),
           }
 
-    void serverSdk.api.experimental.config.update(update).then(
-      () => {
-        if (!live.disposed) return dispatch({ type: "save.succeeded", attempt })
-        // The dialog closed while saving, but the server still added it, so say so.
-        announce(language.t("settings.extensions.add.added", { name: request.label }))
-      },
-      (error: unknown) => {
-        if (live.disposed) return
-        const reason = formatServerError(error, language.t, language.t("settings.extensions.add.failedUnknown"))
-        dispatch({
-          type: "save.failed",
-          attempt,
-          error: language.t("settings.extensions.add.failed", { name: request.label, error: reason }),
-        })
-      },
-    )
+    void serverSdk.api.experimental.config.update(update).then(succeed, unknown)
   }
 
   // Remembers the button that opened a step, so Back returns to it.
@@ -128,7 +155,7 @@ export function DialogAddExtension(props: { directory?: string; existing: string
   const heading = () => {
     const confirm = confirmStep()
 
-    if (confirm) return language.t("settings.extensions.add.confirm.title", { name: confirm.plugin.name })
+    if (confirm) return language.t("settings.extensions.add.confirm.title", { name: confirm.target.name })
     const setup = setupStep()
 
     if (!setup) return ""
@@ -171,42 +198,13 @@ export function DialogAddExtension(props: { directory?: string; existing: string
             <Switch>
               <Match when={confirmStep()}>
                 {(current) => (
-                  <div class="flex flex-col gap-4">
-                    <p class="text-13-regular text-v2-text-text-base">
-                      {current().plugin.url
-                        ? language.t("settings.extensions.add.confirm.body", {
-                            name: current().plugin.name,
-                            url: current().plugin.url ?? "",
-                          })
-                        : language.t("settings.extensions.add.confirm.bodyNpm", { name: current().plugin.name })}
-                    </p>
-                    <p class="text-13-regular text-v2-text-text-muted">
-                      {language.t("settings.extensions.add.confirm.package", { pkg: current().plugin.pkg })}
-                    </p>
-                    <SaveError error={view().error} />
-                    <div class="flex justify-end gap-2">
-                      <Button variant="ghost" disabled={view().busy} onClick={() => dispatch({ type: "back" })}>
-                        {language.t("settings.extensions.add.cancel")}
-                      </Button>
-                      <Button
-                        variant="submit"
-                        disabled={view().busy}
-                        aria-busy={view().busy}
-                        onClick={() =>
-                          dispatch({
-                            type: "save.requested",
-                            request: { type: "plugin", label: current().plugin.name, pkg: current().plugin.pkg },
-                          })
-                        }
-                      >
-                        {language.t(
-                          view().busy
-                            ? "settings.extensions.add.installing"
-                            : "settings.extensions.add.plugins.install",
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  <ConfirmInstall
+                    target={current().target}
+                    busy={view().busy}
+                    error={view().error}
+                    onBack={() => dispatch({ type: "back" })}
+                    onConfirm={(request) => dispatch({ type: "save.requested", request })}
+                  />
                 )}
               </Match>
               <Match when={setupStep()}>
@@ -242,13 +240,14 @@ export function DialogAddExtension(props: { directory?: string; existing: string
             variant="pill"
             value={tab()}
             onChange={(value) => {
-              if (value === "plugins" || value === "registry" || value === "custom") setTab(value)
+              if (value === "plugins" || value === "registry" || value === "skills" || value === "custom") setTab(value)
             }}
             class="flex min-h-0 flex-1 flex-col gap-3"
           >
             <Tabs.List aria-label={language.t("settings.extensions.add.tabs")}>
               <Tabs.Trigger value="plugins">{language.t("settings.extensions.add.tab.plugins")}</Tabs.Trigger>
               <Tabs.Trigger value="registry">{language.t("settings.extensions.add.tab.registry")}</Tabs.Trigger>
+              <Tabs.Trigger value="skills">{language.t("settings.extensions.add.tab.skills")}</Tabs.Trigger>
               <Tabs.Trigger value="custom">{language.t("settings.extensions.add.tab.custom")}</Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="plugins" class="flex min-h-0 flex-1 flex-col">
@@ -269,6 +268,15 @@ export function DialogAddExtension(props: { directory?: string; existing: string
                 onAskAi={askAi}
               />
             </Tabs.Content>
+            <Tabs.Content value="skills" class="flex min-h-0 flex-1 flex-col">
+              <SkillsTab
+                onInstall={(skill) => {
+                  remember()
+                  dispatch({ type: "skill.chosen", skill })
+                }}
+                onAskAi={askAi}
+              />
+            </Tabs.Content>
             <Tabs.Content value="custom" class="flex min-h-0 flex-1 flex-col">
               <CustomTab
                 existing={props.existing}
@@ -285,5 +293,91 @@ export function DialogAddExtension(props: { directory?: string; existing: string
         </DialogBody>
       </div>
     </Dialog>
+  )
+}
+
+/** Confirms installing a plugin or a skill, naming where it comes from, in the layout Remove uses too. */
+function ConfirmInstall(props: {
+  target: ConfirmTarget
+  busy: boolean
+  error?: string
+  onBack: () => void
+  onConfirm: (request: SaveRequest) => void
+}) {
+  const language = useLanguage()
+
+  const body = () => {
+    const target = props.target
+
+    if (target.type === "skill")
+      return language.t("settings.extensions.add.confirm.skill", { name: target.name, source: target.source })
+
+    if (target.url) return language.t("settings.extensions.add.confirm.body", { name: target.name, url: target.url })
+
+    return language.t("settings.extensions.add.confirm.bodyNpm", { name: target.name })
+  }
+
+  const request = (): SaveRequest => {
+    const target = props.target
+
+    if (target.type === "skill")
+      return { type: "skill", label: target.name, source: target.source, skill: target.skill }
+
+    return { type: "plugin", label: target.name, pkg: target.pkg }
+  }
+
+  return (
+    <ConfirmStep
+      body={body()}
+      details={
+        <Switch>
+          <Match when={props.target.type === "plugin" && props.target}>
+            {(target) => (
+              <>
+                <span>{language.t("settings.extensions.add.confirm.package", { pkg: target().pkg })}</span>
+                <Show when={target().url}>
+                  {(url) => (
+                    <ExternalLink
+                      class="text-13-regular"
+                      href={url()}
+                      aria-label={language.t("settings.extensions.add.source.label", { name: target().name })}
+                    >
+                      {url()}
+                    </ExternalLink>
+                  )}
+                </Show>
+              </>
+            )}
+          </Match>
+          <Match when={props.target.type === "skill" && props.target}>
+            {(target) => (
+              <>
+                <ExternalLink
+                  class="text-13-regular"
+                  href={target().url}
+                  aria-label={language.t("settings.extensions.add.skills.page.label", { name: target().name })}
+                >
+                  {target().url}
+                </ExternalLink>
+                <ExternalLink
+                  class="text-13-regular"
+                  href={`https://github.com/${target().source}`}
+                  aria-label={language.t("settings.extensions.add.source.label", { name: target().name })}
+                >
+                  {`https://github.com/${target().source}`}
+                </ExternalLink>
+              </>
+            )}
+          </Match>
+        </Switch>
+      }
+      error={props.error}
+      busy={props.busy}
+      action={language.t("settings.extensions.add.plugins.install")}
+      busyAction={language.t("settings.extensions.add.installing")}
+      actionLabel={language.t("settings.extensions.add.plugins.install.label", { name: props.target.name })}
+      onCancel={props.onBack}
+      onConfirm={() => props.onConfirm(request())}
+    />
   )
 }

@@ -78,12 +78,15 @@ const ExtensionRow: Component<{
       </Show>
       <div class="project-settings-extension-row-copy">
         <span class="project-settings-extension-row-title">
-          <Show
-            when={props.console}
-            fallback={<span class="project-settings-extension-row-name settings-extension-name">{props.name}</span>}
-          >
-            {(href) => <ConsoleName name={props.name} href={href()} class="project-settings-extension-row-name" />}
-          </Show>
+          {/* Each name is a heading, as on the Extensions page and in the Add extension dialog. */}
+          <h3 class="flex min-w-0">
+            <Show
+              when={props.console}
+              fallback={<span class="project-settings-extension-row-name settings-extension-name">{props.name}</span>}
+            >
+              {(href) => <ConsoleName name={props.name} href={href()} class="project-settings-extension-row-name" />}
+            </Show>
+          </h3>
           <Show when={props.replaces}>{(href) => <ConsoleReplaced name={props.name} href={href()} />}</Show>
         </span>
         <Show when={props.description}>
@@ -105,11 +108,11 @@ const ProjectSectionHeader: Component<{
   return (
     <div class="project-settings-extension-section-header">
       <div class="project-settings-extension-section-copy">
-        <span>
+        <h2>
           {props.empty
             ? language.t(`project.settings.extensions.empty.${props.kind}.title`)
             : language.t("project.settings.extensions.added")}
-        </span>
+        </h2>
         <Show when={props.empty}>
           <span class="project-settings-extension-empty-description">
             {language.t(`project.settings.extensions.empty.${props.kind}.description`)}

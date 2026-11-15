@@ -1,16 +1,27 @@
 import { Button } from "@opencode/ui/button"
 import { Field } from "@opencode/ui/field"
+import { RadioGroup, RadioItem } from "@opencode/ui/radio"
 import { TextInput } from "@opencode/ui/text-input"
 import { createMemo, createSignal, For, Match, onCleanup, Show, Switch, untrack } from "solid-js"
 import { useLanguage } from "@/runtime/i18n/language"
+import { ExternalLink } from "@/runtime/platform/external-link"
 import { useServerSDK } from "@/runtime/server/client"
 import { ExtensionLoadFailed } from "@/settings/extension-load"
 import { createSearchState, transitionSearch, type SearchEffect, type SearchEvent } from "./machine"
 import { planServer, type McpPlan, type RegistryServer } from "./mcp-plan"
+import { ResultRow } from "./result-row"
 
 const DEBOUNCE_MS = 400
 
-/** Searches the MCP Registry through the server, which fetches it because the registry blocks browser requests. */
+/** The MCP project's reference servers, which the server lists after the popular registry servers. */
+const REFERENCE_PREFIX = "io.github.modelcontextprotocol/"
+
+type Source = "registry" | "docker"
+
+/**
+ * MCP servers from the MCP Registry, Popular until the person searches, or from the Docker MCP Catalog. The server
+ * fetches both, because neither allows browser requests.
+ */
 export function RegistryTab(props: {
   onSetup: (server: RegistryServer, plan: McpPlan) => void
   onAskAi: (text: string) => void
@@ -18,6 +29,7 @@ export function RegistryTab(props: {
   const language = useLanguage()
   const serverSdk = useServerSDK()
   const [input, setInput] = createSignal("")
+  const [source, setSource] = createSignal<Source>("registry")
   const [search, setSearch] = createSignal(createSearchState())
   const timers: { debounce?: ReturnType<typeof setTimeout> } = {}
   const live = { disposed: false, list: undefined as HTMLUListElement | undefined, reveal: -1 }
@@ -35,19 +47,28 @@ export function RegistryTab(props: {
     result.effects.forEach(run)
   }
 
+  // Effects run as they are dispatched, so the source read here is the one the request was made for.
+  const fetchPage = (effect: SearchEffect) => {
+    const config = serverSdk.api.experimental.config
+
+    if (untrack(source) === "docker") return config.mcpDocker({ search: effect.query || undefined })
+
+    if (!effect.query) return config.mcpPopular()
+
+    return config.mcpRegistry({ search: effect.query, cursor: effect.cursor })
+  }
+
   const run = (effect: SearchEffect) => {
-    void serverSdk.api.experimental.config
-      .mcpRegistry({ search: effect.query || undefined, cursor: effect.cursor })
-      .then(
-        (result) => {
-          if (live.disposed) return
-          dispatch({ type: "page.loaded", attempt: effect.attempt, servers: result.servers, cursor: result.nextCursor })
-          revealMore()
-        },
-        () => {
-          if (!live.disposed) dispatch({ type: "page.failed", attempt: effect.attempt })
-        },
-      )
+    void fetchPage(effect).then(
+      (result) => {
+        if (live.disposed) return
+        dispatch({ type: "page.loaded", attempt: effect.attempt, servers: result.servers, cursor: result.nextCursor })
+        revealMore()
+      },
+      () => {
+        if (!live.disposed) dispatch({ type: "page.failed", attempt: effect.attempt })
+      },
+    )
   }
 
   // Load more disappears with the last page, so focus moves to the first new server instead of being lost.
@@ -65,7 +86,19 @@ export function RegistryTab(props: {
     timers.debounce = setTimeout(() => dispatch({ type: "query.committed", query: value.trim() }), DEBOUNCE_MS)
   }
 
+  const onSource = (value: Source) => {
+    clearTimeout(timers.debounce)
+    setSource(value)
+    dispatch({ type: "query.committed", query: untrack(input).trim() })
+  }
+
   dispatch({ type: "query.committed", query: "" })
+
+  const mode = () => {
+    if (source() === "docker") return "docker"
+
+    return search().query ? "search" : "popular"
+  }
 
   const loadingMore = () => {
     const current = search()
@@ -78,8 +111,12 @@ export function RegistryTab(props: {
   const status = () => {
     const current = search()
 
-    if (current.status === "loading" && current.page === "first")
+    if (current.status === "loading" && current.page === "first") {
+      if (mode() === "popular") return language.t("settings.extensions.add.registry.popular.loading")
+      if (mode() === "docker") return language.t("settings.extensions.add.registry.docker.loading")
+
       return language.t("settings.extensions.add.registry.searching")
+    }
 
     if (current.status === "failed") return ""
 
@@ -88,21 +125,57 @@ export function RegistryTab(props: {
         ? language.t("settings.extensions.add.registry.empty", { query: current.query })
         : language.t("settings.extensions.add.registry.emptyAll")
 
+    if (mode() === "popular")
+      return language.plural("settings.extensions.add.registry.popular.count", current.servers.length)
+
+    if (mode() === "docker")
+      return language.plural("settings.extensions.add.registry.docker.count", current.servers.length)
+
     return language.plural("settings.extensions.add.registry.count", current.servers.length)
+  }
+
+  const failure = () => {
+    if (mode() === "popular") return language.t("settings.extensions.add.registry.popular.loadFailed")
+    if (mode() === "docker") return language.t("settings.extensions.add.registry.docker.loadFailed")
+
+    return language.t("settings.extensions.add.registry.loadFailed")
+  }
+
+  const from = (server: RegistryServer) => {
+    if (source() === "docker") return language.t("settings.extensions.from.docker")
+    if (server.name.startsWith(REFERENCE_PREFIX)) return language.t("settings.extensions.from.reference")
+
+    return language.t("settings.extensions.from.registry")
   }
 
   const where = (plan: McpPlan | undefined) => {
     if (!plan) return language.t("settings.extensions.add.registry.manual")
 
-    return language.t(
-      plan.type === "local" ? "settings.extensions.add.registry.local" : "settings.extensions.add.registry.remote",
-    )
+    if (plan.type === "remote") return language.t("settings.extensions.runs.remote")
+
+    return language.t(plan.runtime === "docker" ? "settings.extensions.runs.docker" : "settings.extensions.runs.local")
   }
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-3">
+      <RadioGroup
+        label={language.t("settings.extensions.add.registry.source")}
+        value={source()}
+        onChange={(value) => {
+          if (value === "registry" || value === "docker") onSource(value)
+        }}
+      >
+        <RadioItem value="registry" label={language.t("settings.extensions.add.registry.source.registry")} />
+        <RadioItem value="docker" label={language.t("settings.extensions.add.registry.source.docker")} />
+      </RadioGroup>
       <Field>
-        <Field.Label>{language.t("settings.extensions.add.registry.search")}</Field.Label>
+        <Field.Label>
+          {language.t(
+            source() === "docker"
+              ? "settings.extensions.add.registry.docker.search"
+              : "settings.extensions.add.registry.search",
+          )}
+        </Field.Label>
         <TextInput
           type="search"
           appearance="large"
@@ -114,13 +187,18 @@ export function RegistryTab(props: {
           onInput={(event) => onInput(event.currentTarget.value)}
         />
       </Field>
+      <Show when={source() === "docker"}>
+        <p class="text-13-regular text-v2-text-text-muted">
+          {language.t("settings.extensions.add.registry.docker.note")}
+        </p>
+      </Show>
       <p role="status" class="text-13-regular text-v2-text-text-muted">
         {status()}
       </p>
       <Switch>
         <Match when={search().status === "failed"}>
           <ExtensionLoadFailed
-            message={language.t("settings.extensions.add.registry.loadFailed")}
+            message={failure()}
             retry={language.t("common.retry")}
             onRetry={() => dispatch({ type: "retry.requested" })}
           />
@@ -140,61 +218,67 @@ export function RegistryTab(props: {
       <ul
         ref={(element) => (live.list = element)}
         class="flex min-h-0 flex-1 flex-col overflow-y-auto"
-        aria-label={language.t("settings.extensions.add.registry.list")}
+        aria-label={language.t(
+          mode() === "popular"
+            ? "settings.extensions.add.registry.popular.list"
+            : mode() === "docker"
+              ? "settings.extensions.add.registry.docker.list"
+              : "settings.extensions.add.registry.list",
+        )}
         aria-busy={search().status === "loading"}
         data-scrollable
       >
         <For each={rows()}>
           {(row) => {
             const name = () => row.server.title ?? row.server.name
+            const repository = () => row.server.repository?.url ?? row.server.websiteUrl
 
             return (
-              <li class="flex items-start gap-3 border-b border-v2-border-border-weak py-3 last:border-b-0">
-                <div class="flex min-w-0 flex-1 flex-col gap-1">
-                  <h3 class="text-13-medium text-v2-text-text-base [overflow-wrap:anywhere]">{name()}</h3>
-                  <Show when={row.server.title}>
-                    <span class="text-12-regular text-v2-text-text-muted [overflow-wrap:anywhere]">
-                      {row.server.name}
-                    </span>
-                  </Show>
-                  <Show when={row.server.description}>
-                    {(description) => <span class="text-13-regular text-v2-text-text-muted">{description()}</span>}
-                  </Show>
-                  <span class="text-12-regular text-v2-text-text-muted">{where(row.plan)}</span>
-                </div>
-                <div class="flex shrink-0 items-center">
-                  <Show
-                    when={row.plan}
-                    fallback={
-                      <Button
-                        size="small"
-                        variant="ghost-muted"
-                        aria-label={language.t("settings.extensions.add.askAi.label", { name: name() })}
-                        onClick={() =>
-                          props.onAskAi(
-                            [row.server.name, row.server.repository?.url ?? row.server.websiteUrl]
-                              .filter(Boolean)
-                              .join(" "),
-                          )
-                        }
-                      >
-                        {language.t("settings.extensions.add.askAi")}
-                      </Button>
-                    }
-                  >
-                    {(plan) => (
-                      <Button
-                        size="small"
-                        variant="neutral"
-                        aria-label={language.t("settings.extensions.add.registry.setup.label", { name: name() })}
-                        onClick={() => props.onSetup(row.server, plan())}
-                      >
-                        {language.t("settings.extensions.add.registry.setup")}
-                      </Button>
-                    )}
-                  </Show>
-                </div>
-              </li>
+              <ResultRow
+                name={name()}
+                detail={row.server.title ? row.server.name : undefined}
+                description={row.server.description}
+                lines={[from(row.server), where(row.plan)]}
+                actions={
+                  <>
+                    <Show when={repository()}>
+                      {(href) => (
+                        <ExternalLink
+                          class="text-13-regular"
+                          href={href()}
+                          aria-label={language.t("settings.extensions.add.source.label", { name: name() })}
+                        >
+                          {language.t("settings.extensions.add.source")}
+                        </ExternalLink>
+                      )}
+                    </Show>
+                    <Show
+                      when={row.plan}
+                      fallback={
+                        <Button
+                          size="small"
+                          variant="ghost-muted"
+                          aria-label={language.t("settings.extensions.add.askAi.label", { name: name() })}
+                          onClick={() => props.onAskAi([row.server.name, repository()].filter(Boolean).join(" "))}
+                        >
+                          {language.t("settings.extensions.add.askAi")}
+                        </Button>
+                      }
+                    >
+                      {(plan) => (
+                        <Button
+                          size="small"
+                          variant="neutral"
+                          aria-label={language.t("settings.extensions.add.registry.setup.label", { name: name() })}
+                          onClick={() => props.onSetup(row.server, plan())}
+                        >
+                          {language.t("settings.extensions.add.registry.setup")}
+                        </Button>
+                      )}
+                    </Show>
+                  </>
+                }
+              />
             )
           }}
         </For>

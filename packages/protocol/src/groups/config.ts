@@ -1,5 +1,6 @@
 import { Config } from "@opencode/schema/config"
 import { ConfigShell } from "@opencode/schema/config/shell"
+import { ExtensionCatalog } from "@opencode/schema/extension-catalog"
 import { McpRegistry } from "@opencode/schema/mcp-registry"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
@@ -57,6 +58,82 @@ export const ConfigGroup = HttpApiGroup.make("server.config")
         summary: "Search the MCP Registry",
         description:
           "Experimental: may change without compatibility guarantees. Search the public MCP Registry for servers to add.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.mcpPopular", "/api/experimental/config/mcp-popular", {
+      success: McpRegistry.SearchResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.mcpPopular",
+        summary: "List popular MCP servers",
+        description:
+          "Experimental: may change without compatibility guarantees. Popular servers from the public MCP Registry, followed by the MCP project's reference servers.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.mcpDocker", "/api/experimental/config/mcp-docker", {
+      query: Schema.Struct({ search: Schema.String.pipe(Schema.optionalKey) }),
+      success: McpRegistry.SearchResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.mcpDocker",
+        summary: "Search the Docker MCP Catalog",
+        description:
+          "Experimental: may change without compatibility guarantees. Servers from the Docker MCP Catalog, most pulled first, filtered by the search text.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.skillSearch", "/api/experimental/config/skills", {
+      query: Schema.Struct({ search: Schema.String.pipe(Schema.optionalKey) }),
+      success: ExtensionCatalog.SkillSearchResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.skillSearch",
+        summary: "Search skills.sh",
+        description:
+          "Experimental: may change without compatibility guarantees. Search the skills.sh directory; without a search, list popular skills.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.post("config.skillInstall", "/api/experimental/config/skills", {
+      payload: ExtensionCatalog.SkillInstallInput,
+      success: ExtensionCatalog.CommandResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.skillInstall",
+        summary: "Install a skill",
+        description:
+          "Experimental: may change without compatibility guarantees. Install one skill from a GitHub repository into the global OpenCode skills folder with the skills CLI.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.post("config.skillRemove", "/api/experimental/config/skills/remove", {
+      payload: ExtensionCatalog.SkillRemoveInput,
+      success: ExtensionCatalog.CommandResult,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.skillRemove",
+        summary: "Remove a skill",
+        description:
+          "Experimental: may change without compatibility guarantees. Remove one skill from the global OpenCode skills folder with the skills CLI.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.extensionPaths", "/api/experimental/config/extension-paths", {
+      success: ExtensionCatalog.Paths,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.extensionPaths",
+        summary: "Get extension folders",
+        description:
+          "Experimental: may change without compatibility guarantees. The global config folder that config updates edit, and the global OpenCode skills folder.",
       }),
     ),
   )

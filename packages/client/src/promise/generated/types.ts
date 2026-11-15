@@ -382,6 +382,12 @@ export type ConfigModelReasoning =
 
 export type ConfigShellOption = { path: string; name: string; acceptable: boolean }
 
+export type ExtensionCatalogSkill = { id: string; source: string; skillId: string; name: string; installs: number }
+
+export type ExtensionCatalogCommandResult = { ok: boolean; output: string }
+
+export type ExtensionCatalogPaths = { config: string; skills: string }
+
 export type LocationPublicRef = { directory: AbsolutePath }
 
 export type FileSystemWrite = { path: AbsolutePath }
@@ -999,6 +1005,8 @@ export type ConfigModelCapabilities = {
   temperature?: boolean
   reasoning?: ConfigModelReasoning
 }
+
+export type ExtensionCatalogSkillSearchResult = { skills: Array<ExtensionCatalogSkill> }
 
 export type SessionMessageLocationSwitched = {
   id: SessionMessageID
@@ -5005,6 +5013,120 @@ export type ExperimentalConfigMcpRegistryOutput = {
   nextCursor?: string
 }
 
+export type ExperimentalConfigMcpPopularOutput = {
+  servers: Array<{
+    name: string
+    title?: string
+    description?: string
+    version?: string
+    websiteUrl?: string
+    repository?: { url?: string }
+    packages?: Array<{
+      registryType: string
+      identifier: string
+      version?: string
+      runtimeHint?: string
+      transport?: { type: string }
+      environmentVariables?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+      packageArguments?: Array<{
+        type: string
+        name?: string
+        value?: string
+        default?: string
+        valueHint?: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+      }>
+    }>
+    remotes?: Array<{
+      type: string
+      url: string
+      headers?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+    }>
+  }>
+  nextCursor?: string
+}
+
+export type ExperimentalConfigMcpDockerInput = { readonly search?: string | undefined }
+
+export type ExperimentalConfigMcpDockerOutput = {
+  servers: Array<{
+    name: string
+    title?: string
+    description?: string
+    version?: string
+    websiteUrl?: string
+    repository?: { url?: string }
+    packages?: Array<{
+      registryType: string
+      identifier: string
+      version?: string
+      runtimeHint?: string
+      transport?: { type: string }
+      environmentVariables?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+      packageArguments?: Array<{
+        type: string
+        name?: string
+        value?: string
+        default?: string
+        valueHint?: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+      }>
+    }>
+    remotes?: Array<{
+      type: string
+      url: string
+      headers?: Array<{
+        name: string
+        description?: string
+        isRequired?: boolean
+        isSecret?: boolean
+        default?: string
+        value?: string
+      }>
+    }>
+  }>
+  nextCursor?: string
+}
+
+export type ExperimentalConfigSkillSearchInput = { readonly search?: string | undefined }
+
+export type ExperimentalConfigSkillSearchOutput = ExtensionCatalogSkillSearchResult
+
+export type ExperimentalConfigSkillInstallInput = { readonly source: string; readonly skill: string }
+
+export type ExperimentalConfigSkillInstallOutput = ExtensionCatalogCommandResult
+
+export type ExperimentalConfigSkillRemoveInput = { readonly skill: string }
+
+export type ExperimentalConfigSkillRemoveOutput = ExtensionCatalogCommandResult
+
+export type ExperimentalConfigExtensionPathsOutput = ExtensionCatalogPaths
+
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput
 
@@ -5160,3 +5282,33 @@ export type ConfigMcpRegistryInput = ExperimentalConfigMcpRegistryInput
 
 /** @deprecated Use `ExperimentalConfigMcpRegistryOutput`. Removed in the next minor. */
 export type ConfigMcpRegistryOutput = ExperimentalConfigMcpRegistryOutput
+
+/** @deprecated Use `ExperimentalConfigMcpPopularOutput`. Removed in the next minor. */
+export type ConfigMcpPopularOutput = ExperimentalConfigMcpPopularOutput
+
+/** @deprecated Use `ExperimentalConfigMcpDockerInput`. Removed in the next minor. */
+export type ConfigMcpDockerInput = ExperimentalConfigMcpDockerInput
+
+/** @deprecated Use `ExperimentalConfigMcpDockerOutput`. Removed in the next minor. */
+export type ConfigMcpDockerOutput = ExperimentalConfigMcpDockerOutput
+
+/** @deprecated Use `ExperimentalConfigSkillSearchInput`. Removed in the next minor. */
+export type ConfigSkillSearchInput = ExperimentalConfigSkillSearchInput
+
+/** @deprecated Use `ExperimentalConfigSkillSearchOutput`. Removed in the next minor. */
+export type ConfigSkillSearchOutput = ExperimentalConfigSkillSearchOutput
+
+/** @deprecated Use `ExperimentalConfigSkillInstallInput`. Removed in the next minor. */
+export type ConfigSkillInstallInput = ExperimentalConfigSkillInstallInput
+
+/** @deprecated Use `ExperimentalConfigSkillInstallOutput`. Removed in the next minor. */
+export type ConfigSkillInstallOutput = ExperimentalConfigSkillInstallOutput
+
+/** @deprecated Use `ExperimentalConfigSkillRemoveInput`. Removed in the next minor. */
+export type ConfigSkillRemoveInput = ExperimentalConfigSkillRemoveInput
+
+/** @deprecated Use `ExperimentalConfigSkillRemoveOutput`. Removed in the next minor. */
+export type ConfigSkillRemoveOutput = ExperimentalConfigSkillRemoveOutput
+
+/** @deprecated Use `ExperimentalConfigExtensionPathsOutput`. Removed in the next minor. */
+export type ConfigExtensionPathsOutput = ExperimentalConfigExtensionPathsOutput

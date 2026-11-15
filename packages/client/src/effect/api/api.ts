@@ -2808,6 +2808,24 @@ export interface ConfigApi<E = never> {
 
   /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
   readonly mcpRegistry: ExperimentalConfigMcpRegistryOperation<E>
+
+  /** @deprecated Use `client.experimental.config.mcpPopular`. Removed in the next minor. */
+  readonly mcpPopular: ExperimentalConfigMcpPopularOperation<E>
+
+  /** @deprecated Use `client.experimental.config.mcpDocker`. Removed in the next minor. */
+  readonly mcpDocker: ExperimentalConfigMcpDockerOperation<E>
+
+  /** @deprecated Use `client.experimental.config.skillSearch`. Removed in the next minor. */
+  readonly skillSearch: ExperimentalConfigSkillSearchOperation<E>
+
+  /** @deprecated Use `client.experimental.config.skillInstall`. Removed in the next minor. */
+  readonly skillInstall: ExperimentalConfigSkillInstallOperation<E>
+
+  /** @deprecated Use `client.experimental.config.skillRemove`. Removed in the next minor. */
+  readonly skillRemove: ExperimentalConfigSkillRemoveOperation<E>
+
+  /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
+  readonly extensionPaths: ExperimentalConfigExtensionPathsOperation<E>
 }
 
 export type ExperimentalConfigUpdateInput = {
@@ -2886,9 +2904,173 @@ export type ExperimentalConfigMcpRegistryOperation<E = never> = (
   input?: ExperimentalConfigMcpRegistryInput,
 ) => Effect.Effect<ExperimentalConfigMcpRegistryOutput, E>
 
+export type ExperimentalConfigMcpPopularOutput = {
+  readonly servers: ReadonlyArray<{
+    readonly name: string
+    readonly title?: string | undefined
+    readonly description?: string | undefined
+    readonly version?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly repository?: { readonly url?: string | undefined } | undefined
+    readonly packages?:
+      | ReadonlyArray<{
+          readonly registryType: string
+          readonly identifier: string
+          readonly version?: string | undefined
+          readonly runtimeHint?: string | undefined
+          readonly transport?: { readonly type: string } | undefined
+          readonly environmentVariables?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+          readonly packageArguments?:
+            | ReadonlyArray<{
+                readonly type: string
+                readonly name?: string | undefined
+                readonly value?: string | undefined
+                readonly default?: string | undefined
+                readonly valueHint?: string | undefined
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+    readonly remotes?:
+      | ReadonlyArray<{
+          readonly type: string
+          readonly url: string
+          readonly headers?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+  }>
+  readonly nextCursor?: string | undefined
+}
+export type ExperimentalConfigMcpPopularOperation<E = never> = () => Effect.Effect<
+  ExperimentalConfigMcpPopularOutput,
+  E
+>
+
+export type ExperimentalConfigMcpDockerInput = { readonly search?: string }
+export type ExperimentalConfigMcpDockerOutput = {
+  readonly servers: ReadonlyArray<{
+    readonly name: string
+    readonly title?: string | undefined
+    readonly description?: string | undefined
+    readonly version?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly repository?: { readonly url?: string | undefined } | undefined
+    readonly packages?:
+      | ReadonlyArray<{
+          readonly registryType: string
+          readonly identifier: string
+          readonly version?: string | undefined
+          readonly runtimeHint?: string | undefined
+          readonly transport?: { readonly type: string } | undefined
+          readonly environmentVariables?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+          readonly packageArguments?:
+            | ReadonlyArray<{
+                readonly type: string
+                readonly name?: string | undefined
+                readonly value?: string | undefined
+                readonly default?: string | undefined
+                readonly valueHint?: string | undefined
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+    readonly remotes?:
+      | ReadonlyArray<{
+          readonly type: string
+          readonly url: string
+          readonly headers?:
+            | ReadonlyArray<{
+                readonly name: string
+                readonly description?: string | undefined
+                readonly isRequired?: boolean | undefined
+                readonly isSecret?: boolean | undefined
+                readonly default?: string | undefined
+                readonly value?: string | undefined
+              }>
+            | undefined
+        }>
+      | undefined
+  }>
+  readonly nextCursor?: string | undefined
+}
+export type ExperimentalConfigMcpDockerOperation<E = never> = (
+  input?: ExperimentalConfigMcpDockerInput,
+) => Effect.Effect<ExperimentalConfigMcpDockerOutput, E>
+
+export type ExperimentalConfigSkillSearchInput = { readonly search?: string }
+export type ExperimentalConfigSkillSearchOutput = {
+  readonly skills: ReadonlyArray<{
+    readonly id: string
+    readonly source: string
+    readonly skillId: string
+    readonly name: string
+    readonly installs: number
+  }>
+}
+export type ExperimentalConfigSkillSearchOperation<E = never> = (
+  input?: ExperimentalConfigSkillSearchInput,
+) => Effect.Effect<ExperimentalConfigSkillSearchOutput, E>
+
+export type ExperimentalConfigSkillInstallInput = { readonly source: string; readonly skill: string }
+export type ExperimentalConfigSkillInstallOutput = { readonly ok: boolean; readonly output: string }
+export type ExperimentalConfigSkillInstallOperation<E = never> = (
+  input: ExperimentalConfigSkillInstallInput,
+) => Effect.Effect<ExperimentalConfigSkillInstallOutput, E>
+
+export type ExperimentalConfigSkillRemoveInput = { readonly skill: string }
+export type ExperimentalConfigSkillRemoveOutput = { readonly ok: boolean; readonly output: string }
+export type ExperimentalConfigSkillRemoveOperation<E = never> = (
+  input: ExperimentalConfigSkillRemoveInput,
+) => Effect.Effect<ExperimentalConfigSkillRemoveOutput, E>
+
+export type ExperimentalConfigExtensionPathsOutput = { readonly config: string; readonly skills: string }
+export type ExperimentalConfigExtensionPathsOperation<E = never> = () => Effect.Effect<
+  ExperimentalConfigExtensionPathsOutput,
+  E
+>
+
 export interface ExperimentalConfigApi<E = never> {
   readonly update: ExperimentalConfigUpdateOperation<E>
   readonly mcpRegistry: ExperimentalConfigMcpRegistryOperation<E>
+  readonly mcpPopular: ExperimentalConfigMcpPopularOperation<E>
+  readonly mcpDocker: ExperimentalConfigMcpDockerOperation<E>
+  readonly skillSearch: ExperimentalConfigSkillSearchOperation<E>
+  readonly skillInstall: ExperimentalConfigSkillInstallOperation<E>
+  readonly skillRemove: ExperimentalConfigSkillRemoveOperation<E>
+  readonly extensionPaths: ExperimentalConfigExtensionPathsOperation<E>
 }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
@@ -3118,6 +3300,54 @@ export type ConfigMcpRegistryOutput = ExperimentalConfigMcpRegistryOutput
 
 /** @deprecated Use `ExperimentalConfigMcpRegistryOperation`. Removed in the next minor. */
 export type ConfigMcpRegistryOperation<E = never> = ExperimentalConfigMcpRegistryOperation<E>
+
+/** @deprecated Use `ExperimentalConfigMcpPopularOutput`. Removed in the next minor. */
+export type ConfigMcpPopularOutput = ExperimentalConfigMcpPopularOutput
+
+/** @deprecated Use `ExperimentalConfigMcpPopularOperation`. Removed in the next minor. */
+export type ConfigMcpPopularOperation<E = never> = ExperimentalConfigMcpPopularOperation<E>
+
+/** @deprecated Use `ExperimentalConfigMcpDockerInput`. Removed in the next minor. */
+export type ConfigMcpDockerInput = ExperimentalConfigMcpDockerInput
+
+/** @deprecated Use `ExperimentalConfigMcpDockerOutput`. Removed in the next minor. */
+export type ConfigMcpDockerOutput = ExperimentalConfigMcpDockerOutput
+
+/** @deprecated Use `ExperimentalConfigMcpDockerOperation`. Removed in the next minor. */
+export type ConfigMcpDockerOperation<E = never> = ExperimentalConfigMcpDockerOperation<E>
+
+/** @deprecated Use `ExperimentalConfigSkillSearchInput`. Removed in the next minor. */
+export type ConfigSkillSearchInput = ExperimentalConfigSkillSearchInput
+
+/** @deprecated Use `ExperimentalConfigSkillSearchOutput`. Removed in the next minor. */
+export type ConfigSkillSearchOutput = ExperimentalConfigSkillSearchOutput
+
+/** @deprecated Use `ExperimentalConfigSkillSearchOperation`. Removed in the next minor. */
+export type ConfigSkillSearchOperation<E = never> = ExperimentalConfigSkillSearchOperation<E>
+
+/** @deprecated Use `ExperimentalConfigSkillInstallInput`. Removed in the next minor. */
+export type ConfigSkillInstallInput = ExperimentalConfigSkillInstallInput
+
+/** @deprecated Use `ExperimentalConfigSkillInstallOutput`. Removed in the next minor. */
+export type ConfigSkillInstallOutput = ExperimentalConfigSkillInstallOutput
+
+/** @deprecated Use `ExperimentalConfigSkillInstallOperation`. Removed in the next minor. */
+export type ConfigSkillInstallOperation<E = never> = ExperimentalConfigSkillInstallOperation<E>
+
+/** @deprecated Use `ExperimentalConfigSkillRemoveInput`. Removed in the next minor. */
+export type ConfigSkillRemoveInput = ExperimentalConfigSkillRemoveInput
+
+/** @deprecated Use `ExperimentalConfigSkillRemoveOutput`. Removed in the next minor. */
+export type ConfigSkillRemoveOutput = ExperimentalConfigSkillRemoveOutput
+
+/** @deprecated Use `ExperimentalConfigSkillRemoveOperation`. Removed in the next minor. */
+export type ConfigSkillRemoveOperation<E = never> = ExperimentalConfigSkillRemoveOperation<E>
+
+/** @deprecated Use `ExperimentalConfigExtensionPathsOutput`. Removed in the next minor. */
+export type ConfigExtensionPathsOutput = ExperimentalConfigExtensionPathsOutput
+
+/** @deprecated Use `ExperimentalConfigExtensionPathsOperation`. Removed in the next minor. */
+export type ConfigExtensionPathsOperation<E = never> = ExperimentalConfigExtensionPathsOperation<E>
 
 /** @deprecated Use `ExperimentalGenerateApi`. Removed in the next minor. */
 export type GenerateApi<E = never> = ExperimentalGenerateApi<E>

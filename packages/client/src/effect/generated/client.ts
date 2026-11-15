@@ -320,6 +320,16 @@ import type {
   ExperimentalConfigUpdateOutput,
   ExperimentalConfigMcpRegistryInput,
   ExperimentalConfigMcpRegistryOutput,
+  ExperimentalConfigMcpPopularOutput,
+  ExperimentalConfigMcpDockerInput,
+  ExperimentalConfigMcpDockerOutput,
+  ExperimentalConfigSkillSearchInput,
+  ExperimentalConfigSkillSearchOutput,
+  ExperimentalConfigSkillInstallInput,
+  ExperimentalConfigSkillInstallOutput,
+  ExperimentalConfigSkillRemoveInput,
+  ExperimentalConfigSkillRemoveOutput,
+  ExperimentalConfigExtensionPathsOutput,
 } from "../api/api.js"
 import { ClientError } from "./client-error.js"
 
@@ -1974,9 +1984,51 @@ const EndpointExperimentalConfigMcpRegistry =
       ),
     )
 
+const EndpointExperimentalConfigMcpPopular = (raw: RawClient["server.config"]) => () =>
+  preserveEffect<ExperimentalConfigMcpPopularOutput>()(
+    raw["config.mcpPopular"]({}).pipe(Effect.mapError(mapClientError)),
+  )
+
+const EndpointExperimentalConfigMcpDocker =
+  (raw: RawClient["server.config"]) => (input?: ExperimentalConfigMcpDockerInput) =>
+    preserveEffect<ExperimentalConfigMcpDockerOutput>()(
+      raw["config.mcpDocker"]({ query: { search: input?.["search"] } }).pipe(Effect.mapError(mapClientError)),
+    )
+
+const EndpointExperimentalConfigSkillSearch =
+  (raw: RawClient["server.config"]) => (input?: ExperimentalConfigSkillSearchInput) =>
+    preserveEffect<ExperimentalConfigSkillSearchOutput>()(
+      raw["config.skillSearch"]({ query: { search: input?.["search"] } }).pipe(Effect.mapError(mapClientError)),
+    )
+
+const EndpointExperimentalConfigSkillInstall =
+  (raw: RawClient["server.config"]) => (input: ExperimentalConfigSkillInstallInput) =>
+    preserveEffect<ExperimentalConfigSkillInstallOutput>()(
+      raw["config.skillInstall"]({ payload: { source: input["source"], skill: input["skill"] } }).pipe(
+        Effect.mapError(mapClientError),
+      ),
+    )
+
+const EndpointExperimentalConfigSkillRemove =
+  (raw: RawClient["server.config"]) => (input: ExperimentalConfigSkillRemoveInput) =>
+    preserveEffect<ExperimentalConfigSkillRemoveOutput>()(
+      raw["config.skillRemove"]({ payload: { skill: input["skill"] } }).pipe(Effect.mapError(mapClientError)),
+    )
+
+const EndpointExperimentalConfigExtensionPaths = (raw: RawClient["server.config"]) => () =>
+  preserveEffect<ExperimentalConfigExtensionPathsOutput>()(
+    raw["config.extensionPaths"]({}).pipe(Effect.mapError(mapClientError)),
+  )
+
 const adaptGroupExperimentalConfig = (raw: RawClient["server.config"]) => ({
   update: EndpointExperimentalConfigUpdate(raw),
   mcpRegistry: EndpointExperimentalConfigMcpRegistry(raw),
+  mcpPopular: EndpointExperimentalConfigMcpPopular(raw),
+  mcpDocker: EndpointExperimentalConfigMcpDocker(raw),
+  skillSearch: EndpointExperimentalConfigSkillSearch(raw),
+  skillInstall: EndpointExperimentalConfigSkillInstall(raw),
+  skillRemove: EndpointExperimentalConfigSkillRemove(raw),
+  extensionPaths: EndpointExperimentalConfigExtensionPaths(raw),
 })
 
 const adaptClient = (raw: RawClient) => {
@@ -2116,6 +2168,18 @@ const adaptClient = (raw: RawClient) => {
       update: client.experimental.config.update,
       /** @deprecated Use `client.experimental.config.mcpRegistry`. Removed in the next minor. */
       mcpRegistry: client.experimental.config.mcpRegistry,
+      /** @deprecated Use `client.experimental.config.mcpPopular`. Removed in the next minor. */
+      mcpPopular: client.experimental.config.mcpPopular,
+      /** @deprecated Use `client.experimental.config.mcpDocker`. Removed in the next minor. */
+      mcpDocker: client.experimental.config.mcpDocker,
+      /** @deprecated Use `client.experimental.config.skillSearch`. Removed in the next minor. */
+      skillSearch: client.experimental.config.skillSearch,
+      /** @deprecated Use `client.experimental.config.skillInstall`. Removed in the next minor. */
+      skillInstall: client.experimental.config.skillInstall,
+      /** @deprecated Use `client.experimental.config.skillRemove`. Removed in the next minor. */
+      skillRemove: client.experimental.config.skillRemove,
+      /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
+      extensionPaths: client.experimental.config.extensionPaths,
     },
   }
 }

@@ -201,6 +201,92 @@ describe("buildPlan", () => {
       command: ["npx", "-y", "kit", "mcp", "--bundle", "/tmp/b"],
     })
   })
+
+  test("a required argument with a default is a field filled with it", () => {
+    const plan = planServer({
+      name: "io.github.modelcontextprotocol/filesystem",
+      packages: [
+        {
+          registryType: "npm",
+          identifier: "@modelcontextprotocol/server-filesystem",
+          transport: { type: "stdio" },
+          packageArguments: [
+            { type: "positional", valueHint: "Allowed folder", default: "/Users/me", isRequired: true },
+          ],
+        },
+      ],
+    })
+
+    if (!plan) throw new Error("no plan")
+    expect(plan.inputs).toMatchObject([{ key: "arg:0", label: "Allowed folder", required: true, initial: "/Users/me" }])
+    expect(buildPlan(plan, "filesystem", { "arg:0": "/Users/me/Code" }).config).toEqual({
+      type: "local",
+      command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Code"],
+    })
+  })
+
+  // The shapes the server maps Docker MCP Catalog entries to (packages/server/src/extension-catalog.ts).
+  test("a Docker catalog image runs with docker run, secrets in the Keychain and fixed env inline", () => {
+    const plan = planServer({
+      name: "brave",
+      packages: [
+        {
+          registryType: "oci",
+          identifier: "mcp/brave-search@sha256:abc",
+          transport: { type: "stdio" },
+          environmentVariables: [
+            { name: "BRAVE_API_KEY", isSecret: true, isRequired: true },
+            { name: "BRAVE_MCP_TRANSPORT", value: "stdio" },
+          ],
+          packageArguments: [],
+        },
+      ],
+    })
+
+    if (!plan) throw new Error("no plan")
+    expect(plan.inputs.map((input) => input.label)).toEqual(["BRAVE_API_KEY"])
+    expect(buildPlan(plan, "brave", { "env:BRAVE_API_KEY": "k" })).toEqual({
+      config: {
+        type: "local",
+        command: [
+          "docker",
+          "run",
+          "-i",
+          "--rm",
+          "-e",
+          "BRAVE_API_KEY",
+          "-e",
+          "BRAVE_MCP_TRANSPORT",
+          "mcp/brave-search@sha256:abc",
+        ],
+        environment: { BRAVE_API_KEY: "{keychain:mcp-brave-BRAVE_API_KEY}", BRAVE_MCP_TRANSPORT: "stdio" },
+      },
+      keychain: { "mcp-brave-BRAVE_API_KEY": "k" },
+    })
+  })
+
+  test("a Docker catalog remote asks for the key its header names", () => {
+    const plan = planServer({
+      name: "context7",
+      remotes: [
+        {
+          type: "streamable-http",
+          url: "https://mcp.context7.com/mcp",
+          headers: [{ name: "CONTEXT7_API_KEY", value: "{CONTEXT7_API_KEY}", isSecret: true, isRequired: true }],
+        },
+      ],
+    })
+
+    if (!plan) throw new Error("no plan")
+    expect(buildPlan(plan, "context7", { "header:CONTEXT7_API_KEY:CONTEXT7_API_KEY": "k" })).toEqual({
+      config: {
+        type: "remote",
+        url: "https://mcp.context7.com/mcp",
+        headers: { CONTEXT7_API_KEY: "{keychain:mcp-context7-CONTEXT7_API_KEY}" },
+      },
+      keychain: { "mcp-context7-CONTEXT7_API_KEY": "k" },
+    })
+  })
 })
 
 test("keychainName and serverSlug keep only safe characters", () => {

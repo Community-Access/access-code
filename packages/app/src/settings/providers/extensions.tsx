@@ -1,5 +1,5 @@
-import type { McpServer } from "@opencode/client/promise"
-import { Component, For, Show, createEffect, createMemo, onCleanup, type JSX } from "solid-js"
+import type { McpServer, PluginInfo, SkillInfo } from "@opencode/client/promise"
+import { Component, For, Show, createEffect, createMemo, on, onCleanup, type JSX } from "solid-js"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { Icon } from "@opencode/ui/icon"
 import { Button } from "@opencode/ui/button"
@@ -14,6 +14,7 @@ import { useMcpController } from "@/providers/connect/mcp"
 import { mcpRowView } from "@/providers/connect/mcp-machine"
 import { DialogMcp } from "@/providers/connect/mcp-dialog"
 import { ExtensionPlugins } from "@/runtime/plugin/extension-plugins"
+import { pluginLabel } from "@/providers/catalog/plugin"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsList } from "@/settings/list"
@@ -21,8 +22,18 @@ import { createExtensionLoad, ExtensionLoadFailed } from "@/settings/extension-l
 import type { SettingsView } from "@/settings/surface"
 import { DialogAddExtension } from "./add-extension/dialog"
 import { ConsoleName, ConsoleReplaced, createConsoleSources } from "./console-link"
+import { mcpKeychain, mcpOrigin, mcpRuns, pluginOrigin, skillOrigin, type Origin } from "./extension-origin"
+import { DialogRemoveExtension, RemoveFailed } from "./remove-dialog"
 import "@/settings/settings.css"
 import "@/shell/search-list.css"
+
+type Section = "mcps" | "plugins" | "skills"
+
+const RUNS = {
+  local: "settings.extensions.runs.local",
+  remote: "settings.extensions.runs.remote",
+  docker: "settings.extensions.runs.docker",
+} as const
 
 const statusLabels = {
   connected: "mcp.status.connected",
@@ -94,6 +105,172 @@ export const SettingsExtensions: Component<{
   })
   const skills = createMemo(() => (data.location.skill.list() ?? []).toSorted((a, b) => a.name.localeCompare(b.name)))
 
+  // Which file sets each extension, so only what the global config file or skills folder holds offers Remove.
+  const origins = createExtensionLoad({
+    key: () => serverSdk.scope,
+    task: (_, signal) =>
+      Promise.all([
+        serverSdk.api.config.get(undefined, { signal }),
+        serverSdk.api.experimental.config.extensionPaths({ signal }),
+      ]).then(([entries, paths]) => ({ entries, paths })),
+  })
+
+  onCleanup(serverSdk.event.on("config.updated", () => origins.invalidate()))
+
+  const known = createMemo(() => {
+    const current = origins.view()
+
+    return current.status === "ready" ? current.value : undefined
+  })
+
+  const originLine = (origin: Origin) => {
+    if (origin.type === "global") return language.t("settings.extensions.from.global", { path: origin.path })
+
+    if (origin.type === "file") return language.t("settings.extensions.from.file", { path: origin.path })
+
+    return language.t("settings.extensions.from.other")
+  }
+
+  const mcpInfo = (name: string) => {
+    const current = known()
+
+    if (sources.managed(name)) return { line: language.t("settings.extensions.from.console"), removable: false }
+
+    if (!current) return undefined
+    const origin = mcpOrigin(name, current.entries, current.paths.config)
+    const runs = mcpRuns(name, current.entries)
+
+    return {
+      line: originLine(origin),
+      runs: runs ? language.t(RUNS[runs]) : undefined,
+      removable: origin.type === "global",
+    }
+  }
+
+  const pluginInfo = (plugin: PluginInfo) => {
+    const current = known()
+
+    if (!current) return undefined
+    const found = pluginOrigin(plugin, current.entries, current.paths.config)
+
+    if (plugin.source.type === "local")
+      return { line: language.t("settings.extensions.from.file", { path: plugin.source.path }), spec: undefined }
+
+    return { line: originLine(found.origin), spec: found.origin.type === "global" ? found.spec : undefined }
+  }
+
+  const skillInfo = (skill: SkillInfo) => {
+    const current = known()
+
+    if (sources.skill(skill)) return { line: language.t("settings.extensions.from.console"), folder: undefined }
+
+    if (!current) return undefined
+    const found = skillOrigin(skill, current.paths.skills)
+
+    if (found.origin.type === "global")
+      return { line: language.t("settings.extensions.from.skillsFolder"), folder: found.folder }
+
+    return { line: originLine(found.origin), folder: undefined }
+  }
+
+  const removableKeys = (section: Section) => {
+    if (section === "mcps") return mcps().flatMap((item) => (mcpInfo(item.name)?.removable ? [item.name] : []))
+
+    if (section === "plugins")
+      return (pluginList() ?? []).flatMap((plugin) => (pluginInfo(plugin)?.spec ? [pluginLabel(plugin)] : []))
+
+    return skills().flatMap((skill) => (skillInfo(skill)?.folder ? [skill.id] : []))
+  }
+
+  // After a removal, focus moves to the next item's Remove button, or the section heading when none is left. The lists
+  // reload after the change, which can replace the rows, so focus is placed again once the removed item is gone.
+  const headings: Partial<Record<Section, HTMLHeadingElement>> = {}
+  const pending: { section?: Section; next?: string; until: number } = { until: 0 }
+
+  const placeFocus = () => {
+    const section = pending.section
+
+    if (!section) return
+    const key = pending.next ? `${section}:${pending.next}` : undefined
+    const button = key
+      ? Array.from(document.querySelectorAll<HTMLElement>("[data-remove-key]")).find(
+          (element) => element.dataset.removeKey === key,
+        )
+      : undefined
+    ;(button ?? headings[section])?.focus()
+  }
+
+  createEffect(
+    on([mcps, pluginList, skills], () => {
+      if (!pending.section || Date.now() > pending.until) return
+      requestAnimationFrame(() => {
+        const active = document.activeElement
+
+        if (!active || active === document.body || !active.isConnected) placeFocus()
+      })
+    }),
+  )
+
+  const askRemove = (section: Section, name: string, key: string, remove: () => Promise<void>) => {
+    const keys = removableKeys(section)
+    const index = keys.indexOf(key)
+    const next = index === -1 ? undefined : (keys[index + 1] ?? keys[index - 1])
+
+    dialog.show(() => (
+      <DialogRemoveExtension
+        name={name}
+        remove={remove}
+        onRemoved={() => {
+          pending.section = section
+          pending.next = next
+          pending.until = Date.now() + 5_000
+          placeFocus()
+        }}
+      />
+    ))
+  }
+
+  const removeButton = (section: Section, name: string, key: string, remove: () => Promise<void>) => (
+    <Button
+      size="small"
+      variant="ghost-muted"
+      data-remove-key={`${section}:${key}`}
+      aria-label={language.t("settings.extensions.remove.label", { name })}
+      onClick={() => askRemove(section, name, key, remove)}
+    >
+      {language.t("settings.extensions.remove")}
+    </Button>
+  )
+
+  const removeMcp = async (name: string) => {
+    const current = known()
+    const origin = current && mcpOrigin(name, current.entries, current.paths.config)
+
+    if (!current || origin?.type !== "global") throw new RemoveFailed(language.t("settings.extensions.from.other"))
+    // The Keychain items only this server used go with it.
+    const keys = mcpKeychain(name, current.entries, origin.path)
+
+    await serverSdk.api.experimental.config.update({
+      mcp: { [name]: null },
+      ...(keys.length > 0 ? { keychain: Object.fromEntries(keys.map((key) => [key, null])) } : {}),
+    })
+    data.location.mcp.server.invalidate(data.location.default())
+    void data.location.mcp.server.sync(data.location.default()).catch(() => undefined)
+  }
+
+  const removePlugin = async (spec: string) => {
+    await serverSdk.api.experimental.config.update({ plugins: { remove: [spec] } })
+    plugins.invalidate()
+  }
+
+  const removeSkill = async (folder: string) => {
+    const result = await serverSdk.api.experimental.config.skillRemove({ skill: folder })
+
+    if (!result.ok) throw new RemoveFailed(result.output || language.t("settings.extensions.add.failedUnknown"))
+    data.location.skill.invalidate()
+    void data.location.skill.sync().catch(() => undefined)
+  }
+
   return (
     <>
       <div class="settings-tab-header">
@@ -138,9 +315,13 @@ export const SettingsExtensions: Component<{
           <Tabs.Content value="mcps">
             <div class="settings-section">
               <div class="flex items-center justify-between">
-                <span class="settings-extension-heading text-13-medium">
+                <h2
+                  ref={(element) => (headings.mcps = element)}
+                  tabindex="-1"
+                  class="settings-extension-heading text-13-medium focus:outline-none"
+                >
                   {language.t("settings.extensions.availableAll")}
-                </span>
+                </h2>
                 <span class="text-13-regular text-v2-text-text-muted">
                   {language.t("settings.extensions.manageConfig")}
                 </span>
@@ -170,21 +351,39 @@ export const SettingsExtensions: Component<{
 
                     const connect = () => sources.connect(item.name)
 
+                    const info = () => mcpInfo(item.name)
+
                     return (
                       <div class="settings-extension-row settings-mcp-row" data-status={status()}>
                         <div class="settings-extension-lead">
                           <span class="settings-mcp-status">
                             <span class="mcp-status-dot" data-status={status()} aria-hidden="true" />
                           </span>
-                          <Show
-                            when={managed() && links()}
-                            fallback={<TruncatedText text={item.name} class="settings-extension-name" />}
-                          >
-                            {(current) => <ConsoleName name={item.name} href={current().manage} />}
-                          </Show>
-                          <Show when={sources.mcp(item.name)?.overridden && links()}>
-                            {(current) => <ConsoleReplaced name={item.name} href={current().manage} />}
-                          </Show>
+                          <div class="flex min-w-0 flex-col gap-0.5">
+                            <div class="flex min-w-0 items-center gap-2">
+                              <h3 class="flex min-w-0">
+                                <Show
+                                  when={managed() && links()}
+                                  fallback={<TruncatedText text={item.name} class="settings-extension-name" />}
+                                >
+                                  {(current) => <ConsoleName name={item.name} href={current().manage} />}
+                                </Show>
+                              </h3>
+                              <Show when={sources.mcp(item.name)?.overridden && links()}>
+                                {(current) => <ConsoleReplaced name={item.name} href={current().manage} />}
+                              </Show>
+                            </div>
+                            <Show when={info()?.line}>
+                              {(line) => (
+                                <span class="text-11-regular text-v2-text-text-muted [overflow-wrap:anywhere]">
+                                  {line()}
+                                </span>
+                              )}
+                            </Show>
+                            <Show when={info()?.runs}>
+                              {(runs) => <span class="text-11-regular text-v2-text-text-muted">{runs()}</span>}
+                            </Show>
+                          </div>
                         </div>
                         <div class="settings-extension-trailing">
                           <Show when={item.status.status === "failed"}>
@@ -240,6 +439,9 @@ export const SettingsExtensions: Component<{
                               </Button>
                             )}
                           </Show>
+                          <Show when={info()?.removable}>
+                            {removeButton("mcps", item.name, item.name, () => removeMcp(item.name))}
+                          </Show>
                         </div>
                       </div>
                     )
@@ -259,16 +461,34 @@ export const SettingsExtensions: Component<{
           <Tabs.Content value="plugins">
             <div class="settings-section">
               <div class="flex items-center justify-between">
-                <span class="settings-extension-heading text-13-medium">
+                <h2
+                  ref={(element) => (headings.plugins = element)}
+                  tabindex="-1"
+                  class="settings-extension-heading text-13-medium focus:outline-none"
+                >
                   {language.t("settings.extensions.availableAll")}
-                </span>
+                </h2>
                 <span class="text-13-regular text-v2-text-text-muted">
                   {language.t("settings.extensions.manageConfig")}
                 </span>
               </div>
               {/* The desktop's own server also lists the plugins main runs, so its rows stay while the list loads. */}
               <Show when={own() || pluginList()}>
-                <ExtensionPlugins plugins={pluginList() ?? []} own={own()} />
+                <ExtensionPlugins
+                  plugins={pluginList() ?? []}
+                  own={own()}
+                  details={(plugin) => {
+                    const info = pluginInfo(plugin)
+                    const spec = info?.spec
+
+                    return {
+                      lines: [info?.line],
+                      actions: spec
+                        ? removeButton("plugins", pluginLabel(plugin), pluginLabel(plugin), () => removePlugin(spec))
+                        : undefined,
+                    }
+                  }}
+                />
               </Show>
               <Show when={plugins.view().status === "loading" && !own()}>
                 <p class="project-settings-extension-empty-description">{language.t("common.loading")}</p>
@@ -286,9 +506,13 @@ export const SettingsExtensions: Component<{
           <Tabs.Content value="skills">
             <div class="settings-section">
               <div class="flex items-center justify-between">
-                <span class="settings-extension-heading text-13-medium">
+                <h2
+                  ref={(element) => (headings.skills = element)}
+                  tabindex="-1"
+                  class="settings-extension-heading text-13-medium focus:outline-none"
+                >
                   {language.t("settings.extensions.availableAll")}
-                </span>
+                </h2>
                 <ExternalLink class="settings-extension-link text-13-regular" href="https://opencode.ai/docs/skills">
                   {language.t("settings.extensions.addSkills")}
                 </ExternalLink>
@@ -298,17 +522,44 @@ export const SettingsExtensions: Component<{
                   {(skill) => {
                     const link = () => sources.skill(skill)
 
+                    const info = () => skillInfo(skill)
+
                     return (
                       <div class="settings-extension-row">
                         <div class="settings-extension-lead">
                           <Icon name="post-skill" class="text-v2-icon-icon-muted shrink-0" />
-                          <Show
-                            when={link()}
-                            fallback={<span class="settings-extension-name truncate">{skill.name}</span>}
-                          >
-                            {(href) => <ConsoleName name={skill.name} href={href()} />}
-                          </Show>
+                          <div class="flex min-w-0 flex-col gap-0.5">
+                            <h3 class="flex min-w-0">
+                              <Show
+                                when={link()}
+                                fallback={<span class="settings-extension-name truncate">{skill.name}</span>}
+                              >
+                                {(href) => <ConsoleName name={skill.name} href={href()} />}
+                              </Show>
+                            </h3>
+                            <Show when={skill.description}>
+                              {(description) => (
+                                <span class="line-clamp-2 text-11-regular text-v2-text-text-muted">
+                                  {description()}
+                                </span>
+                              )}
+                            </Show>
+                            <Show when={info()?.line}>
+                              {(line) => (
+                                <span class="text-11-regular text-v2-text-text-muted [overflow-wrap:anywhere]">
+                                  {line()}
+                                </span>
+                              )}
+                            </Show>
+                          </div>
                         </div>
+                        <Show when={info()?.folder}>
+                          {(folder) => (
+                            <div class="settings-servers-actions">
+                              {removeButton("skills", skill.name, skill.id, () => removeSkill(folder()))}
+                            </div>
+                          )}
+                        </Show>
                       </div>
                     )
                   }}

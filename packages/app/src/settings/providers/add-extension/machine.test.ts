@@ -97,3 +97,18 @@ test("retrying a failed Load more keeps the loaded servers and the cursor", () =
   expect(result.effects.at(-1)).toEqual({ type: "fetch", attempt: 3, query: "", cursor: "next" })
   expect(result.state.servers.map((item) => item.name)).toEqual(["a"])
 })
+
+test("a chosen skill opens the same confirm step and saves it as a skill", () => {
+  const skill = { name: "web-design", source: "o/r", skill: "web-design", url: "https://skills.sh/o/r/web-design" }
+  const result = replay([
+    { type: "skill.chosen", skill },
+    { type: "plugin.chosen", plugin },
+    { type: "save.requested", request: { type: "skill", label: "web-design", source: "o/r", skill: "web-design" } },
+  ])
+
+  expect(result.state.step).toEqual({
+    type: "confirm",
+    target: { type: "skill", ...skill },
+    save: { status: "saving", attempt: 1, label: "web-design" },
+  })
+})
