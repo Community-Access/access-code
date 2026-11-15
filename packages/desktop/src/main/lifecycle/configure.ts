@@ -28,6 +28,10 @@ export function configureApplication() {
   const features = app.commandLine.getSwitchValue("enable-features")
   app.commandLine.appendSwitch("enable-features", features ? `${jsCallStackFeature},${features}` : jsCallStackFeature)
 
+  // Keep the accessibility tree on from launch on the Mac, so VoiceOver started after the app still gets every
+  // control. Upstream PR 63852 forced this on every platform and crashed on Windows, so it stays Mac only.
+  if (process.platform === "darwin") app.commandLine.appendSwitch("force-renderer-accessibility")
+
   // Chromium animates each mouse-wheel notch on Linux; native Linux apps scroll by the full delta immediately.
   if (process.platform === "linux") app.commandLine.appendSwitch("disable-smooth-scrolling")
 
