@@ -10,7 +10,9 @@ const setup: Plugin.MainSetup = async (ctx) => {
   const builtin = builtinMainContext(ctx)
   const build = ctx.app
   const lifecycle = builtin.lifecycle
-  const enabled = build.packaged
+  // AccessCode: OpenCode's update feed would replace this app with stock OpenCode, so updates stay off until
+  // AccessCode has its own feed.
+  const enabled = false
   // Holds no resources, so it needs no cleanup.
   const context = logContext(ctx.log.write)
   const runPromise = Effect.runPromiseWith(context)

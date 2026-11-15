@@ -41,9 +41,9 @@ function resolveChannel() {
 }
 
 const APP_IDS = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
+  dev: "app.techopolis.accesscode.dev",
+  beta: "app.techopolis.accesscode.beta",
+  prod: "app.techopolis.accesscode",
 } as const
 
 // libappimage (used by AppImageLauncher) resolves the .desktop entry inside an
@@ -64,7 +64,7 @@ const getBase = (appId: string): Configuration => {
   const desktopName = `${appId}.desktop`
 
   return {
-    artifactName: "opencode-desktop-${os}-${arch}.${ext}",
+    artifactName: "accesscode-desktop-${os}-${arch}.${ext}",
     directories: {
       output: "dist",
       buildResources: "resources",
@@ -173,7 +173,7 @@ const getBase = (appId: string): Configuration => {
       target: ["dmg", "zip"],
     },
     protocols: {
-      name: "OpenCode",
+      name: "AccessCode",
       schemes: ["opencode"],
     },
     win: {
@@ -218,10 +218,10 @@ export function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode Dev",
+        productName: "AccessCode Dev",
         publish: {
           provider: "generic",
-          url: "https://opencode.ai/update/api/dev/desktop/opencode/",
+          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [...previewCompressionFpm("deb"), metainfoFpm(appId)] },
@@ -236,11 +236,11 @@ export function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
+        productName: "AccessCode Beta",
+        protocols: { name: "AccessCode Beta", schemes: ["opencode"] },
         publish: {
           provider: "generic",
-          url: "https://opencode.ai/update/api/beta/desktop/opencode/",
+          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [...previewCompressionFpm("deb"), metainfoFpm(appId)] },
@@ -255,8 +255,8 @@ export function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
+        productName: "AccessCode",
+        protocols: { name: "AccessCode", schemes: ["opencode"] },
         // An Icon Composer package compiles to Assets.car, which macOS 26 and later draw the app icon from
         // (Dock, Finder, system dialogs and the system icon styles). Older macOS keeps using the ICNS.
         mac: { ...base.mac, icon: "resources/icons/icon.icon" },
@@ -264,7 +264,7 @@ export function getConfig() {
         dmg: { icon: "resources/icons/icon.icns" },
         publish: {
           provider: "generic",
-          url: "https://opencode.ai/update/api/latest/desktop/opencode/",
+          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
