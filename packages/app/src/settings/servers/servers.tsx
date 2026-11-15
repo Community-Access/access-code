@@ -92,7 +92,7 @@ function SettingsServersHeader(props: { title: string; onAddServer: () => void }
     <div class="settings-tab-header">
       <div class="settings-tab-header-row">
         <div class="flex min-w-0 flex-col gap-1">
-          <h2 class="settings-tab-title">{props.title}</h2>
+          <h1 class="settings-tab-title">{props.title}</h1>
           <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.servers.description")}</span>
         </div>
         <div class="settings-tab-header-actions">

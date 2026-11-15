@@ -18,6 +18,7 @@ import { Tooltip } from "@opencode/ui/tooltip"
 import type { HomeProjectSelection, LocalProject } from "@/shell/state/layout"
 import { ServerConnection } from "@/runtime/server/registry"
 import { useLanguage } from "@/runtime/i18n/language"
+import { projectLabel } from "@/shell/project-label"
 import { ServerRowMenuView, serverMenuLabels } from "@/servers/registry/row-menu"
 import { ServerHealthIndicator } from "@/servers/registry/row"
 import {
@@ -89,7 +90,9 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
   const currentProjectLabel = () => {
     const project = selected()
 
-    return project ? displayName(project) : props.language.t("home.projects.all")
+    return project
+      ? projectLabel(project, props.language.t("project.rootFolder"))
+      : props.language.t("home.projects.all")
   }
 
   const server = createMemo(() =>
@@ -204,7 +207,7 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
               which lines the label up with the icons that follow it in the session and settings headers. */}
           <div class="flex min-w-0 items-center">
             <CollapsedSidebarToggleSpace start={20} class="lg:hidden" />
-            <div class="text-v2-text-text-muted [font-weight:530]">{props.language.t("home.projects")}</div>
+            <h2 class="text-v2-text-text-muted [font-weight:530]">{props.language.t("home.projects")}</h2>
           </div>
           <Show when={props.servers.length === 1}>
             <Tooltip placement="bottom" value={props.language.t("home.project.add")}>
@@ -604,6 +607,8 @@ function HomeProjectRow(
   const serverUnreachable = () => isServerFailed(props.serverHealth(props.server))
 
   const contextMenuID = () => projectContextMenuID(props.server, props.project.worktree)
+  // A project at the top of the disk is named "/", which reads as a stray slash, so it is spoken as the root folder.
+  const name = () => projectLabel(props.project, props.language.t("project.rootFolder"))
   onCleanup(() => {
     const id = contextMenuID()
 
@@ -624,6 +629,7 @@ function HomeProjectRow(
       <HomeProjectNavButton
         type="button"
         data-component="home-project-row"
+        aria-label={props.language.t("home.project.row", { name: name() })}
         class="disabled:opacity-60"
         data-selected={props.selected ? "" : undefined}
         aria-current={props.selected ? "page" : undefined}
@@ -656,7 +662,7 @@ function HomeProjectRow(
             variant="ghost-muted"
             size="small"
             icon={<Icon name="outline-dots" />}
-            aria-label={props.language.t("common.moreOptions")}
+            aria-label={props.language.t("home.project.moreOptions", { name: name() })}
           />
           <Menu.Portal>
             <Menu.Content>
@@ -669,7 +675,7 @@ function HomeProjectRow(
           variant="ghost-muted"
           size="small"
           icon={<Icon name="edit" />}
-          aria-label={props.language.t("command.session.new")}
+          aria-label={props.language.t("home.project.newSession", { name: name() })}
           onClick={() => props.onOpenProjectNewSession(props.server, props.project.worktree)}
         />
       </div>

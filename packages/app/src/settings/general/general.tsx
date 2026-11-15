@@ -314,7 +314,7 @@ export const SettingsGeneral: Component = () => {
       <div class="settings-tab-header">
         <div class="settings-tab-header-row">
           <div class="flex flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.tab.preferences")}</h2>
+            <h1 class="settings-tab-title">{language.t("settings.tab.preferences")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">
               {language.t("settings.preferences.description")}
             </span>

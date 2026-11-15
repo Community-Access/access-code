@@ -1,7 +1,7 @@
 import { Icon } from "@opencode/ui/icon"
 import { Loader } from "@opencode/ui/loader"
 import { useLanguage } from "@/runtime/i18n/language"
-import { Match, Switch } from "solid-js"
+import { Match, Show, Switch } from "solid-js"
 import { selectServerIndicator, type ServerHealth } from "@/runtime/server/health-machine"
 
 export function ServerHealthIndicator(props: { health?: ServerHealth }) {
@@ -18,7 +18,16 @@ export function ServerHealthIndicator(props: { health?: ServerHealth }) {
             "bg-icon-critical-base": indicator() === "unreachable",
             "bg-v2-icon-icon-faint": indicator() === "unknown",
           }}
-        />
+        >
+          {/* The dot's color alone says whether the server answers, so screen readers get it in words. */}
+          <Show when={indicator() === "healthy" || indicator() === "unreachable"}>
+            <span class="sr-only">
+              {indicator() === "healthy"
+                ? language.t("server.status.connected")
+                : language.t("server.status.unreachable")}
+            </span>
+          </Show>
+        </div>
       }
     >
       <Match when={indicator() === "auth"}>

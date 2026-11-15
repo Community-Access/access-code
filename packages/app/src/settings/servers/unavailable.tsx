@@ -61,7 +61,7 @@ export function SettingsServerUnavailable(props: {
       <div class="settings-tab-header">
         <div class="settings-tab-header-row">
           <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="settings-tab-title">{props.title}</h2>
+            <h1 class="settings-tab-title">{props.title}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{props.description}</span>
           </div>
           <div class="settings-tab-header-actions">{props.headerAction}</div>

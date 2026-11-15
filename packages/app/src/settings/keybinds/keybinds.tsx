@@ -501,7 +501,7 @@ function SettingsKeybindsView(props: {
       <div class="settings-tab-header settings-tab-header--stacked">
         <div class="settings-tab-header-row">
           <div class="flex flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.shortcuts.title")}</h2>
+            <h1 class="settings-tab-title">{language.t("settings.shortcuts.title")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.shortcuts.description")}</span>
           </div>
           <Button variant="ghost" onClick={props.onReset} disabled={!props.hasOverrides}>
@@ -547,6 +547,17 @@ function SettingsKeybindsView(props: {
                                 variant={binding() ? "ghost" : "ghost-muted"}
                                 data-keybind-id={id}
                                 data-expanded={props.active === id ? "" : undefined}
+                                aria-label={
+                                  props.active === id
+                                    ? language.t("settings.shortcuts.capturing", {
+                                        action: props.title(id),
+                                        prompt: language.t("settings.shortcuts.pressKeys"),
+                                      })
+                                    : language.t("settings.shortcuts.change", {
+                                        action: props.title(id),
+                                        keybind: binding() || language.t("settings.shortcuts.unassigned"),
+                                      })
+                                }
                                 onClick={() => props.onCapture(id)}
                               >
                                 <Show

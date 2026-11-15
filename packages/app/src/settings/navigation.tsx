@@ -118,7 +118,11 @@ export function SettingsNavigation(props: {
           </Menu>
         </div>
       </div>
-      <aside class="settings-sidebar" data-searchable={searchable()}>
+      <aside
+        class="settings-sidebar"
+        data-searchable={searchable()}
+        aria-label={language.t("settings.a11y.navigation")}
+      >
         <div class="settings-nav">
           <button type="button" class="settings-back" onClick={back}>
             <Icon name="arrow-left" size="small" class="settings-back-icon" />
@@ -128,7 +132,7 @@ export function SettingsNavigation(props: {
             <SettingsSearch />
           </Show>
           <Show when={!searchable() || !surface.search.active()}>
-            <Tabs.List class="settings-nav-groups" data-scrollable>
+            <Tabs.List class="settings-nav-groups" data-scrollable aria-label={language.t("settings.a11y.sections")}>
               <For each={props.groups}>
                 {(group) => (
                   <div class="settings-nav-group">

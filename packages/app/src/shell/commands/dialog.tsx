@@ -91,7 +91,12 @@ export function CommandPaletteView(props: {
   })
 
   return (
-    <Dialog class="command-palette command-palette-compact" size="large" fit>
+    <Dialog
+      class="command-palette command-palette-compact"
+      size="large"
+      fit
+      label={props.placeholder?.replace(/[.…]+$/, "")}
+    >
       <DialogBody class="command-palette-body">
         <SearchList
           query={store.query}

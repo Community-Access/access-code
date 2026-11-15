@@ -170,6 +170,8 @@ export function ProjectAvatar(props: ProjectAvatarProps) {
   return (
     <div
       {...rest}
+      // Decorative: the project's name sits beside it, and a row with the unread dot says "unread" in its own name.
+      aria-hidden={rest["aria-hidden"] ?? "true"}
       data-component="project-avatar-v2"
       data-unread={split.unread ? "" : undefined}
       classList={{

@@ -605,6 +605,16 @@ export function DirectoryPickerDialog(props: DirectoryPickerDialogProps) {
             aria-controls="directory-picker-suggestions"
             aria-activedescendant={comboboxView().activeDescendant}
             onKeyDown={(event) => {
+              // Command+Return (Control+Return elsewhere) presses the select button from the path field.
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.isComposing) {
+                event.preventDefault()
+                event.stopPropagation()
+
+                resolve()
+
+                return
+              }
+
               const next = dispatchCombobox({
                 type: "key.down",
                 key: event.key,
@@ -618,12 +628,18 @@ export function DirectoryPickerDialog(props: DirectoryPickerDialogProps) {
             }}
           />
           <div class="directory-picker-actions">
-            <Button size="normal" variant="ghost" onClick={() => navigate(home() || treeView().root)}>
+            <Button
+              size="normal"
+              variant="ghost"
+              aria-label={language.t("dialog.directory.home.label")}
+              onClick={() => navigate(home() || treeView().root)}
+            >
               ~
             </Button>
             <Button
               size="normal"
               variant="ghost"
+              aria-label={language.t("dialog.directory.root.label")}
               onClick={() => navigate(pickerRoot(treeView().root) || treeView().root)}
             >
               {language.t("dialog.directory.root")}
@@ -631,6 +647,7 @@ export function DirectoryPickerDialog(props: DirectoryPickerDialogProps) {
             <Button
               size="normal"
               variant="ghost"
+              aria-label={language.t("dialog.directory.parent.label")}
               onClick={() => navigate(pickerParent(treeView().selected || treeView().root))}
             >
               {language.t("dialog.directory.parent")}
@@ -733,7 +750,19 @@ export function DirectoryPickerDialog(props: DirectoryPickerDialogProps) {
         <Button variant="neutral" onClick={() => dialog.close()}>
           {language.t("common.cancel")}
         </Button>
-        <Button variant="contrast" disabled={!treeView().result} onClick={resolve}>
+        <Button
+          variant="contrast"
+          disabled={!treeView().result}
+          aria-label={
+            fullSelectionPath()
+              ? language.t("dialog.directory.action.withPath", {
+                  action: action[policy.action],
+                  path: fullSelectionPath(),
+                })
+              : undefined
+          }
+          onClick={resolve}
+        >
           {action[policy.action]}
         </Button>
       </DialogFooter>

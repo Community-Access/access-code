@@ -98,7 +98,7 @@ export const SettingsExtensions: Component<{
       <div class="settings-tab-header">
         <div class="settings-tab-header-row">
           <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.tab.extensions")}</h2>
+            <h1 class="settings-tab-title">{language.t("settings.tab.extensions")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.extensions.description")}</span>
           </div>
           <div class="settings-tab-header-actions">{props.headerAction}</div>

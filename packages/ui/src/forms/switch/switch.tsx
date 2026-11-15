@@ -1,6 +1,7 @@
 import { Control, Description, ErrorMessage, Input, Label, Root, Thumb } from "@kobalte/core/switch"
 import { Show, splitProps } from "solid-js"
 import type { ComponentProps, ParentProps } from "solid-js"
+import { useControlLabel } from "../../components/control-label"
 import "./switch.css"
 
 export interface SwitchProps extends ParentProps<ComponentProps<typeof Root>> {
@@ -12,10 +13,15 @@ export interface SwitchProps extends ParentProps<ComponentProps<typeof Root>> {
 
 export function Switch(props: SwitchProps) {
   const [local, others] = splitProps(props, ["children", "class", "appearance", "hideLabel", "description"])
+  const row = useControlLabel()
 
   return (
     <Root {...others} class={local.class} data-component="switch" data-appearance={local.appearance ?? "compact"}>
-      <Input data-slot="switch-input" />
+      <Input
+        data-slot="switch-input"
+        aria-labelledby={local.children ? undefined : row.labelledBy}
+        aria-describedby={local.description ? undefined : row.describedBy}
+      />
       <Show when={local.children}>
         {(label) => (
           <Label data-slot="switch-label" classList={{ "sr-only": local.hideLabel }}>

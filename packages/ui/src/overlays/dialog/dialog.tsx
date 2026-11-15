@@ -35,6 +35,8 @@ export interface DialogProps extends ParentProps {
   classList?: ComponentProps<"div">["classList"]
   onCloseAutoFocus?: ComponentProps<typeof Content>["onCloseAutoFocus"]
   preventBackdropDismiss?: boolean
+  /** The dialog's accessible name when it shows no DialogTitle, such as a palette that opens straight to its search. */
+  label?: string
 }
 
 export interface DialogHeaderProps extends ParentProps {
@@ -119,6 +121,7 @@ export function Dialog(props: DialogProps) {
     "children",
     "onCloseAutoFocus",
     "preventBackdropDismiss",
+    "label",
   ])
 
   const layer = useDialogLayer()
@@ -137,6 +140,7 @@ export function Dialog(props: DialogProps) {
       <div data-slot="dialog-container" class={local.containerClass}>
         <Content
           data-slot="dialog-content"
+          aria-label={local.label}
           onCloseAutoFocus={local.onCloseAutoFocus}
           onPointerDownOutside={(event) => {
             if (local.preventBackdropDismiss) event.preventDefault()

@@ -166,7 +166,11 @@ export function UploadToastHost() {
               return <UploadToast toastId={props.toastId} language={language} />
             })
           },
-          { persistent: true, resize: () => view.items.length },
+          {
+            persistent: true,
+            resize: () => view.items.length,
+            announce: language.t("prompt.toast.uploading.announce"),
+          },
         )
 
         toast = {

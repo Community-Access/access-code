@@ -22,6 +22,7 @@ import {
   type JSX,
 } from "solid-js"
 import { MenuScroll } from "../../components/menu-scroll"
+import { useControlLabel } from "../../components/control-label"
 import { createSelectHighlightState, transitionSelectHighlight, type SelectHighlightEvent } from "./machine"
 import "./select.css"
 
@@ -92,6 +93,7 @@ export type SelectProps<T> = Omit<
 }
 
 export function Select<T>(props: SelectProps<T>) {
+  const row = useControlLabel()
   const [local, others] = splitProps(props, [
     "class",
     "classList",
@@ -226,7 +228,7 @@ export function Select<T>(props: SelectProps<T>) {
       <Trigger
         as="div"
         aria-label={props["aria-label"]}
-        aria-labelledby={props["aria-labelledby"]}
+        aria-labelledby={props["aria-labelledby"] ?? (props["aria-label"] ? undefined : row.labelledBy)}
         data-component="select-v2"
         data-appearance={local.appearance ?? "inline"}
         data-surface={local.appearance && local.appearance !== "inline" ? (local.surface ?? "base") : undefined}

@@ -966,6 +966,10 @@ export function DialogSelectModel(props: { provider?: string; model?: ModelState
           <Show when={item().latest}>
             <Badge class="shrink-0">{language.t("model.tag.latest")}</Badge>
           </Show>
+          {/* The check mark is only visual, so the row says it in words. */}
+          <Show when={selected()}>
+            <span class="sr-only">, {language.t("dialog.model.current")}</span>
+          </Show>
         </span>
         <Show when={usage(item())}>{(value) => <ModelUsageTag usage={value()} />}</Show>
         <Show when={active()}>

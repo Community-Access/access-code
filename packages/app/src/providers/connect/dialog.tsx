@@ -402,9 +402,9 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
             {(group) => (
               <Show when={group.items().length > 0}>
                 <section class="flex flex-col gap-0.5">
-                  <div class="px-2 pt-2.5 pb-0.5 text-[12px] font-[440] leading-[18px] tracking-[0.05px] text-v2-text-text-faint">
+                  <h3 class="px-2 pt-2.5 pb-0.5 text-[12px] font-[440] leading-[18px] tracking-[0.05px] text-v2-text-text-faint">
                     {group.title}
-                  </div>
+                  </h3>
                   <For each={group.items()}>
                     {(provider) => {
                       const connection = () => provider.connections[0]

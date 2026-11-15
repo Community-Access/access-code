@@ -2,7 +2,7 @@ import { Toaster, toast, type ToasterProps } from "solid-sonner"
 import { boundToastDescription } from "./description"
 import { isRTL } from "@kobalte/core/i18n"
 import type { ComponentProps, JSX } from "solid-js"
-import { createContext, onCleanup, splitProps, useContext } from "solid-js"
+import { createContext, createSignal, onCleanup, splitProps, useContext } from "solid-js"
 import { Portal } from "solid-js/web"
 import { useI18n } from "../../context/i18n"
 import "../../actions/button/button.css"
@@ -18,6 +18,30 @@ import {
 
 export interface ToastRegionProps extends ToasterProps {}
 
+// Toasts are announced through these two regions, not through sonner's own polite region, which is turned off: it
+// would read every toast politely, an error included, along with its buttons, and a second time after our own
+// announcement. Ours says "<title>. <description>", assertively for an error and politely for anything else.
+const [spoken, setSpoken] = createSignal({ polite: "", assertive: "" })
+
+let speaking: ReturnType<typeof setTimeout> | undefined
+
+function announceToast(text: string, urgent: boolean) {
+  if (!text) return
+  // Emptying the region first lets the same message, such as a repeated error, be announced again.
+  setSpoken({ polite: "", assertive: "" })
+  clearTimeout(speaking)
+  speaking = setTimeout(() => setSpoken(urgent ? { polite: "", assertive: text } : { polite: text, assertive: "" }), 60)
+}
+
+function toastSpeech(options: ToastOptions) {
+  const title = options.title?.trim() ?? ""
+  const description = options.description?.trim() ?? ""
+
+  if (!title || !description) return title || description
+
+  return `${title}${/[.!?…:]$/.test(title) ? "" : "."} ${description}`
+}
+
 function ToastRegion(props: ToastRegionProps) {
   const i18n = useI18n()
   const [local, rest] = splitProps(props, ["class", "className", "style", "toastOptions", "swipeDirections"])
@@ -30,6 +54,9 @@ function ToastRegion(props: ToastRegionProps) {
     container.setAttribute("data-kb-top-layer", "")
 
     const sync = () => {
+      container.querySelectorAll<HTMLElement>("section[aria-live]").forEach((element) => {
+        if (element.getAttribute("aria-live") !== "off") element.setAttribute("aria-live", "off")
+      })
       container.querySelectorAll<HTMLElement>(".toast-v2-region .toast-v2").forEach((element) => {
         const hidden = element.dataset.visible === "false"
         element.inert = hidden
@@ -62,6 +89,12 @@ function ToastRegion(props: ToastRegionProps) {
         }}
         {...rest}
       />
+      <div data-slot="toast-v2-status" class="sr-only" role="status" aria-live="polite">
+        {spoken().polite}
+      </div>
+      <div data-slot="toast-v2-alert" class="sr-only" role="alert">
+        {spoken().assertive}
+      </div>
     </Portal>
   )
 }
@@ -146,9 +179,12 @@ export const toaster = {
       persistent?: boolean
       /** Reactive value the toast's height depends on; sonner re-measures when it changes. */
       resize?: () => void
+      /** What a screen reader says when the toast appears. A custom toast is otherwise silent. */
+      announce?: string
     },
   ) {
     dispatchRegistry({ type: "custom.shown" })
+    announceToast(options?.announce ?? "", false)
     const toastId = registry.nextId
     toast.custom((id) => render({ toastId: Number(id) }), {
       id: toastId,
@@ -243,6 +279,7 @@ export function showToast(options: ToastOptions | string) {
 function publishToast(id: number, options: ToastOptions) {
   // solid-sonner calls these as the toast starts to leave, 200ms before it drops the toast from `getToasts()`.
   const release = () => void dispatchRegistry({ type: "toast.released", id })
+  announceToast(toastSpeech(options), options.variant === "error")
   // `toast.message` updates a toast with the same id in place; `toast()` would append a duplicate record.
   toast.message(options.title ?? "", {
     id,

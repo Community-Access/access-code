@@ -428,7 +428,7 @@ export const SettingsWorkspaces: Component<{
       <div class="settings-tab-header settings-workspaces-header">
         <div class="settings-tab-header-row">
           <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.tab.workspaces")}</h2>
+            <h1 class="settings-tab-title">{language.t("settings.tab.workspaces")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.workspaces.description")}</span>
           </div>
           <div class="settings-tab-header-actions">{props.headerAction}</div>

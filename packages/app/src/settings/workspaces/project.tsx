@@ -49,9 +49,9 @@ export const SettingsProjectGeneral: Component<{
               class="!size-8 shrink-0 [&_[data-slot=project-avatar-surface]]:!rounded-[6px] [&_[data-slot=project-avatar-surface]]:!text-[16px]"
             />
             <div class="flex min-w-0 flex-col gap-1">
-              <h2 class="settings-tab-title truncate">
+              <h1 class="settings-tab-title truncate">
                 <bdi dir="auto">{model.view().name || displayName(props.project)}</bdi>
-              </h2>
+              </h1>
               <Show when={servers().length > 1}>
                 <button type="button" class="project-settings-server-link" onClick={() => props.onOpenServer()}>
                   <bdi dir="auto">{registry.label(props.server)}</bdi>

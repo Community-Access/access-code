@@ -1,6 +1,18 @@
 import type { SessionInfo } from "@opencode/client/promise"
 import { Key } from "@solid-primitives/keyed"
-import { createEffect, createMemo, createSignal, For, Index, Match, onCleanup, Show, Switch, untrack } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createUniqueId,
+  For,
+  Index,
+  Match,
+  onCleanup,
+  Show,
+  Switch,
+  untrack,
+} from "solid-js"
 import { createStore } from "solid-js/store"
 import { InlineInput } from "@opencode/ui/inline-input"
 import { Loader } from "@opencode/ui/loader"
@@ -14,6 +26,7 @@ import { Tooltip } from "@opencode/ui/tooltip"
 import { useLanguage } from "@/runtime/i18n/language"
 import { ServerConnection } from "@/runtime/server/registry"
 import { SessionTabAvatarView } from "@/shell/layout/session-tab-avatar"
+import { projectLabel } from "@/shell/project-label"
 import { showToast } from "@/shell/notifications/toast"
 import { sessionLabel } from "@/session/title"
 import { SessionReadMenuItem } from "@/session/session-read-menu-item"
@@ -219,6 +232,7 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
       class="min-h-0 min-w-0 flex-1 flex flex-col"
       aria-label={props.language.t("sidebar.project.recentSessions")}
     >
+      <h2 class="sr-only">{props.language.t("sidebar.project.recentSessions")}</h2>
       <div
         class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-1 pt-6 md:pb-3 lg:pt-12"
         onWheel={props.onWheel}
@@ -354,7 +368,11 @@ function HomeSessionIndicators(props: {
   server: HomeSessionsViewProps["server"]
   isOpenTab: HomeSessionsViewProps["isOpenTab"]
   record: HomeSessionRecord
+  /** Prefix of the ids the row's accessible name is built from; the status text here takes `-status`. */
+  labelId: string
 }) {
+  const language = useLanguage()
+
   return (
     <HomeSessionStatusController
       server={props.server}
@@ -365,12 +383,27 @@ function HomeSessionIndicators(props: {
           {/* A busy session shows its activity ring instead of the unread dot. */}
           <HomeSessionLeading record={props.record} open={state.open()} unread={state.unread() && !state.loading()} />
           <Show when={state.loading()}>
-            <ActivityRing class="order-last ms-auto" />
+            <ActivityRing class="order-last ms-auto" label={language.t("home.sessions.a11y.working")} />
           </Show>
+          {/* The ring and the unread dot are visual, so the row's name says them in words. */}
+          <span id={`${props.labelId}-status`} class="sr-only">
+            {state.loading()
+              ? `, ${language.t("home.sessions.a11y.working")}`
+              : state.unread()
+                ? `, ${language.t("home.sessions.a11y.unread")}`
+                : ""}
+          </span>
         </>
       )}
     />
   )
+}
+
+// A row's name: its title, then whether it is working or unread, then its project. The location stays out of it.
+function homeSessionRowLabelledBy(labelId: string, showProjectName: boolean) {
+  return [`${labelId}-title`, `${labelId}-status`, showProjectName ? `${labelId}-project` : undefined]
+    .filter(Boolean)
+    .join(" ")
 }
 
 function HomeSessionLeading(props: { record: HomeSessionRecord; open: boolean; unread: boolean }) {
@@ -429,7 +462,7 @@ function HomeSessionSearch(
               <div
                 id={HOME_SESSION_SEARCH_RESULTS_ID}
                 role="listbox"
-                aria-label={props.language.t("home.sessions.search.sessions")}
+                aria-label={props.language.t("home.sessions.search.results")}
                 class="flex flex-col gap-4 pt-4"
               >
                 <Show
@@ -498,6 +531,7 @@ function HomeSessionSearch(
             `}
             value={props.searchValue}
             placeholder={props.searchPlaceholder}
+            role="combobox"
             aria-label={props.searchPlaceholder}
             aria-expanded={props.searchOpen}
             aria-controls={HOME_SESSION_SEARCH_RESULTS_ID}
@@ -547,7 +581,7 @@ function HomeSessionSearch(
               size="small"
               class="relative z-20 shrink-0"
               icon={<Icon name="close" size="large" class="text-v2-icon-icon-muted" />}
-              aria-label={props.searchPlaceholder}
+              aria-label={props.language.t("home.sessions.search.clear")}
               onClick={() => {
                 props.onSearchClose()
                 props.onSearchFocus()
@@ -573,6 +607,7 @@ function HomeSessionSearchResultRow(
   const location = createMemo(() => props.location(props.record))
   const showProjectName = () => props.showProjectName && props.record.projectName
   const key = () => homeSessionSearchKey(props.record)
+  const labelId = `home-session-search-label-${createUniqueId()}`
 
   return (
     <button
@@ -583,6 +618,7 @@ function HomeSessionSearchResultRow(
       data-project-name={!!showProjectName()}
       role="option"
       aria-selected={props.selected}
+      aria-labelledby={homeSessionRowLabelledBy(labelId, !!showProjectName())}
       class={`
         flex h-10 w-full shrink-0 cursor-default items-center border-0 py-3 pl-[18px] pr-6 text-left text-v2-text-text-muted
         transition-[background-color] duration-[120ms] ease-in-out
@@ -609,11 +645,16 @@ function HomeSessionSearchResultRow(
         props.onSearchSelect(props.record, { background: true })
       }}
     >
-      <HomeSessionIndicators server={props.server} isOpenTab={props.isOpenTab} record={props.record} />
+      <HomeSessionIndicators
+        server={props.server}
+        isOpenTab={props.isOpenTab}
+        record={props.record}
+        labelId={labelId}
+      />
       <div data-slot="home-session-labels" class="flex min-w-0 flex-1 items-center gap-1.5">
-        <HomeSessionTitle title={title()} showProjectName={!!showProjectName()} search />
+        <HomeSessionTitle id={`${labelId}-title`} title={title()} showProjectName={!!showProjectName()} search />
         <Show when={showProjectName()}>
-          <HomeSessionProjectName name={props.record.projectName} search />
+          <HomeSessionProjectName id={`${labelId}-project`} name={props.record.projectName} search />
         </Show>
         <HomeSessionLocation
           location={location()}
@@ -645,7 +686,7 @@ function HomeSessionGroupHeader(props: {
       `}
       classList={{ "home-session-group-header z-[5]": !!props.elevated, "z-10": !props.elevated }}
     >
-      <div class={HOME_SECTION_LABEL} style={{ opacity: props.titleOpacity }}>
+      <div role="heading" aria-level="3" class={HOME_SECTION_LABEL} style={{ opacity: props.titleOpacity }}>
         {props.title}
       </div>
     </div>
@@ -668,6 +709,7 @@ function HomeSessionRow(
   const sessionID = () => props.record.session.id
   const menu = () => selectRowMenu(props.rowState, sessionID())
   const editor = () => selectRowEditor(props.rowState, sessionID())
+  const labelId = `home-session-label-${createUniqueId()}`
 
   const openMenu = (element: HTMLElement, clientX: number, clientY: number) => {
     const bounds = element.getBoundingClientRect()
@@ -695,7 +737,12 @@ function HomeSessionRow(
             class="flex h-10 min-w-0 w-full flex-1 items-center py-3 ps-1.5 pe-3 md:ps-3"
             classList={{ "gap-1.5": props.desktop, "gap-2": !props.desktop, "md:pe-10": SHOW_HOME_SESSION_ARCHIVE }}
           >
-            <HomeSessionIndicators server={props.server} isOpenTab={props.isOpenTab} record={props.record} />
+            <HomeSessionIndicators
+              server={props.server}
+              isOpenTab={props.isOpenTab}
+              record={props.record}
+              labelId={labelId}
+            />
             <div data-slot="home-session-labels" class="contents">
               <InlineInput
                 data-component="home-session-rename"
@@ -752,8 +799,7 @@ function HomeSessionRow(
         <button
           type="button"
           data-component="home-session-row"
-          aria-haspopup="menu"
-          aria-expanded={!!menu()}
+          aria-labelledby={homeSessionRowLabelledBy(labelId, !!showProjectName())}
           class={`
             flex h-10 min-w-0 w-full flex-1 shrink-0 cursor-default items-center rounded-[6px] border-0
             bg-transparent py-3 ps-1.5 pe-3 md:ps-3 text-start text-v2-text-text-muted [font-weight:530]
@@ -813,15 +859,20 @@ function HomeSessionRow(
             props.onOpenSession(props.record.session, { background: true })
           }}
         >
-          <HomeSessionIndicators server={props.server} isOpenTab={props.isOpenTab} record={props.record} />
+          <HomeSessionIndicators
+            server={props.server}
+            isOpenTab={props.isOpenTab}
+            record={props.record}
+            labelId={labelId}
+          />
           <div
             data-slot="home-session-labels"
             class="min-w-0 flex-1 items-center gap-1.5"
             classList={{ flex: props.desktop, contents: !props.desktop }}
           >
-            <HomeSessionTitle title={title()} showProjectName={!!showProjectName()} />
+            <HomeSessionTitle id={`${labelId}-title`} title={title()} showProjectName={!!showProjectName()} />
             <Show when={showProjectName()}>
-              <HomeSessionProjectName name={props.record.projectName} />
+              <HomeSessionProjectName id={`${labelId}-project`} name={props.record.projectName} />
             </Show>
             <HomeSessionLocation
               location={location()}
@@ -894,7 +945,7 @@ function HomeSessionRow(
               variant="ghost-muted"
               size="large"
               icon={<Icon name="archive" />}
-              aria-label={props.language.t("common.archive")}
+              aria-label={props.language.t("home.sessions.archive.label", { title: title() })}
               onClick={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
@@ -908,9 +959,10 @@ function HomeSessionRow(
   )
 }
 
-function HomeSessionTitle(props: { title: string; showProjectName: boolean; search?: boolean }) {
+function HomeSessionTitle(props: { id?: string; title: string; showProjectName: boolean; search?: boolean }) {
   return (
     <span
+      id={props.id}
       data-component="home-session-title"
       dir="auto"
       class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-base [font-weight:530]"
@@ -959,18 +1011,27 @@ function HomeSessionLocation(props: {
   )
 }
 
-function HomeSessionProjectName(props: { name: string; search?: boolean }) {
+function HomeSessionProjectName(props: { id?: string; name: string; search?: boolean }) {
+  const language = useLanguage()
+
   return (
-    <span
-      data-component="home-session-project-name"
-      dir="auto"
-      class="min-w-0 flex-[1_1_auto] overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-muted [font-weight:440]"
-      classList={{
-        "text-[13px] leading-4 tracking-[-0.04px]": !!props.search,
-      }}
-    >
-      {props.name}
-    </span>
+    <>
+      <span
+        data-component="home-session-project-name"
+        dir="auto"
+        aria-hidden="true"
+        class="min-w-0 flex-[1_1_auto] overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-muted [font-weight:440]"
+        classList={{
+          "text-[13px] leading-4 tracking-[-0.04px]": !!props.search,
+        }}
+      >
+        {props.name}
+      </span>
+      {/* A project at the top of the disk is named "/", which reads as a stray slash, so it is spoken as the root folder. */}
+      <span id={props.id} class="sr-only">
+        , {projectLabel({ name: props.name, worktree: props.name }, language.t("project.rootFolder"))}
+      </span>
+    </>
   )
 }
 

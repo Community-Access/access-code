@@ -204,7 +204,7 @@ export const SettingsModels: Component<{
       <div class="settings-tab-header settings-tab-header--stacked">
         <div class="settings-tab-header-row">
           <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.models.title")}</h2>
+            <h1 class="settings-tab-title">{language.t("settings.models.title")}</h1>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.models.description")}</span>
           </div>
           <div class="settings-tab-header-actions">{props.headerAction}</div>

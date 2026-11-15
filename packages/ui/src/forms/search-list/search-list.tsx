@@ -2,6 +2,7 @@ import {
   createContext,
   createEffect,
   createMemo,
+  createSignal,
   For,
   type JSX,
   on,
@@ -12,6 +13,7 @@ import {
 } from "solid-js"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { Icon } from "@opencode/ui/icon"
+import { useI18n } from "../../context/i18n"
 import { MenuScroll } from "../../components/menu-scroll"
 import { TextInput } from "../text-input/text-input"
 import { createTypeahead } from "../typeahead/controller"
@@ -23,6 +25,8 @@ export type SearchListRow = {
   id: string
   role: "option"
   "aria-selected": boolean
+  /** The section header, so a screen reader says which group a row belongs to. */
+  "aria-describedby": string | undefined
   "data-slot": "search-list-row"
   "data-active": "" | undefined
   onMouseMove: (event: MouseEvent) => void
@@ -94,6 +98,8 @@ export function SearchList<T>(props: {
 }) {
   let viewport: HTMLDivElement | undefined
   let results: HTMLDivElement | undefined
+  let empty: HTMLDivElement | undefined
+  const i18n = useI18n()
 
   const sectionOf = (item: T) => props.section?.(item) ?? ""
   const open = () => props.open ?? true
@@ -186,6 +192,35 @@ export function SearchList<T>(props: {
 
   createEffect(() => props.onActive?.(typeahead.activeItem()))
 
+  // After typing, a screen reader hears how many results there are, or the empty message, once the results settle.
+  const [status, setStatus] = createSignal("")
+  let typed = false
+
+  createEffect(
+    on(
+      () => props.query,
+      () => (typed = true),
+      { defer: true },
+    ),
+  )
+  createEffect(
+    on(
+      [() => props.query, () => rows().length],
+      () => {
+        if (!typed) return
+
+        const timer = setTimeout(() => {
+          const count = rows().length
+
+          setStatus(count === 0 ? (empty?.textContent?.trim() ?? "") : i18n.plural("ui.searchList.results", count))
+        }, 700)
+
+        onCleanup(() => clearTimeout(timer))
+      },
+      { defer: true },
+    ),
+  )
+
   // A new query starts from the top. Results that arrive later for the same query bring a chosen row back into view,
   // but leave the list where the wheel put it while the first row is still the default or the pointer took the row.
   let revealed = props.query
@@ -266,13 +301,16 @@ export function SearchList<T>(props: {
     onKeyDown,
   }
 
-  const row = (key: string, item: () => T): SearchListRow => ({
+  const row = (key: string, item: () => T, header: () => string | undefined): SearchListRow => ({
     get id() {
       return typeahead.optionID(item())
     },
     role: "option",
     get "aria-selected"() {
       return activeKey() === key
+    },
+    get "aria-describedby"() {
+      return header()
     },
     "data-slot": "search-list-row",
     get "data-active"() {
@@ -315,6 +353,9 @@ export function SearchList<T>(props: {
         >
           {(custom) => custom()(field)}
         </Show>
+        <div data-slot="search-list-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {status()}
+        </div>
         <div data-slot="search-list-body" hidden={!open()}>
           <MenuScroll
             data-slot="search-list-scroll"
@@ -361,7 +402,10 @@ export function SearchList<T>(props: {
                           // A row that is leaving keeps its last item until it is removed.
                           const item = createMemo<T>((previous) => byKey().get(key) ?? previous, byKey().get(key)!)
 
-                          return props.children(item, row(key, item))
+                          return props.children(
+                            item,
+                            row(key, item, () => (header() ? id : undefined)),
+                          )
                         }}
                       </For>
                     </div>
@@ -370,7 +414,9 @@ export function SearchList<T>(props: {
               </For>
             </div>
             <Show when={rows().length === 0}>
-              <div data-slot="search-list-empty">{props.empty}</div>
+              <div ref={empty} data-slot="search-list-empty">
+                {props.empty}
+              </div>
             </Show>
           </MenuScroll>
           <Show when={props.footer}>
