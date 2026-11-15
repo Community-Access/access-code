@@ -58,6 +58,8 @@ export class Server extends Schema.Class<Server>("McpRegistry.Server")({
 export class SearchResult extends Schema.Class<SearchResult>("McpRegistry.SearchResult")({
   servers: Server.pipe(Schema.Array),
   nextCursor: Schema.String.pipe(optional),
+  /** AccessCode: each listed server's category, by server name, for the Popular list and the Docker MCP Catalog. */
+  categories: Schema.Record(Schema.String, Schema.String).pipe(optional),
 }) {}
 
 /** The registry's own response shape, decoded at the boundary where the server fetches it. */

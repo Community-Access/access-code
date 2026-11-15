@@ -2,7 +2,13 @@
 import { $ } from "bun"
 import { exists } from "node:fs/promises"
 import path from "node:path"
-import { copyBuiltCliToResources, downloadCliToResources, getCurrentCli, resolveChannel } from "./utils"
+import {
+  copyBuiltCliToResources,
+  downloadCliToResources,
+  getCurrentCli,
+  loadGithubClientSecret,
+  resolveChannel,
+} from "./utils"
 import { verifyBundles } from "./verify-bundles"
 
 // Prepares resources/ (icons, metainfo, the bundled CLI) for OPENCODE_CHANNEL and builds the app into out/.
@@ -28,6 +34,9 @@ if (channel === "prod" && !built)
 if (built) await copyBuiltCliToResources(cli)
 
 if (!built) await downloadCliToResources(channel === "beta" ? "beta" : undefined)
+
+// The main bundle carries the GitHub OAuth app's client secret to the server it starts (electron.vite.config.ts).
+await loadGithubClientSecret()
 
 await $`bunx electron-vite build`
 

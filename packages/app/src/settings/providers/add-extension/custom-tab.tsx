@@ -85,6 +85,7 @@ export function CustomTab(props: {
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1" data-scrollable>
+      <p class="text-13-regular text-v2-text-text-muted">{language.t("settings.extensions.add.custom.note")}</p>
       <RadioGroup
         label={language.t("settings.extensions.add.custom.kind")}
         value={form.kind}

@@ -388,6 +388,10 @@ export type ExtensionCatalogCommandResult = { ok: boolean; output: string }
 
 export type ExtensionCatalogPaths = { config: string; skills: string }
 
+export type ExtensionCatalogSignIn = { supported: boolean }
+
+export type ExtensionCatalogTools = { node: boolean; uv: boolean; docker: boolean }
+
 export type LocationPublicRef = { directory: AbsolutePath }
 
 export type FileSystemWrite = { path: AbsolutePath }
@@ -5011,6 +5015,7 @@ export type ExperimentalConfigMcpRegistryOutput = {
     }>
   }>
   nextCursor?: string
+  categories?: { [x: string]: string }
 }
 
 export type ExperimentalConfigMcpPopularOutput = {
@@ -5060,6 +5065,7 @@ export type ExperimentalConfigMcpPopularOutput = {
     }>
   }>
   nextCursor?: string
+  categories?: { [x: string]: string }
 }
 
 export type ExperimentalConfigMcpDockerInput = { readonly search?: string | undefined }
@@ -5111,6 +5117,7 @@ export type ExperimentalConfigMcpDockerOutput = {
     }>
   }>
   nextCursor?: string
+  categories?: { [x: string]: string }
 }
 
 export type ExperimentalConfigSkillSearchInput = { readonly search?: string | undefined }
@@ -5126,6 +5133,12 @@ export type ExperimentalConfigSkillRemoveInput = { readonly skill: string }
 export type ExperimentalConfigSkillRemoveOutput = ExtensionCatalogCommandResult
 
 export type ExperimentalConfigExtensionPathsOutput = ExtensionCatalogPaths
+
+export type ExperimentalConfigMcpSignInInput = { readonly url: string }
+
+export type ExperimentalConfigMcpSignInOutput = ExtensionCatalogSignIn
+
+export type ExperimentalConfigToolsOutput = ExtensionCatalogTools
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
 export type SessionStatsInput = ExperimentalSessionStatsInput
@@ -5312,3 +5325,12 @@ export type ConfigSkillRemoveOutput = ExperimentalConfigSkillRemoveOutput
 
 /** @deprecated Use `ExperimentalConfigExtensionPathsOutput`. Removed in the next minor. */
 export type ConfigExtensionPathsOutput = ExperimentalConfigExtensionPathsOutput
+
+/** @deprecated Use `ExperimentalConfigMcpSignInInput`. Removed in the next minor. */
+export type ConfigMcpSignInInput = ExperimentalConfigMcpSignInInput
+
+/** @deprecated Use `ExperimentalConfigMcpSignInOutput`. Removed in the next minor. */
+export type ConfigMcpSignInOutput = ExperimentalConfigMcpSignInOutput
+
+/** @deprecated Use `ExperimentalConfigToolsOutput`. Removed in the next minor. */
+export type ConfigToolsOutput = ExperimentalConfigToolsOutput

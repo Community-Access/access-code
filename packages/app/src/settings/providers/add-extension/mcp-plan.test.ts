@@ -3,10 +3,14 @@ import {
   buildCustomMcp,
   buildPlan,
   customMcpIssue,
+  githubPlan,
   keychainName,
   missingInputs,
+  needsSetup,
   planServer,
+  signInPlan,
   serverSlug,
+  serverTitle,
   splitCommand,
   type RegistryServer,
 } from "./mcp-plan"
@@ -295,6 +299,17 @@ test("keychainName and serverSlug keep only safe characters", () => {
   expect(serverSlug("io.github.example/Weather Server")).toBe("weather-server")
   expect(serverSlug("com.githubcard/mcp")).toBe("githubcard")
   expect(serverSlug("///")).toBe("server")
+  expect(serverSlug("com.cloudflare.mcp/mcp")).toBe("cloudflare")
+})
+
+test("serverTitle reads like a product name", () => {
+  expect(serverTitle({ name: "com.notion/mcp" })).toBe("Notion")
+  expect(serverTitle({ name: "io.github.brave/brave-search-mcp-server" })).toBe("Brave Search")
+  expect(serverTitle({ name: "com.vercel/vercel-mcp" })).toBe("Vercel")
+  expect(serverTitle({ name: "com.paypal.mcp/mcp" })).toBe("Paypal")
+  expect(serverTitle({ name: "x/y", title: "Figma MCP Server" })).toBe("Figma")
+  expect(serverTitle({ name: "x/y", title: "Serena MCP: the IDE for your agent" })).toBe("Serena")
+  expect(serverTitle({ name: "x/y", title: "GitHub" })).toBe("GitHub")
 })
 
 test("splitCommand honors quotes and escapes", () => {
@@ -352,5 +367,64 @@ describe("custom MCP", () => {
       config: { type: "remote", url: "https://x.example/mcp", headers: { "X-Key": "{keychain:mcp-local-db-X-Key}" } },
       keychain: { "mcp-local-db-X-Key": "k" },
     })
+  })
+})
+
+describe("easier setup", () => {
+  const github: RegistryServer = {
+    name: "io.github.github/github-mcp-server",
+    title: "GitHub",
+    remotes: [
+      {
+        type: "streamable-http",
+        url: "https://api.githubcopilot.com/mcp/",
+        headers: [{ name: "Authorization", isSecret: true, description: "Authorization header with token" }],
+      },
+    ],
+  }
+
+  test("an Authorization header asks for the token alone and sends it as a bearer token", () => {
+    const plan = planServer(github)
+    if (plan?.type !== "remote") throw new Error("expected a remote plan")
+
+    expect(plan.inputs).toMatchObject([{ key: "header:Authorization", token: true, secret: true }])
+    expect(missingInputs(plan.inputs, {})).toHaveLength(1)
+    const built = buildPlan(plan, "github", { "header:Authorization": "Bearer ghp_abc" })
+
+    expect(built.config).toEqual({
+      type: "remote",
+      url: "https://api.githubcopilot.com/mcp/",
+      headers: { Authorization: "Bearer {keychain:mcp-github-Authorization}" },
+    })
+    expect(built.keychain).toEqual({ "mcp-github-Authorization": "ghp_abc" })
+  })
+
+  test("GitHub signs in with AccessCode's OAuth app, its secret left to the server's environment", () => {
+    const plan = githubPlan(github)
+    if (!plan) throw new Error("expected a plan")
+    const built = buildPlan(plan, "github", {})
+
+    expect(needsSetup(plan)).toBe(false)
+    expect(built.config).toEqual({
+      type: "remote",
+      url: "https://api.githubcopilot.com/mcp/",
+      oauth: { client_id: "Ov23lip9cLZPKKREYwUv", client_secret: "{env:ACCESSCODE_GITHUB_CLIENT_SECRET}" },
+    })
+    expect(built.keychain).toEqual({})
+  })
+
+  test("a server that signs in with the browser is added without its keys", () => {
+    const plan = signInPlan(npmServer)
+    if (!plan) throw new Error("expected a plan")
+
+    expect(needsSetup(plan)).toBe(false)
+    expect(buildPlan(plan, "weather", {}).config).toEqual({ type: "remote", url: "https://weather.example/mcp" })
+    expect(signInPlan({ name: "io.example/local", packages: npmServer.packages })).toBeUndefined()
+  })
+
+  test("only a server with nothing to fill in is added in one press", () => {
+    expect(needsSetup({ type: "remote", url: "https://open.example/mcp", headers: [], inputs: [] })).toBe(false)
+    expect(needsSetup(planServer(npmServer) ?? { type: "remote", url: "", headers: [], inputs: [] })).toBe(true)
+    expect(needsSetup(planServer(smithery) ?? { type: "remote", url: "", headers: [], inputs: [] })).toBe(true)
   })
 })

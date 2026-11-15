@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { filterPlugins, mergePlugins, npmPlugins, parseAwesome } from "./plugin-catalog"
+import { filterPlugins, mergePlugins, npmPlugins, parseAwesome, repositoryUrl } from "./plugin-catalog"
 
 const README = `
 <details open>
@@ -167,4 +167,15 @@ test("filterPlugins matches every word in the name, package or description", () 
 
   expect(filterPlugins(plugins, "opencode keeps").map((plugin) => plugin.name)).toEqual(["Notes"])
   expect(filterPlugins(plugins, "")).toHaveLength(2)
+})
+
+describe("repositoryUrl", () => {
+  test("turns npm git links into web links", () => {
+    expect(repositoryUrl("git+https://github.com/owner/repo.git")).toBe("https://github.com/owner/repo")
+    expect(repositoryUrl("git://github.com/owner/repo.git")).toBe("https://github.com/owner/repo")
+    expect(repositoryUrl("git@github.com:owner/repo.git")).toBe("https://github.com/owner/repo")
+    expect(repositoryUrl("https://github.com/owner/repo")).toBe("https://github.com/owner/repo")
+    expect(repositoryUrl("file:../local")).toBeUndefined()
+    expect(repositoryUrl(undefined)).toBeUndefined()
+  })
 })

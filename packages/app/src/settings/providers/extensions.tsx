@@ -15,7 +15,6 @@ import { mcpRowView } from "@/providers/connect/mcp-machine"
 import { DialogMcp } from "@/providers/connect/mcp-dialog"
 import { ExtensionPlugins } from "@/runtime/plugin/extension-plugins"
 import { pluginLabel } from "@/providers/catalog/plugin"
-import { ExternalLink } from "@/runtime/platform/external-link"
 import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsList } from "@/settings/list"
 import { createExtensionLoad, ExtensionLoadFailed } from "@/settings/extension-load"
@@ -28,6 +27,17 @@ import "@/settings/settings.css"
 import "@/shell/search-list.css"
 
 type Section = "mcps" | "plugins" | "skills"
+
+/** The Add dialog tab that matches each Extensions tab. */
+const ADD_TABS = { mcps: "registry", plugins: "plugins", skills: "skills", lsps: "registry" } as const
+
+/** How long after adding a server its Sign in button may still take focus. */
+const SIGN_IN_WAIT_MS = 30_000
+
+/** The folder that holds a file, so a settings file's name is not shown. */
+function folder(path: string) {
+  return path.slice(0, Math.max(path.lastIndexOf("/"), 0)) || path
+}
 
 const RUNS = {
   local: "settings.extensions.runs.local",
@@ -126,7 +136,7 @@ export const SettingsExtensions: Component<{
   const originLine = (origin: Origin) => {
     if (origin.type === "global") return language.t("settings.extensions.from.global", { path: origin.path })
 
-    if (origin.type === "file") return language.t("settings.extensions.from.file", { path: origin.path })
+    if (origin.type === "file") return language.t("settings.extensions.from.file", { path: folder(origin.path) })
 
     return language.t("settings.extensions.from.other")
   }
@@ -154,7 +164,10 @@ export const SettingsExtensions: Component<{
     const found = pluginOrigin(plugin, current.entries, current.paths.config)
 
     if (plugin.source.type === "local")
-      return { line: language.t("settings.extensions.from.file", { path: plugin.source.path }), spec: undefined }
+      return {
+        line: language.t("settings.extensions.from.file", { path: folder(plugin.source.path) }),
+        spec: undefined,
+      }
 
     return { line: originLine(found.origin), spec: found.origin.type === "global" ? found.spec : undefined }
   }
@@ -207,6 +220,38 @@ export const SettingsExtensions: Component<{
         const active = document.activeElement
 
         if (!active || active === document.body || !active.isConnected) placeFocus()
+      })
+    }),
+  )
+
+  // After adding a server that asks for a sign-in, its Sign in button takes focus once the server reports it, unless
+  // the person has moved on. The dialog returns focus to the Add button when it closes.
+  const signIn: { name?: string; until: number } = { until: 0 }
+
+  const awaitSignIn = (name: string) => {
+    signIn.name = name
+    signIn.until = Date.now() + SIGN_IN_WAIT_MS
+  }
+
+  createEffect(
+    on(mcps, (list) => {
+      const name = signIn.name
+
+      if (!name || Date.now() > signIn.until) return
+      const item = list.find((server) => server.name === name)
+
+      if (item?.status.status !== "needs_auth" || !item.integrationID) return
+      signIn.name = undefined
+      requestAnimationFrame(() => {
+        const active = document.activeElement
+        const button = Array.from(document.querySelectorAll<HTMLElement>("[data-sign-in]")).find(
+          (element) => element.dataset.signIn === name,
+        )
+
+        if (!button) return
+        // Only when focus is still where the dialog left it: the Add button or nowhere.
+        if (active && active !== document.body && !active.closest(".settings-tab-header-actions")) return
+        button.focus()
       })
     }),
   )
@@ -286,7 +331,14 @@ export const SettingsExtensions: Component<{
               aria-label={language.t("settings.extensions.add.button.label")}
               onClick={() =>
                 dialog.show(() => (
-                  <DialogAddExtension directory={props.directory} existing={mcps().map((item) => item.name)} />
+                  <DialogAddExtension
+                    directory={props.directory}
+                    existing={mcps().map((item) => item.name)}
+                    tab={ADD_TABS[props.subtab ?? "mcps"]}
+                    onAdded={(request) => {
+                      if (request.type === "mcp") awaitSignIn(request.name)
+                    }}
+                  />
                 ))
               }
             >
@@ -306,7 +358,7 @@ export const SettingsExtensions: Component<{
           }}
           class="settings-extensions-tabs settings-subtabs"
         >
-          <Tabs.List>
+          <Tabs.List aria-label={language.t("settings.extensions.types")}>
             <Tabs.Trigger value="mcps">{language.t("settings.extensions.tab.mcps")}</Tabs.Trigger>
             <Tabs.Trigger value="plugins">{language.t("settings.extensions.tab.plugins")}</Tabs.Trigger>
             <Tabs.Trigger value="skills">{language.t("settings.extensions.tab.skills")}</Tabs.Trigger>
@@ -322,9 +374,6 @@ export const SettingsExtensions: Component<{
                 >
                   {language.t("settings.extensions.availableAll")}
                 </h2>
-                <span class="text-13-regular text-v2-text-text-muted">
-                  {language.t("settings.extensions.manageConfig")}
-                </span>
               </div>
               <SettingsList variant="catalog">
                 <For each={mcps()}>
@@ -420,6 +469,7 @@ export const SettingsExtensions: Component<{
                                   variant="ghost-muted"
                                   disabled={busy()}
                                   aria-busy={busy()}
+                                  data-sign-in={item.name}
                                   aria-label={language.t("dialog.mcp.signIn.open", { name: item.name })}
                                   onClick={() => toggle(item, true)}
                                 >
@@ -448,6 +498,11 @@ export const SettingsExtensions: Component<{
                   }}
                 </For>
               </SettingsList>
+              <Show when={mcps().length === 0}>
+                <p class="project-settings-extension-empty-description">
+                  {language.t("settings.extensions.empty.mcps")}
+                </p>
+              </Show>
               <Show when={sources.view().status === "error"}>
                 <ExtensionLoadFailed
                   message={language.t("settings.extensions.sources.loadFailed")}
@@ -468,9 +523,6 @@ export const SettingsExtensions: Component<{
                 >
                   {language.t("settings.extensions.availableAll")}
                 </h2>
-                <span class="text-13-regular text-v2-text-text-muted">
-                  {language.t("settings.extensions.manageConfig")}
-                </span>
               </div>
               {/* The desktop's own server also lists the plugins main runs, so its rows stay while the list loads. */}
               <Show when={own() || pluginList()}>
@@ -489,6 +541,11 @@ export const SettingsExtensions: Component<{
                     }
                   }}
                 />
+              </Show>
+              <Show when={plugins.view().status === "ready" && pluginList()?.length === 0}>
+                <p class="project-settings-extension-empty-description">
+                  {language.t("settings.extensions.empty.plugins")}
+                </p>
               </Show>
               <Show when={plugins.view().status === "loading" && !own()}>
                 <p class="project-settings-extension-empty-description">{language.t("common.loading")}</p>
@@ -513,9 +570,6 @@ export const SettingsExtensions: Component<{
                 >
                   {language.t("settings.extensions.availableAll")}
                 </h2>
-                <ExternalLink class="settings-extension-link text-13-regular" href="https://opencode.ai/docs/skills">
-                  {language.t("settings.extensions.addSkills")}
-                </ExternalLink>
               </div>
               <SettingsList variant="catalog">
                 <For each={skills()}>
@@ -565,6 +619,11 @@ export const SettingsExtensions: Component<{
                   }}
                 </For>
               </SettingsList>
+              <Show when={skills().length === 0}>
+                <p class="project-settings-extension-empty-description">
+                  {language.t("settings.extensions.empty.skills")}
+                </p>
+              </Show>
               <Show when={sources.view().status === "error"}>
                 <ExtensionLoadFailed
                   message={language.t("settings.extensions.sources.loadFailed")}

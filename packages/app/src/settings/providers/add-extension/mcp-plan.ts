@@ -20,6 +20,8 @@ export type SetupInput = {
   required: boolean
   secret: boolean
   initial: string
+  /** An Authorization header's token, sent as `Bearer <token>`; the person pastes only the token. */
+  token?: boolean
 }
 
 /** A value made of fixed text and the inputs it is filled from, such as `Bearer {api_key}`. */
@@ -28,7 +30,7 @@ type Segment = { type: "text"; text: string } | { type: "input"; key: string }
 type Entry = { name: string; segments: Segment[] }
 
 export type McpPlan =
-  | { type: "remote"; url: string; headers: Entry[]; inputs: SetupInput[] }
+  | { type: "remote"; url: string; headers: Entry[]; inputs: SetupInput[]; oauth?: OAuth }
   | {
       type: "local"
       runtime: "npx" | "uvx" | "docker"
@@ -38,6 +40,8 @@ export type McpPlan =
       env: Entry[]
       inputs: SetupInput[]
     }
+
+type OAuth = { client_id: string; client_secret: string }
 
 export const NAME_PATTERN = /^[A-Za-z0-9._-]{1,64}$/
 
@@ -49,6 +53,25 @@ const SECRET_NAME = /key|token|secret|password|authorization|credential/i
 const GENERIC_SLUGS = new Set(["mcp", "server", "mcp-server"])
 
 const RUNTIMES = { npm: "npx", pypi: "uvx", oci: "docker" } as const
+
+/** The pages where people get a key for servers that need one, by registry name. */
+export const KEY_PAGES: Record<string, string> = {
+  "io.github.brave/brave-search-mcp-server": "https://api-dashboard.search.brave.com/app/keys",
+  "io.github.tavily-ai/tavily-mcp": "https://app.tavily.com/home",
+  "io.github.browserbase/mcp-server-browserbase": "https://www.browserbase.com/settings",
+}
+
+/** GitHub's official server. GitHub has no client registration, so it signs in with AccessCode's own OAuth app. */
+export const GITHUB_SERVER = "io.github.github/github-mcp-server"
+
+/**
+ * AccessCode's GitHub OAuth app. The client ID is public; the secret never enters the config, which refers to the
+ * variable the desktop app sets for its server.
+ */
+const GITHUB_OAUTH: OAuth = {
+  client_id: "Ov23lip9cLZPKKREYwUv",
+  client_secret: "{env:ACCESSCODE_GITHUB_CLIENT_SECRET}",
+}
 
 /**
  * Picks how to run a registry server: a remote that needs nothing from the person, then a package that runs on the
@@ -115,6 +138,14 @@ function planEntry(kind: "env" | "header", input: RegistryInput) {
     const key = `${kind}:${input.name}`
     const field = { ...base, key, label: input.name, initial: base.secret ? "" : (input.default ?? "") }
 
+    // An Authorization header with no template almost always wants a bearer token, which people paste without the
+    // "Bearer " prefix.
+    if (kind === "header" && input.name.toLowerCase() === "authorization")
+      return {
+        entry: { name: input.name, segments: [text("Bearer "), { type: "input" as const, key }] },
+        inputs: [{ ...field, secret: true, token: true }],
+      }
+
     return { entry: { name: input.name, segments: [{ type: "input" as const, key }] }, inputs: [field] }
   }
 
@@ -178,9 +209,32 @@ function parseTemplate(value: string, key: (placeholder: string) => string): Seg
     .map((part) => (/^\{[^{}]+\}$/.test(part) ? { type: "input", key: key(part.slice(1, -1)) } : text(part)))
 }
 
-/** The required inputs that are still empty. */
+/** The required inputs that are still empty. A token counts as required: the header is useless without it. */
 export function missingInputs(inputs: readonly SetupInput[], values: Record<string, string>) {
-  return inputs.filter((input) => input.required && !values[input.key]?.trim())
+  return inputs.filter((input) => (input.required || input.token) && !values[input.key]?.trim())
+}
+
+/** Whether adding needs a step first because something must be filled in. */
+export function needsSetup(plan: McpPlan) {
+  return plan.inputs.length > 0
+}
+
+/** The server's first remote without its keys, for a server that signs in with the browser instead. */
+export function signInPlan(server: RegistryServer): Extract<McpPlan, { type: "remote" }> | undefined {
+  const remote = (server.remotes ?? []).flatMap((item) => planRemote(item) ?? [])[0]
+
+  if (remote?.type !== "remote") return
+
+  return { type: "remote", url: remote.url, headers: [], inputs: [] }
+}
+
+/** GitHub's remote without a token, signing in with the browser through AccessCode's GitHub OAuth app. */
+export function githubPlan(server: RegistryServer): Extract<McpPlan, { type: "remote" }> | undefined {
+  const remote = signInPlan(server)
+
+  if (!remote) return
+
+  return { ...remote, oauth: GITHUB_OAUTH }
 }
 
 /**
@@ -190,6 +244,7 @@ export function missingInputs(inputs: readonly SetupInput[], values: Record<stri
 export function buildPlan(plan: McpPlan, name: string, values: Record<string, string>) {
   const keychain: Record<string, string> = {}
   const secrets = new Map(plan.inputs.filter((input) => input.secret).map((input) => [input.key, input.label]))
+  const tokens = new Set(plan.inputs.filter((input) => input.token).map((input) => input.key))
 
   const resolve = (segments: Segment[]) => {
     const missing = segments.some((segment) => segment.type === "input" && !values[segment.key]?.trim())
@@ -199,7 +254,8 @@ export function buildPlan(plan: McpPlan, name: string, values: Record<string, st
     return segments
       .map((segment) => {
         if (segment.type === "text") return segment.text
-        const value = values[segment.key]?.trim() ?? ""
+        const raw = values[segment.key]?.trim() ?? ""
+        const value = tokens.has(segment.key) ? raw.replace(/^bearer\s+/i, "") : raw
         const label = secrets.get(segment.key)
 
         if (label === undefined) return value
@@ -223,7 +279,7 @@ export function buildPlan(plan: McpPlan, name: string, values: Record<string, st
   if (plan.type === "remote") {
     const headers = entries(plan.headers)
 
-    return { config: remoteConfig(plan.url, headers), keychain }
+    return { config: remoteConfig(plan.url, headers, plan.oauth), keychain }
   }
 
   const environment = entries(plan.env)
@@ -247,8 +303,13 @@ function runtimeCommand(plan: Extract<McpPlan, { type: "local" }>, env: string[]
   return ["docker", "run", "-i", "--rm", ...env.flatMap((variable) => ["-e", variable]), tagged]
 }
 
-function remoteConfig(url: string, headers: Record<string, string>): McpConfig {
-  return Object.keys(headers).length > 0 ? { type: "remote", url, headers } : { type: "remote", url }
+function remoteConfig(url: string, headers: Record<string, string>, oauth?: OAuth): McpConfig {
+  return {
+    type: "remote",
+    url,
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    ...(oauth ? { oauth } : {}),
+  }
 }
 
 function localConfig(command: string[], environment: Record<string, string>): McpConfig {
@@ -260,14 +321,40 @@ export function keychainName(server: string, label: string) {
   return `mcp-${server}-${label}`.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, KEYCHAIN_LIMIT)
 }
 
+/**
+ * The name to show for a registry server: its title without a trailing "MCP" or "MCP Server" or a subtitle after a
+ * colon, or else a readable name made from its registry name, such as Notion for `com.notion/mcp`.
+ */
+export function serverTitle(server: Pick<RegistryServer, "name" | "title">) {
+  const title = server.title
+    ?.split(":")[0]
+    ?.replace(/\s+MCP(\s+Server)?$/i, "")
+    .trim()
+
+  if (title) return title
+  const words = serverSlug(server.name)
+    .replace(/(^|-)mcp(-server)?($|-)/g, "$1")
+    .split(/[-_]+/)
+    .filter(Boolean)
+
+  if (words.length === 0) return server.name
+
+  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")
+}
+
 /** A short config name from a registry name such as `io.github.owner/my-server`. */
 export function serverSlug(name: string) {
   const parts = name.split("/")
   const last = slugify(parts.at(-1) ?? "")
 
   if (!GENERIC_SLUGS.has(last) || parts.length < 2) return last || "server"
+  // The namespace's last part that is not itself generic, so `com.cloudflare.mcp/mcp` is cloudflare.
+  const namespace = (parts.at(-2) ?? "")
+    .split(".")
+    .map(slugify)
+    .filter((part) => part && !GENERIC_SLUGS.has(part))
 
-  return slugify(parts.at(-2)?.split(".").at(-1) ?? "") || last
+  return namespace.at(-1) || last
 }
 
 function slugify(text: string) {

@@ -657,3 +657,66 @@ export const authorize = (input: {
       }),
     ),
   )
+
+const PROBE_TIMEOUT_MS = 5_000
+
+/**
+ * AccessCode: how a remote server signs in, from an unauthenticated initialize and its OAuth metadata.
+ * - `open`: it answered an initialize without asking for anything.
+ * - `browser`: it asks for a sign-in that `authorize` completes alone, through dynamic client registration or a
+ *   client ID metadata document.
+ * - `app`: it uses OAuth but registers no clients, so only a pre-registered app (such as GitHub's) can sign in.
+ * - `key`: it refused, or failed, without OAuth, so it wants a key, a token or settings.
+ */
+export type SignInKind = "open" | "browser" | "app" | "key"
+
+export type SignInObservation = {
+  readonly status: number
+  readonly metadata?: {
+    readonly registration_endpoint?: string
+    readonly client_id_metadata_document_supported?: boolean
+  }
+}
+
+export function classifySignIn(observation: SignInObservation): SignInKind {
+  if (observation.status >= 200 && observation.status < 300) return "open"
+  const metadata = observation.metadata
+
+  if (!metadata) return "key"
+
+  if (metadata.registration_endpoint || metadata.client_id_metadata_document_supported === true) return "browser"
+
+  return "app"
+}
+
+/**
+ * Probes a remote server and classifies how it signs in. A network failure rejects, so a caller's cache does not keep
+ * an answer from an offline moment. Some hosts refuse requests without a User-Agent, so one is sent.
+ */
+export async function probeSignIn(url: string) {
+  const fetchFn: FetchLike = (target, init) =>
+    fetch(target, {
+      ...init,
+      headers: { ...Object.fromEntries(new Headers(init?.headers)), "user-agent": "AccessCode" },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    })
+  const response = await fetchFn(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "opencode" } },
+    }),
+  })
+
+  if (response.status !== 401 && response.status !== 403) return classifySignIn({ status: response.status })
+  const challenge = extractWWWAuthenticateParams(response)
+  const discovery = await discoverOAuthServerInfo(url, {
+    resourceMetadataUrl: challenge.resourceMetadataUrl,
+    fetchFn,
+  }).catch(() => undefined)
+
+  return classifySignIn({ status: response.status, metadata: discovery?.authorizationServerMetadata })
+}

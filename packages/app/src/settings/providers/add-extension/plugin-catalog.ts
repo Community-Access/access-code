@@ -99,7 +99,7 @@ export function npmPlugins(body: unknown): Listed[] {
           name,
           pkg: name,
           description: item.package.description ?? "",
-          url: links?.repository ?? links?.npm ?? `https://www.npmjs.com/package/${name}`,
+          url: repositoryUrl(links?.repository) ?? links?.npm ?? `https://www.npmjs.com/package/${name}`,
           downloads: item.downloads?.weekly ?? 0,
           source: "npm" as const,
         },
@@ -278,4 +278,17 @@ async function fetchCatalog(): Promise<PluginCatalog> {
     docs.status === "fulfilled" ? docs.value.map((plugin) => ({ ...plugin, source: "docs" as const })) : []
 
   return { plugins: mergePlugins([fromDocs, listed(awesome), listed(packages)]), failed }
+}
+
+/** npm repository links often look like "git+https://github.com/owner/repo.git", which a browser cannot open. */
+export function repositoryUrl(url: string | undefined) {
+  if (!url) return undefined
+  const web = url
+    .replace(/^git\+/, "")
+    .replace(/^git:\/\//, "https://")
+    .replace(/^ssh:\/\/git@/, "https://")
+    .replace(/^git@([^:]+):/, "https://$1/")
+    .replace(/\.git$/, "")
+
+  return web.startsWith("https://") || web.startsWith("http://") ? web : undefined
 }

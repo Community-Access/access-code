@@ -6,24 +6,73 @@ import { createMemo, createSignal, For, Match, onCleanup, Show, Switch, untrack 
 import { useLanguage } from "@/runtime/i18n/language"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { useServerSDK } from "@/runtime/server/client"
-import { ExtensionLoadFailed } from "@/settings/extension-load"
-import { createSearchState, transitionSearch, type SearchEffect, type SearchEvent } from "./machine"
-import { planServer, type McpPlan, type RegistryServer } from "./mcp-plan"
+import { createExtensionLoad, ExtensionLoadFailed } from "@/settings/extension-load"
+import { createSearchState, transitionSearch, type SaveRequest, type SearchEffect, type SearchEvent } from "./machine"
+import {
+  buildPlan,
+  GITHUB_SERVER,
+  githubPlan,
+  needsSetup,
+  signInPlan,
+  planServer,
+  serverSlug,
+  serverTitle,
+  type McpPlan,
+  type RegistryServer,
+} from "./mcp-plan"
 import { ResultRow } from "./result-row"
+import { SaveError } from "./save-error"
 
 const DEBOUNCE_MS = 400
 
-/** The MCP project's reference servers, which the server lists after the popular registry servers. */
-const REFERENCE_PREFIX = "io.github.modelcontextprotocol/"
+/** The groups the server puts popular and Docker servers in, in the order they are shown. */
+const CATEGORIES = [
+  "featured",
+  "productivity",
+  "design",
+  "developer",
+  "search",
+  "automation",
+  "business",
+  "data",
+  "media",
+  "files",
+  "other",
+] as const
+
+type Category = (typeof CATEGORIES)[number]
+
+const CATEGORY_LABELS = {
+  featured: "settings.extensions.add.category.featured",
+  productivity: "settings.extensions.add.category.productivity",
+  design: "settings.extensions.add.category.design",
+  developer: "settings.extensions.add.category.developer",
+  search: "settings.extensions.add.category.search",
+  automation: "settings.extensions.add.category.automation",
+  business: "settings.extensions.add.category.business",
+  data: "settings.extensions.add.category.data",
+  media: "settings.extensions.add.category.media",
+  files: "settings.extensions.add.category.files",
+  other: "settings.extensions.add.category.other",
+} as const
+
+/** The helper program each kind of local server runs with, and the tools result that says it is installed. */
+const HELPERS = { npx: "node", uvx: "uv", docker: "docker" } as const
 
 type Source = "registry" | "docker"
 
 /**
  * MCP servers from the MCP Registry, Popular until the person searches, or from the Docker MCP Catalog. The server
- * fetches both, because neither allows browser requests.
+ * fetches both, because neither allows browser requests. A remote server with nothing to fill in is added in one
+ * press; anything that runs on the Mac or needs a key opens the setup step first.
  */
 export function RegistryTab(props: {
+  existing: string[]
+  /** The save in progress, to show Adding on its row. */
+  saving?: SaveRequest
+  error?: string
   onSetup: (server: RegistryServer, plan: McpPlan) => void
+  onAdd: (request: SaveRequest) => void
   onAskAi: (text: string) => void
 }) {
   const language = useLanguage()
@@ -31,8 +80,12 @@ export function RegistryTab(props: {
   const [input, setInput] = createSignal("")
   const [source, setSource] = createSignal<Source>("registry")
   const [search, setSearch] = createSignal(createSearchState())
+  // The row whose sign-in check runs before a one-press add.
+  const [checking, setChecking] = createSignal<string>()
   const timers: { debounce?: ReturnType<typeof setTimeout> } = {}
-  const live = { disposed: false, list: undefined as HTMLUListElement | undefined, reveal: -1 }
+  const live = { disposed: false, list: undefined as HTMLDivElement | undefined, reveal: -1 }
+  // Each listed server's category, from the page that listed it.
+  const [categories, setCategories] = createSignal<Record<string, string>>({})
 
   onCleanup(() => {
     live.disposed = true
@@ -63,6 +116,7 @@ export function RegistryTab(props: {
       (result) => {
         if (live.disposed) return
         dispatch({ type: "page.loaded", attempt: effect.attempt, servers: result.servers, cursor: result.nextCursor })
+        if (untrack(search).attempt === effect.attempt) setCategories(result.categories ?? {})
         revealMore()
       },
       () => {
@@ -108,6 +162,36 @@ export function RegistryTab(props: {
 
   const rows = createMemo(() => search().servers.map((server) => ({ server, plan: planServer(server) })))
 
+  // Popular and Docker servers are grouped by category, each group a heading; a search is one list of results.
+  const groups = createMemo(() => {
+    if (mode() === "search")
+      return [{ key: "results", label: language.t("settings.extensions.add.registry.results.heading"), rows: rows() }]
+    const found = categories()
+    const category = (name: string): Category => CATEGORIES.find((item) => item === found[name]) ?? "other"
+
+    return CATEGORIES.map((key) => ({
+      key,
+      label: language.t(CATEGORY_LABELS[key]),
+      rows: rows().filter((row) => category(row.server.name) === key),
+    })).filter((group) => group.rows.length > 0)
+  })
+
+  // Node.js, uv and Docker, which servers that run on the Mac need.
+  const tools = createExtensionLoad({
+    key: () => "tools",
+    task: (_, signal) => serverSdk.api.experimental.config.tools({ signal }),
+  })
+
+  /** The helper a local server needs, and whether it is installed; undefined until known or for a remote. */
+  const helper = (plan: McpPlan | undefined) => {
+    const found = tools.view()
+
+    if (plan?.type !== "local" || found.status !== "ready") return
+    const name = HELPERS[plan.runtime]
+
+    return { name, installed: found.value[name] }
+  }
+
   const status = () => {
     const current = search()
 
@@ -141,11 +225,54 @@ export function RegistryTab(props: {
     return language.t("settings.extensions.add.registry.loadFailed")
   }
 
-  const from = (server: RegistryServer) => {
-    if (source() === "docker") return language.t("settings.extensions.from.docker")
-    if (server.name.startsWith(REFERENCE_PREFIX)) return language.t("settings.extensions.from.reference")
+  // A remote that needs nothing may still ask for a sign-in once added; checking first lets the announcement say so.
+  /**
+   * Adds in one press when nothing needs filling in, or when the server signs in with the browser instead of asking
+   * for its keys; otherwise opens the setup step. A remote is checked first, so a server that asks for a sign-in once
+   * added is announced that way.
+   */
+  const press = (server: RegistryServer, plan: McpPlan) => {
+    const name = serverSlug(server.name)
 
-    return language.t("settings.extensions.from.registry")
+    if (checking() || props.saving) return
+
+    if (props.existing.includes(name)) return props.onSetup(server, plan)
+    const browser = server.name === GITHUB_SERVER ? githubPlan(server) : signInPlan(server)
+    const candidate = oneStep(plan) ? plan : plan.inputs.some((input) => input.secret) ? browser : undefined
+
+    if (!candidate) return props.onSetup(server, plan)
+    setChecking(name)
+    void (
+      candidate.type === "remote"
+        ? serverSdk.api.experimental.config.mcpSignIn({ url: candidate.url })
+        : Promise.resolve({ supported: false })
+    )
+      .then(
+        (result) => result.supported,
+        () => false,
+      )
+      .then((signIn) => {
+        if (live.disposed) return
+        setChecking(undefined)
+
+        // A server that needs its keys after all gets the setup step, which asks for them.
+        if (candidate !== plan && !signIn) return props.onSetup(server, plan)
+        props.onAdd({
+          type: "mcp",
+          label: serverTitle(server),
+          name,
+          config: buildPlan(candidate, name, {}).config,
+          keychain: {},
+          signIn,
+        })
+      })
+  }
+
+  const adding = (server: RegistryServer) => {
+    const name = serverSlug(server.name)
+    const saving = props.saving
+
+    return checking() === name || (saving?.type === "mcp" && saving.name === name)
   }
 
   const where = (plan: McpPlan | undefined) => {
@@ -156,8 +283,28 @@ export function RegistryTab(props: {
     return language.t(plan.runtime === "docker" ? "settings.extensions.runs.docker" : "settings.extensions.runs.local")
   }
 
+  // Which helper a local server uses, or that it is missing, so nobody adds one that cannot start.
+  const uses = (plan: McpPlan | undefined) => {
+    const found = helper(plan)
+
+    if (!found) return
+    if (!found.installed) return language.t(`settings.extensions.add.needs.${found.name}`)
+    if (found.name === "docker") return
+
+    return language.t(`settings.extensions.add.uses.${found.name}`)
+  }
+
+  // A press adds at once when nothing needs filling in and, for a local server, its helper is installed.
+  const oneStep = (plan: McpPlan) => {
+    if (needsSetup(plan)) return false
+    if (plan.type === "remote") return true
+
+    return helper(plan)?.installed === true
+  }
+
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-3">
+      <p class="text-13-regular text-v2-text-text-muted">{language.t("settings.extensions.add.registry.note")}</p>
       <RadioGroup
         label={language.t("settings.extensions.add.registry.source")}
         value={source()}
@@ -195,6 +342,7 @@ export function RegistryTab(props: {
       <p role="status" class="text-13-regular text-v2-text-text-muted">
         {status()}
       </p>
+      <SaveError error={props.error} />
       <Switch>
         <Match when={search().status === "failed"}>
           <ExtensionLoadFailed
@@ -215,74 +363,91 @@ export function RegistryTab(props: {
           </div>
         </Match>
       </Switch>
-      <ul
+      <div
         ref={(element) => (live.list = element)}
-        class="flex min-h-0 flex-1 flex-col overflow-y-auto"
-        aria-label={language.t(
-          mode() === "popular"
-            ? "settings.extensions.add.registry.popular.list"
-            : mode() === "docker"
-              ? "settings.extensions.add.registry.docker.list"
-              : "settings.extensions.add.registry.list",
-        )}
+        class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
         aria-busy={search().status === "loading"}
         data-scrollable
       >
-        <For each={rows()}>
-          {(row) => {
-            const name = () => row.server.title ?? row.server.name
-            const repository = () => row.server.repository?.url ?? row.server.websiteUrl
+        <For each={groups()}>
+          {(group) => (
+            <section class="flex flex-col" aria-labelledby={`mcp-group-${group.key}`}>
+              <h2 id={`mcp-group-${group.key}`} class="text-13-medium text-v2-text-text-base">
+                {group.label}
+              </h2>
+              <ul class="flex flex-col" aria-labelledby={`mcp-group-${group.key}`}>
+                <For each={group.rows}>
+                  {(row) => {
+                    const name = () => serverTitle(row.server)
+                    const repository = () => row.server.websiteUrl ?? row.server.repository?.url
+                    const added = () => props.existing.includes(serverSlug(row.server.name))
 
-            return (
-              <ResultRow
-                name={name()}
-                detail={row.server.title ? row.server.name : undefined}
-                description={row.server.description}
-                lines={[from(row.server), where(row.plan)]}
-                actions={
-                  <>
-                    <Show when={repository()}>
-                      {(href) => (
-                        <ExternalLink
-                          class="text-13-regular"
-                          href={href()}
-                          aria-label={language.t("settings.extensions.add.source.label", { name: name() })}
-                        >
-                          {language.t("settings.extensions.add.source")}
-                        </ExternalLink>
-                      )}
-                    </Show>
-                    <Show
-                      when={row.plan}
-                      fallback={
-                        <Button
-                          size="small"
-                          variant="ghost-muted"
-                          aria-label={language.t("settings.extensions.add.askAi.label", { name: name() })}
-                          onClick={() => props.onAskAi([row.server.name, repository()].filter(Boolean).join(" "))}
-                        >
-                          {language.t("settings.extensions.add.askAi")}
-                        </Button>
-                      }
-                    >
-                      {(plan) => (
-                        <Button
-                          size="small"
-                          variant="neutral"
-                          aria-label={language.t("settings.extensions.add.registry.setup.label", { name: name() })}
-                          onClick={() => props.onSetup(row.server, plan())}
-                        >
-                          {language.t("settings.extensions.add.registry.setup")}
-                        </Button>
-                      )}
-                    </Show>
-                  </>
-                }
-              />
-            )
-          }}
+                    return (
+                      <ResultRow
+                        name={name()}
+                        description={row.server.description}
+                        lines={[
+                          where(row.plan),
+                          uses(row.plan),
+                          added() ? language.t("settings.extensions.add.registry.added") : undefined,
+                        ]}
+                        actions={
+                          <>
+                            <Show when={repository()}>
+                              {(href) => (
+                                <ExternalLink
+                                  class="text-13-regular"
+                                  href={href()}
+                                  aria-label={language.t("settings.extensions.add.source.label", { name: name() })}
+                                >
+                                  {language.t("settings.extensions.add.source")}
+                                </ExternalLink>
+                              )}
+                            </Show>
+                            <Show
+                              when={row.plan}
+                              fallback={
+                                <Button
+                                  size="small"
+                                  variant="ghost-muted"
+                                  aria-label={language.t("settings.extensions.add.askAi.label", { name: name() })}
+                                  onClick={() =>
+                                    props.onAskAi([row.server.name, repository()].filter(Boolean).join(" "))
+                                  }
+                                >
+                                  {language.t("settings.extensions.add.askAi")}
+                                </Button>
+                              }
+                            >
+                              {(plan) => (
+                                <Button
+                                  size="small"
+                                  variant="neutral"
+                                  aria-busy={adding(row.server)}
+                                  aria-label={
+                                    adding(row.server)
+                                      ? undefined
+                                      : language.t("settings.extensions.add.registry.setup.label", { name: name() })
+                                  }
+                                  onClick={() => press(row.server, plan())}
+                                >
+                                  {adding(row.server)
+                                    ? language.t("settings.extensions.add.adding")
+                                    : language.t("settings.extensions.add.registry.setup")}
+                                </Button>
+                              )}
+                            </Show>
+                          </>
+                        }
+                      />
+                    )
+                  }}
+                </For>
+              </ul>
+            </section>
+          )}
         </For>
-      </ul>
+      </div>
       <Show when={search().status !== "failed" && search().cursor}>
         <div>
           <Button

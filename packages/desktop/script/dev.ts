@@ -3,7 +3,7 @@ import { constants, setPriority } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { prepareDevElectron } from "./dev-electron"
-import { downloadCliToResources, windowsify } from "./utils"
+import { downloadCliToResources, loadGithubClientSecret, windowsify } from "./utils"
 
 type ServerSource = { type: "build" } | { type: "download"; version: string }
 
@@ -17,6 +17,8 @@ async function main() {
 
   if (options.server.type === "build") process.env.OPENCODE_DESKTOP_SERVER_CHANNEL = "local"
   process.env.OPENCODE_DESKTOP_ISOLATED_SERVER ??= "1"
+  // The isolated dev server inherits it, so GitHub's MCP server can sign in with the browser.
+  await loadGithubClientSecret()
   await prepareDesktop()
   await prepareServer(options.server)
   await startDesktop(options.electron)

@@ -11,6 +11,7 @@ import { ServerConnection } from "@/runtime/server/registry"
 import { announce } from "@/session/announce"
 import { useTabs } from "@/shell/tabs/tabs"
 import { ExternalLink } from "@/runtime/platform/external-link"
+import { createExtensionLoad } from "@/settings/extension-load"
 import { ConfirmStep } from "./confirm-step"
 import { CustomTab } from "./custom-tab"
 import {
@@ -25,23 +26,35 @@ import {
 import { PluginsTab } from "./plugins-tab"
 import { RegistryTab } from "./registry-tab"
 import { SetupStep } from "./setup-step"
+import { serverTitle } from "./mcp-plan"
 import { SkillsTab } from "./skills-tab"
 
-type Tab = "plugins" | "registry" | "skills" | "custom"
+export type AddTab = "registry" | "plugins" | "skills" | "custom"
+
+const TABS: AddTab[] = ["registry", "plugins", "skills", "custom"]
 
 /**
- * Adds a community plugin, an MCP server or a hand-entered one to the global opencode.json, or installs a skill into
- * the global OpenCode skills folder. The tabs stay
- * mounted behind the confirm and setup steps, so going back keeps the search and returns focus to the row's button.
+ * Adds a community plugin, an MCP server or a hand-entered one to the global config, or installs a skill into the
+ * global OpenCode skills folder. The tabs stay mounted behind the confirm and setup steps, so going back keeps the
+ * search and returns focus to the row's button. A remote MCP server that needs nothing is added in one press.
  */
-export function DialogAddExtension(props: { directory?: string; existing: string[] }) {
+export function DialogAddExtension(props: {
+  directory?: string
+  existing: string[]
+  /** The tab to open on, matching the Extensions page tab it was opened from. */
+  tab?: AddTab
+  /** Runs after a save succeeds, before the dialog closes, so the page can follow up, such as offering sign-in. */
+  onAdded?: (request: SaveRequest) => void
+}) {
   const language = useLanguage()
   const serverSdk = useServerSDK()
   const data = useData()
   const dialog = useDialog()
   const tabs = useTabs()
   const [state, setState] = createSignal(createAddState())
-  const [tab, setTab] = createSignal<Tab>("plugins")
+  const [tab, setTab] = createSignal<AddTab>(props.tab ?? "registry")
+  // Which tab asked for a save from the browse step, so only that tab shows its error.
+  const [origin, setOrigin] = createSignal<"registry" | "custom">("registry")
   const focus: { origin?: HTMLElement; heading?: HTMLHeadingElement; browse?: HTMLDivElement } = {}
   const live = { disposed: false }
 
@@ -59,7 +72,8 @@ export function DialogAddExtension(props: { directory?: string; existing: string
     if (effect.type === "save") return save(effect.attempt, effect.request)
 
     if (effect.type === "saved") {
-      announce(language.t("settings.extensions.add.added", { name: effect.label }))
+      announce(addedMessage(effect.request))
+      props.onAdded?.(effect.request)
       // The dialog layer returns focus to the Add button that opened it.
       dialog.close()
 
@@ -89,7 +103,8 @@ export function DialogAddExtension(props: { directory?: string; existing: string
     const succeed = () => {
       if (!live.disposed) return dispatch({ type: "save.succeeded", attempt })
       // The dialog closed while saving, but the server still added it, so say so.
-      announce(language.t("settings.extensions.add.added", { name: request.label }))
+      announce(addedMessage(request))
+      props.onAdded?.(request)
     }
 
     const unknown = (error: unknown) =>
@@ -118,6 +133,13 @@ export function DialogAddExtension(props: { directory?: string; existing: string
           }
 
     void serverSdk.api.experimental.config.update(update).then(succeed, unknown)
+  }
+
+  const addedMessage = (request: SaveRequest) => {
+    if (request.type === "mcp" && request.signIn)
+      return language.t("settings.extensions.add.added.signIn", { name: request.label })
+
+    return language.t("settings.extensions.add.added", { name: request.label })
   }
 
   // Remembers the button that opened a step, so Back returns to it.
@@ -160,7 +182,7 @@ export function DialogAddExtension(props: { directory?: string; existing: string
 
     if (!setup) return ""
 
-    return language.t("settings.extensions.add.setup.title", { name: setup.server.title ?? setup.server.name })
+    return language.t("settings.extensions.add.setup.title", { name: serverTitle(setup.server) })
   }
 
   const onStepKeyDown = (event: KeyboardEvent) => {
@@ -240,30 +262,38 @@ export function DialogAddExtension(props: { directory?: string; existing: string
             variant="pill"
             value={tab()}
             onChange={(value) => {
-              if (value === "plugins" || value === "registry" || value === "skills" || value === "custom") setTab(value)
+              const found = TABS.find((item) => item === value)
+              if (found) setTab(found)
             }}
             class="flex min-h-0 flex-1 flex-col gap-3"
           >
             <Tabs.List aria-label={language.t("settings.extensions.add.tabs")}>
-              <Tabs.Trigger value="plugins">{language.t("settings.extensions.add.tab.plugins")}</Tabs.Trigger>
               <Tabs.Trigger value="registry">{language.t("settings.extensions.add.tab.registry")}</Tabs.Trigger>
+              <Tabs.Trigger value="plugins">{language.t("settings.extensions.add.tab.plugins")}</Tabs.Trigger>
               <Tabs.Trigger value="skills">{language.t("settings.extensions.add.tab.skills")}</Tabs.Trigger>
               <Tabs.Trigger value="custom">{language.t("settings.extensions.add.tab.custom")}</Tabs.Trigger>
             </Tabs.List>
+            <Tabs.Content value="registry" class="flex min-h-0 flex-1 flex-col">
+              <RegistryTab
+                existing={props.existing}
+                saving={step().type === "browse" ? view().saving : undefined}
+                error={step().type === "browse" && origin() === "registry" ? view().error : undefined}
+                onSetup={(server, plan) => {
+                  remember()
+                  dispatch({ type: "server.chosen", server, plan })
+                }}
+                onAdd={(request) => {
+                  setOrigin("registry")
+                  dispatch({ type: "save.requested", request })
+                }}
+                onAskAi={askAi}
+              />
+            </Tabs.Content>
             <Tabs.Content value="plugins" class="flex min-h-0 flex-1 flex-col">
               <PluginsTab
                 onInstall={(plugin) => {
                   remember()
                   dispatch({ type: "plugin.chosen", plugin })
-                }}
-                onAskAi={askAi}
-              />
-            </Tabs.Content>
-            <Tabs.Content value="registry" class="flex min-h-0 flex-1 flex-col">
-              <RegistryTab
-                onSetup={(server, plan) => {
-                  remember()
-                  dispatch({ type: "server.chosen", server, plan })
                 }}
                 onAskAi={askAi}
               />
@@ -281,12 +311,15 @@ export function DialogAddExtension(props: { directory?: string; existing: string
               <CustomTab
                 existing={props.existing}
                 busy={step().type === "browse" && view().busy}
-                error={step().type === "browse" ? view().error : undefined}
+                error={step().type === "browse" && origin() === "custom" ? view().error : undefined}
                 onPlugin={(plugin) => {
                   remember()
                   dispatch({ type: "plugin.chosen", plugin })
                 }}
-                onSubmit={(request) => dispatch({ type: "save.requested", request })}
+                onSubmit={(request) => {
+                  setOrigin("custom")
+                  dispatch({ type: "save.requested", request })
+                }}
               />
             </Tabs.Content>
           </Tabs>
@@ -305,6 +338,20 @@ function ConfirmInstall(props: {
   onConfirm: (request: SaveRequest) => void
 }) {
   const language = useLanguage()
+  const serverSdk = useServerSDK()
+
+  // The skills CLI runs with npx, so a Mac without Node.js is told before the install fails.
+  const tools = createExtensionLoad({
+    key: () => props.target.type,
+    task: (type, signal) =>
+      type === "skill" ? serverSdk.api.experimental.config.tools({ signal }) : Promise.resolve(undefined),
+  })
+
+  const missingNode = () => {
+    const current = tools.view()
+
+    return current.status === "ready" && current.value?.node === false
+  }
 
   const body = () => {
     const target = props.target
@@ -352,6 +399,11 @@ function ConfirmInstall(props: {
           <Match when={props.target.type === "skill" && props.target}>
             {(target) => (
               <>
+                <Show when={missingNode()}>
+                  <p class="text-13-regular text-v2-text-text-base">
+                    {language.t("settings.extensions.add.need.skills")}
+                  </p>
+                </Show>
                 <ExternalLink
                   class="text-13-regular"
                   href={target().url}
@@ -362,7 +414,7 @@ function ConfirmInstall(props: {
                 <ExternalLink
                   class="text-13-regular"
                   href={`https://github.com/${target().source}`}
-                  aria-label={language.t("settings.extensions.add.source.label", { name: target().name })}
+                  aria-label={language.t("settings.extensions.add.skills.github.label", { name: target().name })}
                 >
                   {`https://github.com/${target().source}`}
                 </ExternalLink>

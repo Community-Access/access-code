@@ -262,7 +262,7 @@ export const serverSettings: Entry<SettingsServerTab | "servers">[] = [
     tab: "extensions",
     subtab: "mcps",
     label: "settings.extensions.tab.mcps",
-    keywords: "model context protocol tools",
+    keywords: "mcps mcp servers model context protocol tools apps services",
   },
   {
     tab: "extensions",
@@ -296,7 +296,7 @@ export const projectSettings: Entry<SettingsProjectTab>[] = [
     tab: "extensions",
     subtab: "mcps",
     label: "settings.extensions.tab.mcps",
-    keywords: "model context protocol tools",
+    keywords: "mcps mcp servers model context protocol tools apps services",
   },
   { tab: "extensions", subtab: "plugins", label: "settings.extensions.tab.plugins" },
   { tab: "extensions", subtab: "skills", label: "settings.extensions.tab.skills" },

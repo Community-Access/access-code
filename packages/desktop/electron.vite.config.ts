@@ -45,6 +45,10 @@ export default defineConfig(({ command }) => {
       define: {
         // Local renderer/server mode still uses the dev application identity and updater policy.
         "import.meta.env.OPENCODE_CHANNEL": JSON.stringify(channel === "local" ? "dev" : channel),
+        // AccessCode: the GitHub OAuth app's client secret, which the main process passes to the server it starts.
+        "import.meta.env.ACCESSCODE_GITHUB_CLIENT_SECRET": JSON.stringify(
+          process.env.ACCESSCODE_GITHUB_CLIENT_SECRET ?? "",
+        ),
       },
       build: {
         minify: command === "build",

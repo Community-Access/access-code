@@ -24,53 +24,147 @@ const COMMAND_TIMEOUT_MS = 120_000
 
 const OUTPUT_LIMIT = 2_000
 
-/** Official MCP Registry names, in the order the Popular list shows them. */
-export const POPULAR_SERVERS = [
-  "io.github.github/github-mcp-server",
-  "io.github.microsoft/playwright-mcp",
-  "io.github.upstash/context7",
-  "io.github.ChromeDevTools/chrome-devtools-mcp",
-  "com.notion/mcp",
-  "app.linear/linear",
-  "com.atlassian/atlassian-mcp-server",
-  "com.figma.mcp/mcp",
-  "io.github.getsentry/sentry-mcp",
-  "com.stripe/mcp",
-  "com.supabase/mcp",
-  "com.cloudflare.mcp/mcp",
-  "com.vercel/vercel-mcp",
-  "com.gitlab/mcp",
-  "io.github.brave/brave-search-mcp-server",
-  "ai.exa/exa",
-  "io.github.firecrawl/firecrawl-mcp-server",
-  "io.github.tavily-ai/tavily-mcp",
-  "ai.perplexity/mcp-server",
-  "com.zapier/mcp",
-  "com.make/mcp-server",
-  "com.apify/apify-mcp-server",
-  "co.huggingface/hf-mcp-server",
-  "io.github.mongodb-js/mongodb-mcp-server",
-  "io.prisma/mcp",
-  "io.github.redis/mcp-redis",
-  "io.github.ClickHouse/mcp-clickhouse",
-  "com.microsoft/azure",
-  "com.microsoft/microsoft-learn-mcp",
-  "com.paypal.mcp/mcp",
-  "com.canva.mcp/mcp",
-  "com.airtable/mcp",
-  "com.monday/monday.com",
-  "com.webflow/mcp",
-  "com.wix/mcp",
-  "com.postman/postman-mcp-server",
-  "io.elevenlabs/mcp",
-  "io.github.PostHog/mcp",
-  "io.github.grafana/mcp-grafana",
-  "io.github.hashicorp/terraform-mcp-server",
-  "com.wolfram/mcp",
-  "io.github.browserbase/mcp-server-browserbase",
-  "io.github.wonderwhy-er/desktop-commander",
-  "io.github.oraios/serena",
+/** The groups the Apps and services tab shows, in order. The app names them. */
+export const CATEGORIES = [
+  "featured",
+  "productivity",
+  "design",
+  "developer",
+  "search",
+  "automation",
+  "business",
+  "data",
+  "media",
+  "files",
+  "other",
+] as const
+export type Category = (typeof CATEGORIES)[number]
+
+/**
+ * The servers the Popular list shows, in order within each category. A name is an official MCP Registry name, the
+ * name of a server described below (such as Start Testing or a reference server), or `docker:<key>` for an entry of
+ * the Docker MCP Catalog. Each was checked to load, to come from its real publisher or the canonical project, and to
+ * need nothing, a browser sign-in, a key with a page to get one, or a plain value such as a folder.
+ */
+export const POPULAR: { name: string; category: Category }[] = [
+  { name: "net.starttesting/mcp", category: "featured" },
+  { name: "io.github.github/github-mcp-server", category: "featured" },
+  { name: "com.notion/mcp", category: "featured" },
+  { name: "io.github.upstash/context7", category: "featured" },
+  { name: "io.github.modelcontextprotocol/filesystem", category: "featured" },
+
+  { name: "app.linear/linear", category: "productivity" },
+  { name: "com.atlassian/atlassian-mcp-server", category: "productivity" },
+  { name: "com.monday/monday.com", category: "productivity" },
+  { name: "com.airtable/mcp", category: "productivity" },
+  { name: "net.todoist/mcp", category: "productivity" },
+  { name: "io.sanity.www/mcp", category: "productivity" },
+
+  { name: "com.figma.mcp/mcp", category: "design" },
+  { name: "com.canva.mcp/mcp", category: "design" },
+  { name: "io.github.miroapp/mcp-server", category: "design" },
+  { name: "com.webflow/mcp", category: "design" },
+  { name: "com.wix/mcp", category: "design" },
+  { name: "accesscode.blender", category: "design" },
+
+  { name: "com.gitlab/mcp", category: "developer" },
+  { name: "io.github.getsentry/sentry-mcp", category: "developer" },
+  { name: "com.vercel/vercel-mcp", category: "developer" },
+  { name: "com.cloudflare.mcp/mcp", category: "developer" },
+  { name: "com.supabase/mcp", category: "developer" },
+  { name: "com.postman/postman-mcp-server", category: "developer" },
+  { name: "dev.jam/jam", category: "developer" },
+  { name: "io.github.ChromeDevTools/chrome-devtools-mcp", category: "developer" },
+  { name: "io.github.vercel/next-devtools-mcp", category: "developer" },
+  { name: "com.microsoft/microsoft-learn-mcp", category: "developer" },
+  { name: "io.github.modelcontextprotocol/git", category: "developer" },
+  { name: "io.github.oraios/serena", category: "developer" },
+  { name: "io.github.containers/kubernetes-mcp-server", category: "developer" },
+  { name: "io.github.hashicorp/terraform-mcp-server", category: "developer" },
+  { name: "accesscode.azure", category: "developer" },
+  { name: "accesscode.aws-documentation", category: "developer" },
+  { name: "docker:node-code-sandbox", category: "developer" },
+  { name: "io.github.modelcontextprotocol/everything", category: "developer" },
+
+  { name: "docker:duckduckgo", category: "search" },
+  { name: "docker:wikipedia-mcp", category: "search" },
+  { name: "io.github.modelcontextprotocol/fetch", category: "search" },
+  { name: "io.github.brave/brave-search-mcp-server", category: "search" },
+  { name: "ai.exa/exa", category: "search" },
+  { name: "io.github.firecrawl/firecrawl-mcp-server", category: "search" },
+  { name: "io.github.tavily-ai/tavily-mcp", category: "search" },
+  { name: "ai.perplexity/mcp-server", category: "search" },
+  { name: "com.wolfram/mcp", category: "search" },
+  { name: "co.huggingface/hf-mcp-server", category: "search" },
+  { name: "docker:mcp-hackernews", category: "search" },
+  { name: "docker:paper-search", category: "search" },
+
+  { name: "io.github.microsoft/playwright-mcp", category: "automation" },
+  { name: "com.zapier/mcp", category: "automation" },
+  { name: "com.make/mcp-server", category: "automation" },
+  { name: "com.apify/apify-mcp-server", category: "automation" },
+  { name: "io.github.browserbase/mcp-server-browserbase", category: "automation" },
+  { name: "io.github.wonderwhy-er/desktop-commander", category: "automation" },
+
+  { name: "com.stripe/mcp", category: "business" },
+  { name: "com.paypal.mcp/mcp", category: "business" },
+
+  { name: "com.neon/mcp", category: "data" },
+  { name: "io.prisma/mcp", category: "data" },
+  { name: "io.github.PostHog/mcp", category: "data" },
+  { name: "io.github.grafana/mcp-grafana", category: "data" },
+  { name: "com.newrelic/mcp-server", category: "data" },
+  { name: "io.github.mongodb-js/mongodb-mcp-server", category: "data" },
+  { name: "io.github.redis/mcp-redis", category: "data" },
+  { name: "io.github.ClickHouse/mcp-clickhouse", category: "data" },
+  { name: "accesscode.sqlite", category: "data" },
+  { name: "accesscode.postgres", category: "data" },
+
+  { name: "io.elevenlabs/mcp", category: "media" },
+  { name: "docker:youtube_transcript", category: "media" },
+
+  { name: "io.github.modelcontextprotocol/memory", category: "files" },
+  { name: "accesscode.markitdown", category: "files" },
+  { name: "accesscode.excel", category: "files" },
+  { name: "io.github.modelcontextprotocol/time", category: "files" },
+  { name: "io.github.modelcontextprotocol/sequentialthinking", category: "files" },
 ]
+
+/** The Docker MCP Catalog's categories, in the groups the tab shows. Anything else is `other`. */
+const DOCKER_CATEGORIES: Record<string, Category> = {
+  devops: "developer",
+  development: "developer",
+  "developer-tools": "developer",
+  devtools: "developer",
+  code: "developer",
+  tools: "developer",
+  security: "developer",
+  productivity: "productivity",
+  documentation: "productivity",
+  knowledge: "productivity",
+  communication: "productivity",
+  messaging: "productivity",
+  database: "data",
+  "data-analytics": "data",
+  analytics: "data",
+  monitoring: "data",
+  "data-visualization": "data",
+  search: "search",
+  news: "search",
+  maps: "search",
+  geospatial: "search",
+  travel: "search",
+  ai: "media",
+  "ai-ml": "media",
+  video: "media",
+  finance: "business",
+  payments: "business",
+  crm: "business",
+  business: "business",
+  commerce: "business",
+  "cost-management": "business",
+  automation: "automation",
+}
 
 /** Broad searches whose merged results stand in for "popular", since skills.sh has no popular list in its API. */
 export const POPULAR_SKILL_QUERIES = ["react", "design", "test", "docs", "python"]
@@ -159,6 +253,133 @@ export function referenceServers(home: string) {
       registryType: "pypi",
       identifier: "mcp-server-time",
     }),
+    reference({
+      slug: "everything",
+      title: "Everything",
+      description: "A test server with one of every MCP feature, for trying things out.",
+      registryType: "npm",
+      identifier: "@modelcontextprotocol/server-everything",
+    }),
+  ]
+}
+
+/**
+ * Servers the registry does not list, or lists only in a form AccessCode cannot run, described here: Start Testing,
+ * and well-known servers that run on the Mac with npx or uvx.
+ */
+export function describedServers(home: string) {
+  const local = (input: {
+    slug: string
+    title: string
+    description: string
+    website: string
+    registryType: "npm" | "pypi"
+    identifier: string
+    packageArguments?: McpRegistry.Argument[]
+    environmentVariables?: McpRegistry.Input[]
+  }) =>
+    new McpRegistry.Server({
+      name: `accesscode.${input.slug}`,
+      title: input.title,
+      description: input.description,
+      websiteUrl: input.website,
+      packages: [
+        new McpRegistry.Package({
+          registryType: input.registryType,
+          identifier: input.identifier,
+          transport: { type: "stdio" },
+          packageArguments: input.packageArguments,
+          environmentVariables: input.environmentVariables,
+        }),
+      ],
+    })
+  const fixed = (...values: string[]) => values.map((value) => new McpRegistry.Argument({ type: "positional", value }))
+
+  return [
+    new McpRegistry.Server({
+      name: "net.starttesting/mcp",
+      title: "Start Testing",
+      description: "Track bugs, feedback and test sessions for your apps in Start Testing.",
+      websiteUrl: "https://starttesting.net",
+      remotes: [new McpRegistry.Remote({ type: "streamable-http", url: "https://mcp.starttesting.net" })],
+    }),
+    local({
+      slug: "markitdown",
+      title: "MarkItDown",
+      description:
+        "Turns PDFs, Word, Excel and PowerPoint files and web pages into text the AI can read. By Microsoft.",
+      website: "https://github.com/microsoft/markitdown",
+      registryType: "pypi",
+      identifier: "markitdown-mcp",
+    }),
+    local({
+      slug: "excel",
+      title: "Excel",
+      description: "Reads and edits Excel workbooks on your Mac, without Excel installed.",
+      website: "https://github.com/haris-musa/excel-mcp-server",
+      registryType: "pypi",
+      identifier: "excel-mcp-server",
+      packageArguments: fixed("stdio"),
+    }),
+    local({
+      slug: "blender",
+      title: "Blender",
+      description: "Lets the AI build and change 3D scenes in Blender. Needs the Blender MCP add-on in Blender.",
+      website: "https://github.com/ahujasid/blender-mcp",
+      registryType: "pypi",
+      identifier: "blender-mcp",
+    }),
+    local({
+      slug: "azure",
+      title: "Azure",
+      description: "Manages your Azure resources. Sign in with the Azure command line tool first.",
+      website: "https://github.com/microsoft/mcp",
+      registryType: "npm",
+      identifier: "@azure/mcp",
+      packageArguments: fixed("server", "start"),
+    }),
+    local({
+      slug: "aws-documentation",
+      title: "AWS Documentation",
+      description: "Searches and reads the AWS documentation. By AWS Labs.",
+      website: "https://github.com/awslabs/mcp",
+      registryType: "pypi",
+      identifier: "awslabs.aws-documentation-mcp-server",
+    }),
+    local({
+      slug: "sqlite",
+      title: "SQLite",
+      description: "Reads and changes a SQLite database file on your Mac.",
+      website: "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+      registryType: "pypi",
+      identifier: "mcp-server-sqlite",
+      packageArguments: [
+        new McpRegistry.Argument({
+          type: "named",
+          name: "--db-path",
+          valueHint: "Database file",
+          description: "The database file to use. It is created if it does not exist.",
+          default: path.join(home, "database.sqlite"),
+          isRequired: true,
+        }),
+      ],
+    }),
+    local({
+      slug: "postgres",
+      title: "Postgres",
+      description: "Reads, tunes and changes a PostgreSQL database. By Crystal DBA.",
+      website: "https://github.com/crystaldba/postgres-mcp",
+      registryType: "pypi",
+      identifier: "postgres-mcp",
+      environmentVariables: [
+        new McpRegistry.Input({
+          name: "DATABASE_URI",
+          description: "The database address, such as postgresql://user:password@localhost:5432/name.",
+          isRequired: true,
+          isSecret: true,
+        }),
+      ],
+    }),
   ]
 }
 
@@ -166,26 +387,55 @@ const LatestResponse = Schema.Struct({ server: McpRegistry.Server })
 
 const decodeLatest = Schema.decodeUnknownOption(LatestResponse)
 
-/** The popular registry servers that load, in list order, then the reference servers. */
-export async function loadPopular(home: string) {
-  const servers = await Promise.all(
-    POPULAR_SERVERS.map(async (name) => {
-      const response = await fetch(`${REGISTRY_URL}/${encodeURIComponent(name)}/versions/latest`, {
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      }).catch(() => undefined)
+/** At most this many registry requests run at once; the registry refuses bursts. */
+const REGISTRY_CONCURRENCY = 8
 
-      if (!response?.ok) return []
-      const decoded = decodeLatest(await response.json().catch(() => undefined))
+/**
+ * The popular servers that load, in list order, and the category of each. Registry servers are fetched, described
+ * ones are built here, and Docker entries come from the Docker MCP Catalog, which is left out when it does not load.
+ */
+export async function loadPopular(home: string, docker: () => Promise<DockerServer[]>) {
+  const described = new Map(
+    [...referenceServers(home), ...describedServers(home)].map((server) => [server.name, server]),
+  )
+  const catalog = await docker().catch(() => [] as DockerServer[])
+  const queue = POPULAR.filter((entry) => !described.has(entry.name) && !entry.name.startsWith("docker:"))
+  const fetched = new Map<string, McpRegistry.Server>()
 
-      return decoded._tag === "Some" ? [decoded.value.server] : []
+  await Promise.all(
+    Array.from({ length: REGISTRY_CONCURRENCY }, async () => {
+      for (let entry = queue.shift(); entry; entry = queue.shift()) {
+        const server = await fetchLatest(entry.name)
+        if (server) fetched.set(entry.name, server)
+      }
     }),
   )
-  const found = servers.flat()
 
   // Nothing loading means the registry is unreachable; failing keeps that out of the cache so Retry tries again.
-  if (found.length === 0) throw new Error("The MCP Registry did not answer")
+  if (fetched.size === 0) throw new Error("The MCP Registry did not answer")
+  const found = POPULAR.flatMap((entry) => {
+    const server = entry.name.startsWith("docker:")
+      ? catalog.find((item) => item.server.name === entry.name.slice("docker:".length))?.server
+      : (described.get(entry.name) ?? fetched.get(entry.name))
 
-  return [...found, ...referenceServers(home)]
+    return server ? [{ server, category: entry.category }] : []
+  })
+
+  return new McpRegistry.SearchResult({
+    servers: found.map((item) => item.server),
+    categories: Object.fromEntries(found.map((item) => [item.server.name, item.category])),
+  })
+}
+
+async function fetchLatest(name: string) {
+  const response = await fetch(`${REGISTRY_URL}/${encodeURIComponent(name)}/versions/latest`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  }).catch(() => undefined)
+
+  if (!response?.ok) return
+  const decoded = decodeLatest(await response.json().catch(() => undefined))
+
+  return decoded._tag === "Some" ? decoded.value.server : undefined
 }
 
 const Text = Schema.String.pipe(Schema.optionalKey)
@@ -227,7 +477,13 @@ type DockerEntry = typeof DockerEntry.Type
 const decodeDockerEntry = Schema.decodeUnknownOption(DockerEntry)
 
 /** One catalog server, with what search and sorting need. */
-export type DockerServer = { server: McpRegistry.Server; text: string; pulls: number; stars: number }
+export type DockerServer = {
+  server: McpRegistry.Server
+  text: string
+  pulls: number
+  stars: number
+  category: Category
+}
 
 /** The `registry:` map of the parsed catalog, mapped and sorted by pulls, then GitHub stars. Bad entries are skipped. */
 export function dockerServers(catalog: unknown) {
@@ -248,6 +504,17 @@ export function searchDocker(servers: readonly DockerServer[], search: string | 
   const words = (search ?? "").toLowerCase().split(/\s+/).filter(Boolean)
 
   return servers.filter((item) => words.every((word) => item.text.includes(word))).map((item) => item.server)
+}
+
+/** The search result for the Docker MCP Catalog, with each server's category. */
+export function dockerResult(servers: readonly DockerServer[], search: string | undefined) {
+  const found = searchDocker(servers, search)
+  const categories = new Map(servers.map((item) => [item.server.name, item.category]))
+
+  return new McpRegistry.SearchResult({
+    servers: found,
+    categories: Object.fromEntries(found.map((server) => [server.name, categories.get(server.name) ?? "other"])),
+  })
 }
 
 /**
@@ -274,6 +541,7 @@ export function dockerServer(key: string, entry: DockerEntry): DockerServer {
     text: [key, entry.title, entry.description, entry.metadata?.category, ...tags].join(" ").toLowerCase(),
     pulls: entry.metadata?.pulls ?? 0,
     stars: entry.metadata?.githubStars ?? 0,
+    category: DOCKER_CATEGORIES[entry.metadata?.category ?? ""] ?? "other",
   }
 }
 
@@ -421,6 +689,43 @@ export async function loadPopularSkills() {
   return skills.slice(0, POPULAR_SKILL_LIMIT)
 }
 
+/** Like `cached`, for a load that takes a key, such as a URL. */
+export function cachedBy<T>(load: (key: string) => Promise<T>) {
+  const entries = new Map<string, () => Promise<T>>()
+
+  return (key: string) => {
+    const entry = entries.get(key) ?? cached(() => load(key))
+    entries.set(key, entry)
+
+    return entry()
+  }
+}
+
+/** GitHub's remote MCP server, which signs in with AccessCode's registered GitHub OAuth app. */
+export const GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"
+
+/**
+ * Whether this server can complete a GitHub sign-in: the GitHub MCP entry refers to the app's client secret as
+ * {env:ACCESSCODE_GITHUB_CLIENT_SECRET}, which the desktop app sets for the server it starts.
+ */
+export function githubSignIn(env: Record<string, string | undefined> = process.env) {
+  return !!env.ACCESSCODE_GITHUB_CLIENT_SECRET
+}
+
+/** Folders that hold Node.js, uv and Docker on a Mac when a desktop app's PATH leaves them out. */
+export function toolFolders(home: string) {
+  // uv's installer puts uvx in ~/.local/bin.
+  return ["/opt/homebrew/bin", "/usr/local/bin", path.join(home, ".local", "bin")]
+}
+
+/** Which programs local MCP servers and skills run with are installed. Only looks for files; runs nothing. */
+export function findTools(home: string, search = process.env.PATH ?? "") {
+  const PATH = [search, ...toolFolders(home)].filter(Boolean).join(":")
+  const has = (name: string) => Bun.which(name, { PATH }) !== null
+
+  return { node: has("npx"), uv: has("uvx"), docker: has("docker") }
+}
+
 /** Keeps a successful load for an hour. A failure is dropped, so the next request tries again. */
 export function cached<T>(load: () => Promise<T>) {
   const state: { at: number; value?: Promise<T> } = { at: 0 }
@@ -486,7 +791,7 @@ export async function runSkills(args: string[], cwd: string) {
     }),
   ).catch(() => undefined)
 
-  if (!child) return { ok: false, output: "Could not run npx. Install Node.js, then try again." }
+  if (!child) return { ok: false, output: "Skills need Node.js. Install it from nodejs.org, then try again." }
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
@@ -497,7 +802,15 @@ export async function runSkills(args: string[], cwd: string) {
   if (child.signalCode)
     return { ok: false, output: `${output}\nStopped after ${COMMAND_TIMEOUT_MS / 1000} seconds.`.trim() }
 
-  return { ok: code === 0, output }
+  return { ok: code === 0, output: code === 0 ? output : explain(output) }
+}
+
+/** A failed command's output, led by a plain sentence when the cause is a common one. */
+export function explain(output: string) {
+  if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|getaddrinfo|network/i.test(output))
+    return `Could not reach the internet. Check your connection, then try again.\n${output}`.trim()
+
+  return output
 }
 
 /** The folders in the skills folder, to tell whether an install added one. */

@@ -137,3 +137,19 @@ export function windowsify(path: string) {
 
   return `${path}${process.platform === "win32" ? ".exe" : ""}`
 }
+
+/**
+ * AccessCode: puts the GitHub OAuth app's client secret in ACCESSCODE_GITHUB_CLIENT_SECRET, from the environment (CI)
+ * or the local Keychain item, so the GitHub MCP server can sign in with the browser. Silent when neither has it; the
+ * app then asks for a token instead. The secret is never printed.
+ */
+export async function loadGithubClientSecret() {
+  if (process.env.ACCESSCODE_GITHUB_CLIENT_SECRET || process.platform !== "darwin") return
+  const child = Bun.spawn(
+    ["/usr/bin/security", "find-generic-password", "-s", "AccessCode build", "-a", "github-oauth-client-secret", "-w"],
+    { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+  )
+  const [secret, code] = await Promise.all([new Response(child.stdout).text(), child.exited])
+
+  if (code === 0 && secret.trim()) process.env.ACCESSCODE_GITHUB_CLIENT_SECRET = secret.trim()
+}

@@ -39,7 +39,7 @@ test("a confirmed install saves once and announces the name on success", () => {
   expect(result.effects).toEqual([
     { type: "step.shown", step: "confirm" },
     { type: "save", attempt: 1, request },
-    { type: "saved", label: "opencode-pty" },
+    { type: "saved", request },
   ])
   expect(result.state.step.type).toBe("browse")
 })
@@ -109,6 +109,10 @@ test("a chosen skill opens the same confirm step and saves it as a skill", () =>
   expect(result.state.step).toEqual({
     type: "confirm",
     target: { type: "skill", ...skill },
-    save: { status: "saving", attempt: 1, label: "web-design" },
+    save: {
+      status: "saving",
+      attempt: 1,
+      request: { type: "skill", label: "web-design", source: "o/r", skill: "web-design" },
+    },
   })
 })

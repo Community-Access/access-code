@@ -1,14 +1,24 @@
 import type { McpConfig, McpPlan, RegistryServer } from "./mcp-plan"
 
-/** What one save sends to the server: a plugin package, or an MCP server with the keys it keeps in the Keychain. */
+/**
+ * What one save sends to the server: a plugin package, or an MCP server with the keys it keeps in the Keychain.
+ * `signIn` marks a server added without keys because it signs in with the browser once added.
+ */
 export type SaveRequest =
   | { type: "plugin"; label: string; pkg: string }
   | { type: "skill"; label: string; source: string; skill: string }
-  | { type: "mcp"; label: string; name: string; config: McpConfig; keychain: Record<string, string> }
+  | {
+      type: "mcp"
+      label: string
+      name: string
+      config: McpConfig
+      keychain: Record<string, string>
+      signIn?: boolean
+    }
 
 export type Save =
   | { status: "idle" }
-  | { status: "saving"; attempt: number; label: string }
+  | { status: "saving"; attempt: number; request: SaveRequest }
   | { status: "failed"; error: string }
 
 export type PluginTarget = { name: string; pkg: string; url?: string }
@@ -38,7 +48,7 @@ export type AddEvent =
 
 export type AddEffect =
   | { type: "save"; attempt: number; request: SaveRequest }
-  | { type: "saved"; label: string }
+  | { type: "saved"; request: SaveRequest }
   | { type: "failed"; error: string }
   | { type: "step.shown"; step: Step["type"] }
 
@@ -86,7 +96,7 @@ export function transitionAdd(state: AddState, event: AddEvent): { state: AddSta
     const attempt = state.attempt + 1
 
     return {
-      state: { step: { ...state.step, save: { status: "saving", attempt, label: event.request.label } }, attempt },
+      state: { step: { ...state.step, save: { status: "saving", attempt, request: event.request } }, attempt },
       effects: [{ type: "save", attempt, request: event.request }],
     }
   }
@@ -98,7 +108,7 @@ export function transitionAdd(state: AddState, event: AddEvent): { state: AddSta
   if (event.type === "save.succeeded")
     return {
       state: { ...state, step: { type: "browse", save: IDLE } },
-      effects: [{ type: "saved", label: current.label }],
+      effects: [{ type: "saved", request: current.request }],
     }
 
   return {
@@ -107,10 +117,11 @@ export function transitionAdd(state: AddState, event: AddEvent): { state: AddSta
   }
 }
 
-/** Whether the current step is saving, and the error of its last save. */
+/** Whether the current step is saving, what it saves, and the error of its last save. */
 export function saveView(step: Step) {
   return {
     busy: step.save.status === "saving",
+    saving: step.save.status === "saving" ? step.save.request : undefined,
     error: step.save.status === "failed" ? step.save.error : undefined,
   }
 }

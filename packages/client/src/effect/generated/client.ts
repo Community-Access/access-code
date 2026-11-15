@@ -330,6 +330,9 @@ import type {
   ExperimentalConfigSkillRemoveInput,
   ExperimentalConfigSkillRemoveOutput,
   ExperimentalConfigExtensionPathsOutput,
+  ExperimentalConfigMcpSignInInput,
+  ExperimentalConfigMcpSignInOutput,
+  ExperimentalConfigToolsOutput,
 } from "../api/api.js"
 import { ClientError } from "./client-error.js"
 
@@ -2020,6 +2023,15 @@ const EndpointExperimentalConfigExtensionPaths = (raw: RawClient["server.config"
     raw["config.extensionPaths"]({}).pipe(Effect.mapError(mapClientError)),
   )
 
+const EndpointExperimentalConfigMcpSignIn =
+  (raw: RawClient["server.config"]) => (input: ExperimentalConfigMcpSignInInput) =>
+    preserveEffect<ExperimentalConfigMcpSignInOutput>()(
+      raw["config.mcpSignIn"]({ query: { url: input["url"] } }).pipe(Effect.mapError(mapClientError)),
+    )
+
+const EndpointExperimentalConfigTools = (raw: RawClient["server.config"]) => () =>
+  preserveEffect<ExperimentalConfigToolsOutput>()(raw["config.tools"]({}).pipe(Effect.mapError(mapClientError)))
+
 const adaptGroupExperimentalConfig = (raw: RawClient["server.config"]) => ({
   update: EndpointExperimentalConfigUpdate(raw),
   mcpRegistry: EndpointExperimentalConfigMcpRegistry(raw),
@@ -2029,6 +2041,8 @@ const adaptGroupExperimentalConfig = (raw: RawClient["server.config"]) => ({
   skillInstall: EndpointExperimentalConfigSkillInstall(raw),
   skillRemove: EndpointExperimentalConfigSkillRemove(raw),
   extensionPaths: EndpointExperimentalConfigExtensionPaths(raw),
+  mcpSignIn: EndpointExperimentalConfigMcpSignIn(raw),
+  tools: EndpointExperimentalConfigTools(raw),
 })
 
 const adaptClient = (raw: RawClient) => {
@@ -2180,6 +2194,10 @@ const adaptClient = (raw: RawClient) => {
       skillRemove: client.experimental.config.skillRemove,
       /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
       extensionPaths: client.experimental.config.extensionPaths,
+      /** @deprecated Use `client.experimental.config.mcpSignIn`. Removed in the next minor. */
+      mcpSignIn: client.experimental.config.mcpSignIn,
+      /** @deprecated Use `client.experimental.config.tools`. Removed in the next minor. */
+      tools: client.experimental.config.tools,
     },
   }
 }

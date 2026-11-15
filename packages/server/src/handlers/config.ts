@@ -9,7 +9,12 @@ import { HttpApiBuilder } from "effect/http-api"
 import { Api } from "../api"
 import {
   cached,
+  cachedBy,
+  dockerResult,
   filterSkills,
+  findTools,
+  GITHUB_MCP_URL,
+  githubSignIn,
   insideFolder,
   installArgs,
   loadDocker,
@@ -17,7 +22,6 @@ import {
   loadPopularSkills,
   removeArgs,
   runSkills,
-  searchDocker,
   searchSkills,
   skillFolders,
   SKILL_SEARCH_MIN,
@@ -27,12 +31,18 @@ import {
 // Shared across requests, so the dialog opens quickly after the first load.
 const docker = cached(loadDocker)
 const popularSkills = cached(loadPopularSkills)
+const signIn = cachedBy(async (url) => {
+  // The MCP SDK loads only when a sign-in is checked, as it does in core.
+  const { McpOAuth } = await import("@opencode/core/mcp/oauth")
+
+  return McpOAuth.probeSignIn(url)
+})
 
 export const ConfigHandler = HttpApiBuilder.group(Api, "server.config", (handlers) =>
   Effect.gen(function* () {
     const global = yield* Global.Service
     const skills = skillsDirectory(global.home)
-    const popular = cached(() => loadPopular(global.home))
+    const popular = cached(() => loadPopular(global.home, docker))
     return handlers
       .handle("config.get", () => Config.Service.use((config) => config.entries()))
       .handle(
@@ -65,15 +75,14 @@ export const ConfigHandler = HttpApiBuilder.group(Api, "server.config", (handler
       .handle(
         "config.mcpPopular",
         Effect.fn(function* () {
-          const servers = yield* Effect.tryPromise(() => popular()).pipe(Effect.orDie)
-          return new McpRegistry.SearchResult({ servers })
+          return yield* Effect.tryPromise(() => popular()).pipe(Effect.orDie)
         }),
       )
       .handle(
         "config.mcpDocker",
         Effect.fn(function* (ctx) {
           const servers = yield* Effect.tryPromise(() => docker()).pipe(Effect.orDie)
-          return new McpRegistry.SearchResult({ servers: searchDocker(servers, ctx.query.search) })
+          return dockerResult(servers, ctx.query.search)
         }),
       )
       .handle(
@@ -120,6 +129,24 @@ export const ConfigHandler = HttpApiBuilder.group(Api, "server.config", (handler
           })
         }),
       )
+      .handle(
+        "config.mcpSignIn",
+        Effect.fn(function* (ctx) {
+          // Only https servers are checked; remote MCP servers that sign in use https.
+          const url = URL.parse(ctx.query.url)
+          if (url?.protocol !== "https:") return new ExtensionCatalog.SignIn({ supported: false })
+          // GitHub has no client registration, so its sign-in works only with AccessCode's own client secret.
+          if (url.href === GITHUB_MCP_URL) return new ExtensionCatalog.SignIn({ supported: githubSignIn() })
+          const supported = yield* Effect.promise(() =>
+            signIn(url.href).then(
+              (kind) => kind === "browser",
+              () => false,
+            ),
+          )
+          return new ExtensionCatalog.SignIn({ supported })
+        }),
+      )
+      .handle("config.tools", () => Effect.succeed(new ExtensionCatalog.Tools(findTools(global.home))))
       .handle("config.extensionPaths", () =>
         Effect.succeed(new ExtensionCatalog.Paths({ config: global.config, skills })),
       )

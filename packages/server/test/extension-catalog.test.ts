@@ -5,8 +5,17 @@ import { describe, expect, test } from "bun:test"
 import { ExtensionCatalog } from "@opencode/schema/extension-catalog"
 import { Schema } from "effect"
 import {
+  cachedBy,
   commandOutput,
   dockerServers,
+  explain,
+  findTools,
+  CATEGORIES,
+  describedServers,
+  dockerResult,
+  POPULAR,
+  referenceServers,
+  githubSignIn,
   filterSkills,
   insideFolder,
   installArgs,
@@ -224,4 +233,67 @@ test("a skill folder counts only when it is an entry directly inside the skills 
   expect(await insideFolder(skills, path.join(skills, "missing"))).toBe(false)
   expect(await insideFolder(skills, skills)).toBe(false)
   await fs.rm(root, { recursive: true, force: true })
+})
+
+describe("setup checks", () => {
+  test("finds a tool on the PATH it is given", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "extension-tools-"))
+    await fs.writeFile(path.join(dir, "npx"), "#!/bin/sh\n", { mode: 0o755 })
+    const home = path.join(dir, "home")
+
+    expect(findTools(home, dir)).toMatchObject({ node: true })
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  test("GitHub sign-in is offered only when the client secret reached the server", () => {
+    expect(githubSignIn({ ACCESSCODE_GITHUB_CLIENT_SECRET: "x" })).toBe(true)
+    expect(githubSignIn({})).toBe(false)
+  })
+
+  test("leads a network failure with a plain sentence", () => {
+    expect(explain("npm error getaddrinfo ENOTFOUND registry.npmjs.org")).toStartWith("Could not reach the internet.")
+    expect(explain("No skill named foo")).toBe("No skill named foo")
+  })
+
+  test("caches each key's load, and drops a failure so the next call tries again", async () => {
+    const calls: string[] = []
+    const load = cachedBy(async (key) => {
+      calls.push(key)
+      if (key === "bad" && calls.filter((item) => item === "bad").length === 1) throw new Error("offline")
+      return key.length
+    })
+
+    expect(await load("one")).toBe(3)
+    expect(await load("one")).toBe(3)
+    expect(await load("bad").catch(() => "failed")).toBe("failed")
+    expect(await load("bad")).toBe(3)
+    expect(calls).toEqual(["one", "bad", "bad"])
+  })
+})
+
+describe("popular catalog", () => {
+  test("lists each server once, in a known category, and every described server exists", () => {
+    const names = POPULAR.map((entry) => entry.name)
+    const described = new Set([...referenceServers("/home"), ...describedServers("/home")].map((server) => server.name))
+
+    expect(new Set(names).size).toBe(names.length)
+    expect(POPULAR.filter((entry) => !CATEGORIES.includes(entry.category))).toEqual([])
+    expect(
+      names.filter(
+        (name) => (name.startsWith("accesscode.") || name === "net.starttesting/mcp") && !described.has(name),
+      ),
+    ).toEqual([])
+  })
+
+  test("Start Testing is featured first and signs in through its remote", () => {
+    expect(POPULAR[0]).toEqual({ name: "net.starttesting/mcp", category: "featured" })
+    expect(describedServers("/home")[0]?.remotes?.[0]?.url).toBe("https://mcp.starttesting.net")
+  })
+
+  test("Docker results carry the catalog's category in the app's groups", () => {
+    const result = dockerResult(dockerServers(catalog), "brave web")
+
+    expect(result.servers.map((server) => server.name)).toEqual(["brave"])
+    expect(Object.keys(result.categories ?? {})).toEqual(["brave"])
+  })
 })

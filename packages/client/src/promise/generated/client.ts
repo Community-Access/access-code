@@ -332,6 +332,9 @@ import type {
   ExperimentalConfigSkillRemoveInput,
   ExperimentalConfigSkillRemoveOutput,
   ExperimentalConfigExtensionPathsOutput,
+  ExperimentalConfigMcpSignInInput,
+  ExperimentalConfigMcpSignInOutput,
+  ExperimentalConfigToolsOutput,
 } from "./types.js"
 import { ClientError } from "./client-error.js"
 
@@ -1843,6 +1846,29 @@ export function make(options: ClientOptions) {
             },
             requestOptions,
           ),
+        mcpSignIn: (input: ExperimentalConfigMcpSignInInput, requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigMcpSignInOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/mcp-sign-in`,
+              query: { url: input["url"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+        tools: (requestOptions?: RequestOptions) =>
+          request<ExperimentalConfigToolsOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/config/tools`,
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
       },
     },
     message: {
@@ -2897,6 +2923,10 @@ export function make(options: ClientOptions) {
       skillRemove: client.experimental.config.skillRemove,
       /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
       extensionPaths: client.experimental.config.extensionPaths,
+      /** @deprecated Use `client.experimental.config.mcpSignIn`. Removed in the next minor. */
+      mcpSignIn: client.experimental.config.mcpSignIn,
+      /** @deprecated Use `client.experimental.config.tools`. Removed in the next minor. */
+      tools: client.experimental.config.tools,
     },
   }
 }

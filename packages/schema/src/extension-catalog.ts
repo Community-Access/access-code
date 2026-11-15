@@ -60,3 +60,15 @@ export const SkillsResponse = Schema.Struct({
     installs: Schema.Number.pipe(Schema.optionalKey),
   }).pipe(Schema.Array),
 })
+
+/** Whether a remote MCP server supports signing in with the browser, so it needs no key. */
+export class SignIn extends Schema.Class<SignIn>("ExtensionCatalog.SignIn")({
+  supported: Schema.Boolean,
+}) {}
+
+/** Which programs that run local MCP servers and skills are installed. */
+export class Tools extends Schema.Class<Tools>("ExtensionCatalog.Tools")({
+  node: Schema.Boolean,
+  uv: Schema.Boolean,
+  docker: Schema.Boolean,
+}) {}

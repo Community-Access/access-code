@@ -123,11 +123,7 @@ export function SkillsTab(props: { onInstall: (skill: SkillTarget) => void; onAs
           {(skill) => (
             <ResultRow
               name={skill.name}
-              detail={language.t("settings.extensions.add.skills.repo", { source: skill.source })}
-              lines={[
-                language.t("settings.extensions.from.skills"),
-                language.plural("settings.extensions.add.skills.installs", skill.installs),
-              ]}
+              lines={[language.plural("settings.extensions.add.skills.installs", skill.installs)]}
               actions={
                 <>
                   <ExternalLink
@@ -136,13 +132,6 @@ export function SkillsTab(props: { onInstall: (skill: SkillTarget) => void; onAs
                     aria-label={language.t("settings.extensions.add.skills.page.label", { name: skill.name })}
                   >
                     {language.t("settings.extensions.add.skills.page")}
-                  </ExternalLink>
-                  <ExternalLink
-                    class="text-13-regular"
-                    href={`https://github.com/${skill.source}`}
-                    aria-label={language.t("settings.extensions.add.source.label", { name: skill.name })}
-                  >
-                    {language.t("settings.extensions.add.source")}
                   </ExternalLink>
                   <Show
                     when={validSource(skill.source) && validSkill(skill.skillId)}

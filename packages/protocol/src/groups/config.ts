@@ -137,4 +137,29 @@ export const ConfigGroup = HttpApiGroup.make("server.config")
       }),
     ),
   )
+  .add(
+    HttpApiEndpoint.get("config.mcpSignIn", "/api/experimental/config/mcp-sign-in", {
+      query: Schema.Struct({ url: Schema.String }),
+      success: ExtensionCatalog.SignIn,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.mcpSignIn",
+        summary: "Check remote MCP sign-in",
+        description:
+          "Experimental: may change without compatibility guarantees. Whether a remote MCP server at an https URL supports browser sign-in that OpenCode can complete.",
+      }),
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("config.tools", "/api/experimental/config/tools", {
+      success: ExtensionCatalog.Tools,
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.config.tools",
+        summary: "List extension tools",
+        description:
+          "Experimental: may change without compatibility guarantees. Whether Node.js (npx), uv (uvx) and Docker are installed, which local MCP servers and skills need.",
+      }),
+    ),
+  )
   .annotateMerge(OpenApi.annotations({ title: "config", description: "Location-scoped configuration routes." }))

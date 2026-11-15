@@ -20,12 +20,6 @@ const DEBOUNCE_MS = 400
 
 const NPM_RESULTS = 50
 
-const FROM = {
-  docs: "settings.extensions.from.docs",
-  awesome: "settings.extensions.from.awesome",
-  npm: "settings.extensions.from.npm",
-} as const
-
 const FAILED = {
   docs: "settings.extensions.add.plugins.failed.docs",
   awesome: "settings.extensions.add.plugins.failed.awesome",
@@ -93,6 +87,7 @@ export function PluginsTab(props: { onInstall: (plugin: PluginTarget) => void; o
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-3">
+      <p class="text-13-regular text-v2-text-text-muted">{language.t("settings.extensions.add.plugins.note")}</p>
       <Field>
         <Field.Label>{language.t("settings.extensions.add.plugins.search")}</Field.Label>
         <TextInput
@@ -157,19 +152,11 @@ function PluginRow(props: {
   onAskAi: (text: string) => void
 }) {
   const language = useLanguage()
-  const source = () => props.plugin.sources[0] ?? "npm"
-
   return (
     <ResultRow
       name={props.plugin.name}
-      detail={
-        props.plugin.pkg && props.plugin.pkg !== props.plugin.name
-          ? language.t("settings.extensions.add.confirm.package", { pkg: props.plugin.pkg })
-          : undefined
-      }
       description={props.plugin.description}
       lines={[
-        language.t(FROM[source()]),
         props.plugin.downloads !== undefined
           ? language.plural("settings.extensions.add.plugins.downloads", props.plugin.downloads)
           : undefined,

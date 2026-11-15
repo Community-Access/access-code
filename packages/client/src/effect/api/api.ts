@@ -2826,6 +2826,12 @@ export interface ConfigApi<E = never> {
 
   /** @deprecated Use `client.experimental.config.extensionPaths`. Removed in the next minor. */
   readonly extensionPaths: ExperimentalConfigExtensionPathsOperation<E>
+
+  /** @deprecated Use `client.experimental.config.mcpSignIn`. Removed in the next minor. */
+  readonly mcpSignIn: ExperimentalConfigMcpSignInOperation<E>
+
+  /** @deprecated Use `client.experimental.config.tools`. Removed in the next minor. */
+  readonly tools: ExperimentalConfigToolsOperation<E>
 }
 
 export type ExperimentalConfigUpdateInput = {
@@ -2899,6 +2905,7 @@ export type ExperimentalConfigMcpRegistryOutput = {
       | undefined
   }>
   readonly nextCursor?: string | undefined
+  readonly categories?: { readonly [x: string]: string } | undefined
 }
 export type ExperimentalConfigMcpRegistryOperation<E = never> = (
   input?: ExperimentalConfigMcpRegistryInput,
@@ -2961,6 +2968,7 @@ export type ExperimentalConfigMcpPopularOutput = {
       | undefined
   }>
   readonly nextCursor?: string | undefined
+  readonly categories?: { readonly [x: string]: string } | undefined
 }
 export type ExperimentalConfigMcpPopularOperation<E = never> = () => Effect.Effect<
   ExperimentalConfigMcpPopularOutput,
@@ -3025,6 +3033,7 @@ export type ExperimentalConfigMcpDockerOutput = {
       | undefined
   }>
   readonly nextCursor?: string | undefined
+  readonly categories?: { readonly [x: string]: string } | undefined
 }
 export type ExperimentalConfigMcpDockerOperation<E = never> = (
   input?: ExperimentalConfigMcpDockerInput,
@@ -3062,6 +3071,15 @@ export type ExperimentalConfigExtensionPathsOperation<E = never> = () => Effect.
   E
 >
 
+export type ExperimentalConfigMcpSignInInput = { readonly url: string }
+export type ExperimentalConfigMcpSignInOutput = { readonly supported: boolean }
+export type ExperimentalConfigMcpSignInOperation<E = never> = (
+  input: ExperimentalConfigMcpSignInInput,
+) => Effect.Effect<ExperimentalConfigMcpSignInOutput, E>
+
+export type ExperimentalConfigToolsOutput = { readonly node: boolean; readonly uv: boolean; readonly docker: boolean }
+export type ExperimentalConfigToolsOperation<E = never> = () => Effect.Effect<ExperimentalConfigToolsOutput, E>
+
 export interface ExperimentalConfigApi<E = never> {
   readonly update: ExperimentalConfigUpdateOperation<E>
   readonly mcpRegistry: ExperimentalConfigMcpRegistryOperation<E>
@@ -3071,6 +3089,8 @@ export interface ExperimentalConfigApi<E = never> {
   readonly skillInstall: ExperimentalConfigSkillInstallOperation<E>
   readonly skillRemove: ExperimentalConfigSkillRemoveOperation<E>
   readonly extensionPaths: ExperimentalConfigExtensionPathsOperation<E>
+  readonly mcpSignIn: ExperimentalConfigMcpSignInOperation<E>
+  readonly tools: ExperimentalConfigToolsOperation<E>
 }
 
 /** @deprecated Use `ExperimentalSessionStatsInput`. Removed in the next minor. */
@@ -3348,6 +3368,21 @@ export type ConfigExtensionPathsOutput = ExperimentalConfigExtensionPathsOutput
 
 /** @deprecated Use `ExperimentalConfigExtensionPathsOperation`. Removed in the next minor. */
 export type ConfigExtensionPathsOperation<E = never> = ExperimentalConfigExtensionPathsOperation<E>
+
+/** @deprecated Use `ExperimentalConfigMcpSignInInput`. Removed in the next minor. */
+export type ConfigMcpSignInInput = ExperimentalConfigMcpSignInInput
+
+/** @deprecated Use `ExperimentalConfigMcpSignInOutput`. Removed in the next minor. */
+export type ConfigMcpSignInOutput = ExperimentalConfigMcpSignInOutput
+
+/** @deprecated Use `ExperimentalConfigMcpSignInOperation`. Removed in the next minor. */
+export type ConfigMcpSignInOperation<E = never> = ExperimentalConfigMcpSignInOperation<E>
+
+/** @deprecated Use `ExperimentalConfigToolsOutput`. Removed in the next minor. */
+export type ConfigToolsOutput = ExperimentalConfigToolsOutput
+
+/** @deprecated Use `ExperimentalConfigToolsOperation`. Removed in the next minor. */
+export type ConfigToolsOperation<E = never> = ExperimentalConfigToolsOperation<E>
 
 /** @deprecated Use `ExperimentalGenerateApi`. Removed in the next minor. */
 export type GenerateApi<E = never> = ExperimentalGenerateApi<E>

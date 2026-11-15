@@ -106,6 +106,10 @@ const prepare = Effect.fn("BackgroundService.prepare")(function* (mode: Backgrou
   const version = serviceVersion({ channel: CHANNEL, isolated, mode, version: cli.version })
 
   if (isolated) process.env.XDG_STATE_HOME = app.getPath("userData")
+  // AccessCode: the server this starts inherits the environment, and the GitHub MCP entry refers to the GitHub OAuth
+  // app's client secret as {env:ACCESSCODE_GITHUB_CLIENT_SECRET}. A server something else started does not have it.
+  if (import.meta.env.ACCESSCODE_GITHUB_CLIENT_SECRET)
+    process.env.ACCESSCODE_GITHUB_CLIENT_SECRET ??= import.meta.env.ACCESSCODE_GITHUB_CLIENT_SECRET
   const client = yield* Effect.promise(() => import("@opencode/client/service"))
 
   const file =
