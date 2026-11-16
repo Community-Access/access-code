@@ -571,7 +571,7 @@ export function ScrollView(props: ScrollViewProps) {
         onTouchCancel={events.onTouchCancel}
         onPointerDown={events.onPointerDown}
         onClick={events.onClick}
-        tabIndex={viewportStop() ? 0 : -1}
+        tabIndex={viewportStop() ? 0 : undefined}
         role={local.region ? "region" : undefined}
         aria-label={local.region ? i18n.t("ui.scrollView.ariaLabel") : undefined}
         onKeyDown={(e) => {
