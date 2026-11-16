@@ -368,8 +368,15 @@ describe("MCP OAuth", () => {
   describe("client registration", () => {
     const cimd = { client_id_metadata_document_supported: true, token_endpoint_auth_methods_supported: ["none"] }
 
-    test("uses the client metadata document when the server supports public CIMD clients", async () => {
-      const { server, registrations, tokenRequests } = authorizationServer(cimd)
+    test("registers as AccessCode when the server supports both CIMD and registration", async () => {
+      const { server, registrations } = authorizationServer(cimd)
+      const { url } = await Effect.runPromise(Effect.scoped(start(server))).finally(() => server.stop(true))
+      expect(url.searchParams.get("client_id")).toBe("registered")
+      expect(registrations[0]).toMatchObject({ client_name: "AccessCode" })
+    })
+
+    test("uses the client metadata document when the server supports public CIMD clients only", async () => {
+      const { server, registrations, tokenRequests } = authorizationServer({ ...cimd, registration_endpoint: undefined })
       const credential = await Effect.runPromise(
         Effect.scoped(
           Effect.gen(function* () {

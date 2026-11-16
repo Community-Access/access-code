@@ -541,9 +541,12 @@ export const authorize = (input: {
         discoverOAuthServerInfo(input.config.url, { resourceMetadataUrl, fetchFn }),
       catch: (error) => (error instanceof Error ? error : new Error(String(error))),
     })
+    // AccessCode: the published client document still names OpenCode, while registering names AccessCode, so the
+    // document is used only by servers that cannot register a client.
     const cimd =
       !oauth?.client_id &&
       !oauth?.redirect_uri &&
+      !discovery.authorizationServerMetadata?.registration_endpoint &&
       discovery.authorizationServerMetadata?.client_id_metadata_document_supported === true &&
       (discovery.authorizationServerMetadata.token_endpoint_auth_methods_supported?.includes("none") ?? false)
     yield* Effect.logInfo("mcp oauth client registration selected", {
