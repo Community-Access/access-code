@@ -743,9 +743,13 @@ export function cached<T>(load: () => Promise<T>) {
   }
 }
 
-/** The global OpenCode skills folder, where `skills add -g -a opencode` writes. */
-export function skillsDirectory(home: string, xdg = process.env.XDG_CONFIG_HOME) {
-  return path.join(xdg || path.join(home, ".config"), "opencode", "skills")
+/**
+ * The shared global skills folder, ~/.agents/skills. `skills add -g -a opencode` writes here (skills@1.8.1 treats it
+ * as OpenCode's global folder, and `--copy` does not change that), and OpenCode reads skills from it. Other AI apps
+ * read it too, so removing a skill here removes it for them as well.
+ */
+export function skillsDirectory(home: string) {
+  return path.join(home, ".agents", "skills")
 }
 
 /**

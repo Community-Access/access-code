@@ -11,7 +11,13 @@ import { createRemoveState, removeView, transitionRemove, type RemoveEffect, typ
  * Confirms removing one installed extension, in the same layout as confirming an install. After a removal the dialog
  * does not return focus to the Remove button, which goes away with the row; `onRemoved` moves it instead.
  */
-export function DialogRemoveExtension(props: { name: string; remove: () => Promise<void>; onRemoved: () => void }) {
+export function DialogRemoveExtension(props: {
+  name: string
+  /** Replaces the usual explanation, for example when other apps share what is removed. */
+  body?: string
+  remove: () => Promise<void>
+  onRemoved: () => void
+}) {
   const language = useLanguage()
   const dialog = useDialog()
   const [state, setState] = createSignal(createRemoveState())
@@ -75,7 +81,7 @@ export function DialogRemoveExtension(props: { name: string; remove: () => Promi
       </DialogHeader>
       <DialogBody class="px-5 pb-5">
         <ConfirmStep
-          body={language.t("settings.extensions.remove.body")}
+          body={props.body ?? language.t("settings.extensions.remove.body")}
           error={view().error}
           busy={view().busy}
           destructive

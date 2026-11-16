@@ -1086,7 +1086,7 @@ export const dict = {
   "settings.extensions.add.added": "{{name}} added",
   "settings.extensions.add.failed": "Could not add {{name}}. {{error}}",
   "settings.extensions.add.failedUnknown": "AccessCode could not save it. Try again.",
-  "settings.extensions.add.askAi": "Ask AI to add it",
+  "settings.extensions.add.askAi": "Ask AI to add",
   "settings.extensions.add.askAi.label": "Ask AI to add {{name}}",
   "settings.extensions.add.plugins.search": "Search plugins",
   "settings.extensions.add.plugins.search.placeholder": "For example notifications or worktree",
@@ -1232,6 +1232,8 @@ export const dict = {
   "settings.extensions.remove.label": "Remove {{name}}",
   "settings.extensions.remove.title": "Remove {{name}}?",
   "settings.extensions.remove.body": "It will no longer be available in AccessCode. You can add it again later.",
+  "settings.extensions.remove.skillBody":
+    "Skills are shared with other AI apps on this Mac, so it will be removed from them too. You can add it again later.",
   "settings.extensions.remove.removing": "Removing",
   "settings.extensions.remove.done": "{{name}} removed",
   "settings.extensions.remove.failed": "Could not remove {{name}}. {{error}}",
