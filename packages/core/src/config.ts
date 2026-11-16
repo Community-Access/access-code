@@ -481,12 +481,47 @@ export const layer = (options?: Options) =>
               Effect.mapError((cause) => new FSUtil.FileSystemError({ method: "config.update", cause })),
             ),
           )
-          const text = (yield* fs.readFileStringSafe(filepath)) ?? "{}\n"
-          const updated = yield* Effect.try({
-            try: () => patchText(text, patch),
-            catch: (cause) => new FSUtil.FileSystemError({ method: "config.update", cause }),
-          })
-          yield* fs.writeWithDirs(filepath, updated.endsWith("\n") ? updated : `${updated}\n`)
+          const removedServers = Object.entries(patch.mcp ?? {}).flatMap(([name, server]) => (server === null ? [name] : []))
+          const globalFiles = yield* Effect.filter(candidates, fs.isFile)
+          // The Keychain items the removed servers refer to, read from the files as written, before {keychain:} is filled in.
+          const dropped = removedServers.length
+            ? new Set(
+                (yield* Effect.forEach(globalFiles, (file) => fs.readFileStringSafe(file))).flatMap((text) =>
+                  serverKeychainRefs(text ?? "", removedServers),
+                ),
+              )
+            : new Set<string>()
+          // A removal applies wherever the entry is, since both opencode.json and opencode.jsonc can exist; additions go
+          // to the one file chosen above.
+          const removal = removalOnly(patch)
+          const others = removal ? globalFiles.filter((candidate) => candidate !== filepath) : []
+          yield* Effect.forEach([filepath, ...others], (target) =>
+            Effect.gen(function* () {
+              const text = (yield* fs.readFileStringSafe(target)) ?? "{}\n"
+              const updated = yield* Effect.try({
+                try: () => patchText(text, target === filepath ? patch : removal!),
+                catch: (cause) => new FSUtil.FileSystemError({ method: "config.update", cause }),
+              })
+              if (target !== filepath && updated === text) return
+              yield* fs.writeWithDirs(target, updated.endsWith("\n") ? updated : `${updated}\n`)
+            }),
+          )
+          // Keys go with their server, unless any config file, global or project, still refers to them.
+          if (dropped.size) {
+            const files = new Set([
+              ...globalFiles,
+              ...configs.flatMap((entry) => (entry.type === "document" && entry.path ? [entry.path] : [])),
+            ])
+            const texts = yield* Effect.forEach([...files], (file) => fs.readFileStringSafe(file))
+            const used = new Set(texts.flatMap((text) => keychainRefs(text ?? "")))
+            yield* Effect.forEach(
+              [...dropped].filter((name) => !used.has(name)),
+              (name) =>
+                ConfigKeychain.write(name, null).pipe(
+                  Effect.catch((error) => Effect.logWarning("failed to delete keychain item", { name, error })),
+                ),
+            )
+          }
           yield* requestReload
         },
         (effect) => updateLock.withPermit(effect),
@@ -535,31 +570,74 @@ export function configured(options?: Options) {
 
 export const node = configured()
 
-// Applies a patch as text edits, so comments and formatting in opencode.json stay as the person wrote them.
+// Applies a patch as text edits, so comments and formatting in opencode.json stay as the person wrote them. Plugins
+// are added and removed one array item at a time for the same reason.
 export function patchText(text: string, patch: Patch) {
   const formattingOptions = { tabSize: 2, insertSpaces: true }
-  const edit = (current: string, path: (string | number)[], value: unknown) =>
-    applyEdits(current, modify(current, path, value, { formattingOptions }))
+  const edit = (current: string, path: (string | number)[], value: unknown, isArrayInsertion = false) =>
+    applyEdits(current, modify(current, path, value, { formattingOptions, isArrayInsertion }))
   const withShell = "shell" in patch ? edit(text, ["shell"], patch.shell ?? undefined) : text
-  const withMcp = Object.entries(patch.mcp ?? {}).reduce(
-    (current, [name, server]) => edit(current, ["mcp", "servers", name], server ?? undefined),
-    withShell,
-  )
+  const withMcp = Object.entries(patch.mcp ?? {}).reduce((current, [name, server]) => {
+    const written = edit(current, ["mcp", "servers", name], server ?? undefined)
+    if (server || name === "servers" || name === "timeout") return written
+    // Older files list servers directly under "mcp"; the server still reads them, so removal covers that place too.
+    const parsed: { mcp?: Record<string, unknown> } = parse(written) ?? {}
+    const legacy = parsed.mcp && typeof parsed.mcp === "object" && Object.hasOwn(parsed.mcp, name)
+
+    return legacy ? edit(written, ["mcp", name], undefined) : written
+  }, withShell)
 
   if (!patch.plugins) return withMcp
   const remove = new Set(patch.plugins.remove ?? [])
-  const parsed: { plugins?: unknown; plugin?: unknown } = parse(withMcp) ?? {}
   // Older files list plugins under "plugin"; the server reads both, so removal covers both.
-  const legacy = Array.isArray(parsed.plugin) ? parsed.plugin : []
-  const legacyKept = legacy.filter((item) => !remove.has(pluginPackage(item)))
-  const withLegacy = legacyKept.length === legacy.length ? withMcp : edit(withMcp, ["plugin"], legacyKept)
-  const existing = Array.isArray(parsed.plugins) ? parsed.plugins : []
-  const kept = existing.filter((item) => !remove.has(pluginPackage(item)))
-  const names = new Set([...legacyKept, ...kept].map(pluginPackage))
-  const added = (patch.plugins.add ?? []).filter((name) => !names.has(name))
+  const withoutRemoved = (["plugin", "plugins"] as const).reduce((current, key) => {
+    const parsed: Record<string, unknown> = parse(current) ?? {}
+    const list = parsed[key]
+    if (!Array.isArray(list)) return current
 
-  if (!added.length && kept.length === existing.length) return withLegacy
-  return edit(withLegacy, ["plugins"], [...kept, ...added])
+    // From the end, so the indexes still to remove do not move.
+    return list
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => remove.has(pluginPackage(item)))
+      .reverse()
+      .reduce((text, { index }) => edit(text, [key, index], undefined), current)
+  }, withMcp)
+  const parsed: { plugins?: unknown; plugin?: unknown } = parse(withoutRemoved) ?? {}
+  const existing = Array.isArray(parsed.plugins) ? parsed.plugins : []
+  const legacy = Array.isArray(parsed.plugin) ? parsed.plugin : []
+  const names = new Set([...legacy, ...existing].map(pluginPackage))
+  const added = [...new Set(patch.plugins.add ?? [])].filter((name) => !names.has(name))
+
+  if (!added.length) return withoutRemoved
+  if (!Array.isArray(parsed.plugins)) return edit(withoutRemoved, ["plugins"], added)
+
+  return added.reduce(
+    (current, name, offset) => edit(current, ["plugins", existing.length + offset], name, true),
+    withoutRemoved,
+  )
+}
+
+/** Every {keychain:NAME} reference in a config file's text. */
+export function keychainRefs(text: string) {
+  return [...text.matchAll(/\{keychain:([A-Za-z0-9._-]+)\}/g)].map((match) => match[1])
+}
+
+/** The {keychain:NAME} references in the named MCP servers of a config file, including older direct entries. */
+export function serverKeychainRefs(text: string, names: readonly string[]) {
+  const parsed: { mcp?: Record<string, unknown> & { servers?: Record<string, unknown> } } = parse(text) ?? {}
+  return names.flatMap((name) => {
+    const legacy = name === "servers" || name === "timeout" ? undefined : parsed.mcp?.[name]
+    return keychainRefs(JSON.stringify([parsed.mcp?.servers?.[name] ?? null, legacy ?? null]))
+  })
+}
+
+/** Only the removals in a patch, or undefined when it removes nothing. */
+function removalOnly(patch: Patch): Patch | undefined {
+  const mcp = Object.fromEntries(Object.entries(patch.mcp ?? {}).filter(([, server]) => server === null))
+  const plugins = patch.plugins?.remove?.length ? { remove: patch.plugins.remove } : undefined
+  if (!Object.keys(mcp).length && !plugins) return undefined
+
+  return { mcp, plugins } as Patch
 }
 
 function pluginPackage(item: unknown) {

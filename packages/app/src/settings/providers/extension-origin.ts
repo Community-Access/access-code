@@ -39,28 +39,6 @@ export function mcpOrigin(name: string, entries: readonly ConfigEntry[], configF
   return document ? origin(document.path, configFolder) : OTHER
 }
 
-function keychainRefs(value: unknown) {
-  return [...JSON.stringify(value ?? null).matchAll(/\{keychain:([^}"]+)\}/g)].map((match) => match[1])
-}
-
-/**
- * The Keychain items to delete with an MCP server removed from the file at `path`: the ones its config refers to as
- * {keychain:NAME} that no other server, in any config file, still refers to.
- */
-export function mcpKeychain(name: string, entries: readonly ConfigEntry[], path: string) {
-  const all = documents(entries)
-  const removed = all.find((entry) => entry.path === path)?.info.mcp?.servers?.[name]
-  const kept = new Set(
-    all.flatMap((entry) =>
-      Object.entries(entry.info.mcp?.servers ?? {}).flatMap(([server, config]) =>
-        entry.path === path && server === name ? [] : keychainRefs(config),
-      ),
-    ),
-  )
-
-  return [...new Set(keychainRefs(removed))].filter((id) => !kept.has(id))
-}
-
 /** A plugin entry's package spec, as `plugins` lists it: a string, or an object with a package. */
 function spec(item: unknown) {
   if (typeof item === "string") return item

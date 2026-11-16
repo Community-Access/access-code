@@ -22,7 +22,7 @@ import type { SettingsView } from "@/settings/surface"
 import { DialogAddExtension } from "./add-extension/dialog"
 import { serverSlug, serverTitle } from "./add-extension/mcp-plan"
 import { ConsoleName, ConsoleReplaced, createConsoleSources } from "./console-link"
-import { mcpKeychain, mcpOrigin, mcpRuns, pluginOrigin, skillOrigin, type Origin } from "./extension-origin"
+import { mcpOrigin, mcpRuns, pluginOrigin, skillOrigin, type Origin } from "./extension-origin"
 import { DialogRemoveExtension, RemoveFailed } from "./remove-dialog"
 import "@/settings/settings.css"
 import "@/shell/search-list.css"
@@ -274,6 +274,7 @@ export const SettingsExtensions: Component<{
     dialog.show(() => (
       <DialogRemoveExtension
         name={name}
+        body={section === "skills" ? language.t("settings.extensions.remove.skillBody") : undefined}
         remove={remove}
         onRemoved={() => {
           pending.section = section
@@ -302,13 +303,8 @@ export const SettingsExtensions: Component<{
     const origin = current && mcpOrigin(name, current.entries, current.paths.config)
 
     if (!current || origin?.type !== "global") throw new RemoveFailed(language.t("settings.extensions.from.other"))
-    // The Keychain items only this server used go with it.
-    const keys = mcpKeychain(name, current.entries, origin.path)
-
-    await serverSdk.api.experimental.config.update({
-      mcp: { [name]: null },
-      ...(keys.length > 0 ? { keychain: Object.fromEntries(keys.map((key) => [key, null])) } : {}),
-    })
+    // The server also deletes the Keychain items only this server used.
+    await serverSdk.api.experimental.config.update({ mcp: { [name]: null } })
     data.location.mcp.server.invalidate(data.location.default())
     void data.location.mcp.server.sync(data.location.default()).catch(() => undefined)
   }

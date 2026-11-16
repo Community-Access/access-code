@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { parse } from "jsonc-parser"
-import { patchText } from "../../src/config"
+import { keychainRefs, patchText, serverKeychainRefs } from "../../src/config"
 
 describe("patchText", () => {
   test("adds and removes MCP servers by name and keeps comments", () => {
@@ -38,5 +38,38 @@ describe("patchText", () => {
   test("still sets and clears the shell", () => {
     expect(parse(patchText("{}", { shell: "/bin/zsh" })).shell).toBe("/bin/zsh")
     expect(parse(patchText('{ "shell": "/bin/zsh" }', { shell: null })).shell).toBeUndefined()
+  })
+
+  test("removes a server listed the older way, directly under mcp", () => {
+    const text = '{ "mcp": { "old": { "type": "remote", "url": "https://old.example" }, "servers": {} } }'
+    const result = parse(patchText(text, { mcp: { old: null } }))
+    expect(result.mcp.old).toBeUndefined()
+    expect(result.mcp.servers).toEqual({})
+  })
+
+  test("adds and removes plugins one at a time, keeping comments inside the list", () => {
+    const text = '{\n  "plugins": [\n    // keep me\n    "a",\n    "b", // about b\n    ["c", { "x": 1 }]\n  ]\n}\n'
+    const added = patchText(text, { plugins: { add: ["d"] } })
+    expect(added).toContain("// keep me")
+    expect(added).toContain("// about b")
+    expect(parse(added).plugins).toEqual(["a", "b", ["c", { x: 1 }], "d"])
+    const removed = patchText(added, { plugins: { remove: ["c", "a"] } })
+    expect(removed).toContain("// about b")
+    expect(parse(removed).plugins).toEqual(["b", "d"])
+  })
+
+  test("removes plugins from the older plugin list too", () => {
+    const text = '{ "plugin": ["a", "b"], "plugins": ["c"] }'
+    const result = parse(patchText(text, { plugins: { remove: ["a", "c"] } }))
+    expect(result.plugin).toEqual(["b"])
+    expect(result.plugins).toEqual([])
+  })
+
+  test("finds the Keychain items a removed server refers to, in either place", () => {
+    const text =
+      '{ "mcp": { "servers": { "brave": { "environment": { "KEY": "{keychain:mcp-brave-KEY}" } } }, "old": { "headers": { "A": "Bearer {keychain:old-token}" } } } }'
+    expect(serverKeychainRefs(text, ["brave"])).toEqual(["mcp-brave-KEY"])
+    expect(serverKeychainRefs(text, ["old"])).toEqual(["old-token"])
+    expect(keychainRefs(text)).toEqual(["mcp-brave-KEY", "old-token"])
   })
 })

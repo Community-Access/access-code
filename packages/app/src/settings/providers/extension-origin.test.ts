@@ -1,6 +1,6 @@
 import type { ConfigEntry, PluginInfo } from "@opencode/client/promise"
 import { describe, expect, test } from "bun:test"
-import { mcpKeychain, mcpOrigin, mcpRuns, pluginOrigin, skillOrigin } from "./extension-origin"
+import { mcpOrigin, mcpRuns, pluginOrigin, skillOrigin } from "./extension-origin"
 
 const GLOBAL = "/Users/me/.config/opencode"
 
@@ -53,11 +53,6 @@ describe("mcpOrigin", () => {
   ])("%s", (name, expected) => {
     expect(mcpOrigin(name, entries, `${GLOBAL}/`)).toEqual(expected as never)
   })
-})
-
-test("mcpKeychain deletes only the keys no other server still refers to", () => {
-  expect(mcpKeychain("brave", entries, `${GLOBAL}/opencode.jsonc`)).toEqual(["mcp-brave-KEY"])
-  expect(mcpKeychain("docs", entries, `${GLOBAL}/opencode.jsonc`)).toEqual([])
 })
 
 describe("pluginOrigin", () => {
