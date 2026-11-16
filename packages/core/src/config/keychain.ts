@@ -11,6 +11,17 @@ const SECURITY = "/usr/bin/security"
 /** Names a config may refer to: letters, digits, dots, dashes and underscores. */
 export const NAME = /^[A-Za-z0-9._-]{1,128}$/
 
+/**
+ * Values `security -i` can take safely: it splits its input into commands at line breaks before reading quotes, so a
+ * line break or other control character in a value could start a second command. Its line reader also has a fixed
+ * buffer, so long values are refused rather than cut. Real API keys and tokens fit easily.
+ */
+// eslint-disable-next-line no-control-regex
+const UNSAFE = /[\u0000-\u001f\u007f]/
+/** Bytes per command line, well under the 4096-byte line buffer of `security -i`. */
+const LINE_LIMIT = 4000
+export const safeValue = (value: string) => !UNSAFE.test(value)
+
 export const supported = () => process.platform === "darwin"
 
 /** The stored value, or an empty string when the item is missing, like a missing {env:VAR}. */
@@ -39,6 +50,10 @@ export const write = Effect.fn("ConfigKeychain.write")(function* (name: string, 
 
   // `security -i` reads commands from standard input, so the secret never shows in the process list.
   const command = `add-generic-password -U -s ${quote(SERVICE)} -a ${quote(name)} -w ${quote(value)}\n`
+  if (!safeValue(value) || Buffer.byteLength(command) > LINE_LIMIT)
+    return yield* Effect.fail(
+      new Error("The key could not be saved. Keys must be one line, without line breaks, and not too long."),
+    )
   const result = yield* Effect.promise(() => run([SECURITY, "-i"], command))
 
   if (result.code !== 0) return yield* Effect.fail(new Error("Could not save the key in the Keychain"))
