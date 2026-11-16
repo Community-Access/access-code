@@ -72,7 +72,7 @@ export function CustomTab(props: {
 
   const addRow = () => {
     const index = form.mcp.rows.length
-    setForm("mcp", "rows", index, { name: "", value: "", secret: false })
+    setForm("mcp", "rows", index, { name: "", value: "", secret: true })
     requestAnimationFrame(() => rowInputs[index]?.focus())
   }
 

@@ -48,6 +48,8 @@ export function SessionRetry(props: { status: SessionStatus; show?: boolean }) {
     return current.message
   })
 
+  const shortened = () => (retry()?.message.length ?? 0) > 80 && message() !== retry()?.message
+
   const info = createMemo(() => {
     const current = retry()
 
@@ -73,7 +75,13 @@ export function SessionRetry(props: { status: SessionStatus; show?: boolean }) {
                 placement="top"
               >
                 <div data-slot="session-turn-retry-message" class="cursor-help truncate">
-                  <SessionErrorMessage message={message()} />
+                  {/* Tooltips are hidden from screen readers, so a shortened error is read in full instead. */}
+                  <span aria-hidden={shortened() ? "true" : undefined}>
+                    <SessionErrorMessage message={message()} />
+                  </span>
+                  <Show when={shortened()}>
+                    <span class="sr-only">{retry()?.message}</span>
+                  </Show>
                 </div>
               </Tooltip>
               <Show when={info()}>
