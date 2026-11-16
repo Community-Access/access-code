@@ -58,6 +58,9 @@ export interface ScrollViewProps extends ComponentProps<"div"> {
   region?: boolean
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+
 export const scrollKey = (event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">) => {
   if (event.altKey || event.ctrlKey || event.metaKey) return
 
@@ -450,6 +453,28 @@ export function ScrollView(props: ScrollViewProps) {
     />
   )
 
+  // The viewport is a Tab stop only when nothing inside it can take focus, so text-only content can still be
+  // scrolled from the keyboard. With buttons or links inside, an extra unnamed stop made VoiceOver read the whole
+  // list as one run of text and broke the Tab order; scroll keys still reach the viewport from its children.
+  const [viewportStop, setViewportStop] = createSignal(true)
+
+  onMount(() => {
+    let frame: number | undefined
+    const check = () => {
+      frame = undefined
+      setViewportStop(!viewportRef.querySelector(FOCUSABLE))
+    }
+    const observer = new MutationObserver(() => {
+      frame ??= requestAnimationFrame(check)
+    })
+    observer.observe(viewportRef, { childList: true, subtree: true })
+    check()
+    onCleanup(() => {
+      observer.disconnect()
+      if (frame !== undefined) cancelAnimationFrame(frame)
+    })
+  })
+
   // Keybinds implementation
   // We ensure the viewport has a tabindex so it can receive focus
   // Keyboard scrolling jumps immediately, like the wheel, instead of animating.
@@ -546,7 +571,7 @@ export function ScrollView(props: ScrollViewProps) {
         onTouchCancel={events.onTouchCancel}
         onPointerDown={events.onPointerDown}
         onClick={events.onClick}
-        tabIndex={0}
+        tabIndex={viewportStop() ? 0 : -1}
         role={local.region ? "region" : undefined}
         aria-label={local.region ? i18n.t("ui.scrollView.ariaLabel") : undefined}
         onKeyDown={(e) => {
