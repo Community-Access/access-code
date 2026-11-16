@@ -1,4 +1,4 @@
-import { expect, story } from "../../stories/playwright/story"
+import { expect, hoverWithGlide, story } from "../../stories/playwright/story"
 
 // Moved from packages/app/e2e/regression/session-timeline-notices.spec.ts
 story("renders the moved location notice as a timeline divider", async ({ mount, page }) => {
@@ -28,7 +28,7 @@ story("renders the moved location notice as a timeline divider", async ({ mount,
   await expect.poll(() => value.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
 
   const tooltip = page.getByText("Session working directory changed", { exact: true })
-  await label.hover()
+  await hoverWithGlide(page, label)
   await expect(tooltip).toBeVisible()
   await page.mouse.move(0, 0)
   await expect(tooltip).toBeHidden()

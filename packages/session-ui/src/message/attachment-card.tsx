@@ -10,6 +10,8 @@ export function AttachmentCard(props: {
   surface?: "base"
   /** native title attribute */
   hover?: string
+  /** Accessible name while the card is a button; its two lines otherwise concatenate without a space. */
+  label?: string
   titleRef?: (element: HTMLSpanElement) => void
   onClick?: () => void
   children: JSX.Element
@@ -23,6 +25,7 @@ export function AttachmentCard(props: {
       data-surface={props.surface}
       role={props.clickable ? "button" : undefined}
       tabIndex={props.clickable ? 0 : undefined}
+      aria-label={props.clickable ? props.label : undefined}
       title={props.hover}
       onClick={() => props.onClick?.()}
       onKeyDown={(event) => {

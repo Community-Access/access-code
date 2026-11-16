@@ -120,21 +120,18 @@ story("labels skill tools from IDs and result metadata", async ({ mount }) => {
   const timeline = await mount("current-session-research-agents--agent-research", { args: { scenario: "skills" } })
   const group = timeline.locator('[data-timeline-part-ids="tool_skill_id,tool_skill_name"]')
   await expect(group.getByRole("button")).toHaveAccessibleName("Used 2 Skill")
-  await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-    "aria-label",
-    "Used 2 Skill",
-  )
+  await expect(group.getByRole("button")).toHaveAttribute("aria-label", "Used 2 Skill")
   await group.getByRole("button").click()
   const loaded = group.locator('[data-component="tool-loaded-item"]')
   await expect(loaded).toHaveCount(1)
-  await expect(loaded).toHaveAttribute("aria-label", "Loaded frontend-design, OpenCode skills")
+  await expect(loaded.locator('[data-slot="tool-loaded-vo"]')).toHaveText("Loaded frontend-design, OpenCode skills")
   await expect(loaded).toHaveCSS("line-height", "16px")
   await expect(loaded.locator('[data-slot="tool-loaded-label"]')).toHaveText("Loaded")
   await expect(loaded.locator('[data-slot="tool-loaded-kind"]')).toHaveText("skills")
   const names = loaded.locator('[data-component="text-shimmer"]')
   await expect(names).toHaveCount(2)
-  await expect(names.nth(0)).toHaveAttribute("aria-label", "frontend-design")
-  await expect(names.nth(1)).toHaveAttribute("aria-label", "OpenCode")
+  await expect(names.nth(0).locator(".sr-only")).toHaveText("frontend-design")
+  await expect(names.nth(1).locator(".sr-only")).toHaveText("OpenCode")
 })
 
 // Moved from packages/app/e2e/regression/session-timeline-reducer-projection.spec.ts
@@ -148,10 +145,7 @@ story("groups every collapsed tool until visible text separates the stack", asyn
 
   await expect(group).toBeVisible()
   await expect(group.getByRole("button")).toHaveAccessibleName("Used 4 Glob, Grep, Shell, List")
-  await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-    "aria-label",
-    "Used 4 Glob, Grep, Shell, List",
-  )
+  await expect(group.getByRole("button")).toHaveAttribute("aria-label", "Used 4 Glob, Grep, Shell, List")
   await expect(timeline.locator('[data-timeline-row="AssistantPart"]')).toHaveCount(3)
   await expect(timeline.locator('[data-timeline-spacing="content"]')).toHaveCount(2)
   await expect(timeline.locator('[data-timeline-spacing="content"]').nth(0)).toHaveCSS("padding-top", "16px")

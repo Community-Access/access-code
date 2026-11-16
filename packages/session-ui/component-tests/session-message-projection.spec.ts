@@ -1,4 +1,4 @@
-import { expect, story } from "../../stories/playwright/story"
+import { expect, hoverWithGlide, story } from "../../stories/playwright/story"
 
 story("reveals turn speed with the response footer", async ({ mount, page }) => {
   const timeline = await mount("current-session-timeline-rows--response-speed", { args: { steered: true } })
@@ -74,7 +74,7 @@ story.describe("message actions menu", () => {
     async ({ mount, page }) => {
       const timeline = await mount("current-prompt-message--pending")
       const chevron = timeline.locator('[data-slot="user-message-menu"]')
-      const more = timeline.getByRole("button", { name: "More actions", exact: true })
+      const more = timeline.getByRole("button", { name: "Message actions", exact: true })
       const fork = page.getByRole("menuitem", { name: "Fork from here", exact: true })
       const copy = page.getByRole("menuitem", { name: "Copy message", exact: true })
       const revert = page.getByRole("menuitem", { name: "Revert to here", exact: true })
@@ -142,7 +142,7 @@ story.describe("message actions menu", () => {
     await timeline.getByRole("button", { name: "Send next", exact: true }).click()
     const message = timeline.locator('[data-component="user-message"]').first()
     await message.locator('[data-slot="user-message-text"]').hover()
-    const more = message.getByRole("button", { name: "More actions", exact: true })
+    const more = message.getByRole("button", { name: "Message actions", exact: true })
     // An open menu hides the rest of the page from the accessibility tree, so measure the trigger first.
     const trigger = await more.boundingBox()
     await more.click()
@@ -164,7 +164,7 @@ story(
     const message = timeline.locator('[data-component="user-message"]').first()
 
     await message.locator('[data-slot="user-message-text"]').hover()
-    await message.getByRole("button", { name: "More actions", exact: true }).click()
+    await message.getByRole("button", { name: "Message actions", exact: true }).click()
     await expect(page.getByRole("menu")).toBeVisible()
     await page.mouse.move(0, 0)
 
@@ -209,7 +209,7 @@ story(
 
 story("keeps pending steer actions usable after a request fails", async ({ mount, page }) => {
   const timeline = await mount("current-prompt-message--pending")
-  const more = timeline.getByRole("button", { name: "More actions", exact: true })
+  const more = timeline.getByRole("button", { name: "Message actions", exact: true })
   const queue = page.getByRole("menuitem", { name: "Move to queue", exact: true })
   const remove = page.getByRole("menuitem", { name: "Delete", exact: true })
   const failures = timeline.getByLabel("Failed actions")
@@ -274,7 +274,7 @@ story("names the newest prompt's revert Undo and earlier ones Revert to here", a
     [0, "Revert to here"],
   ] as const) {
     await messages.nth(index).locator('[data-slot="user-message-text"]').hover()
-    await messages.nth(index).getByRole("button", { name: "More actions", exact: true }).click()
+    await messages.nth(index).getByRole("button", { name: "Message actions", exact: true }).click()
     await expect(page.getByRole("menuitem", { name: label, exact: true })).toBeVisible()
     await expect(page.getByRole("menuitem", { name: index ? "Revert to here" : "Undo", exact: true })).toHaveCount(0)
     await page.keyboard.press("Escape")
@@ -425,7 +425,7 @@ story("marks pending metadata without badging delivered, starting, or queued pro
   await expect(indicator).toBeVisible()
   // A steer without text offers its actions from a chevron in its footer.
   await timeline.locator('[data-component="user-message"]').hover()
-  await timeline.getByRole("button", { name: "More actions", exact: true }).click()
+  await timeline.getByRole("button", { name: "Message actions", exact: true }).click()
   await page.getByRole("menuitem", { name: "Move to queue", exact: true }).click()
   await expect(indicator).toBeHidden()
 })
@@ -505,7 +505,7 @@ story("renders aliased and long custom model notices", async ({ mount, page }) =
 // Moved from packages/app/e2e/regression/session-timeline-projection.spec.ts
 story("renders user image, file attachment, file reference, and agent reference", async ({ mount }) => {
   const timeline = await mount("current-session-timeline-rows--conversation", { args: { scenario: "attachments" } })
-  await expect(timeline.getByAltText("pixel.png")).toBeVisible()
+  await expect(timeline.getByRole("button", { name: "Image: pixel.png, open preview" })).toBeVisible()
   await expect(timeline.getByText("tsconfig.json")).toBeVisible()
   await expect(timeline.getByText("@src/a.ts", { exact: true })).toBeVisible()
   await expect(timeline.getByText("@explore", { exact: true })).toBeVisible()
@@ -541,14 +541,14 @@ story("a stored image that fails to load shows a failed tile that retries", asyn
   const timeline = await mount("current-session-timeline-rows--conversation", { args: { scenario: "media" } })
   const tiles = timeline.locator('[data-slot="user-message-attachment"]')
 
-  await expect(timeline.getByAltText("ready.svg")).toBeVisible()
+  await expect(timeline.getByRole("button", { name: "Image: ready.svg, open preview" })).toBeVisible()
   // A failed read used to keep the loading placeholder forever.
   const failed = tiles.first()
   await expect(failed.getByRole("img", { name: "Unable to load image." })).toBeVisible()
   await expect(failed).not.toHaveAttribute("data-placeholder")
 
   await failed.click()
-  await expect(timeline.getByAltText("flaky.svg")).toBeVisible()
+  await expect(timeline.getByRole("button", { name: "Image: flaky.svg, open preview" })).toBeVisible()
 })
 
 story("shows note selectors and keeps annotation subtitles with or without comments", async ({ mount, page }) => {
@@ -600,14 +600,20 @@ story("shows note selectors and keeps annotation subtitles with or without comme
 
   const named = gallery.getByRole("region", { name: "Named", exact: true }).getByRole("button")
   await page.clock.install()
-  await named.hover()
+  await hoverWithGlide(page, named)
   await page.clock.runFor(1000)
-  await expect(page.getByRole("tooltip")).toHaveText("button#save\nBrowser annotation")
-  await long.hover()
+  // The tip is hidden from screen readers, so address it in the DOM, picked out by its text: closed tips keep their
+  // last content in the document, and a glide can open a card its path crosses.
+  const namedTip = page.locator('[data-component="tooltip-v2"]', { hasText: "button#save\nBrowser annotation" })
+  await expect(namedTip).toBeVisible()
+  await expect(namedTip).toHaveAttribute("aria-hidden", "true")
+  await hoverWithGlide(page, long)
   await page.clock.runFor(1000)
-  await expect(page.getByRole("tooltip", { name: /^main > section/ })).toHaveText(
+  const longTip = page.locator('[data-component="tooltip-v2"]', { hasText: /^main > section/ })
+  await expect(longTip).toHaveText(
     'main > section.settings-panel > form > button[data-action="save-all-account-preferences"]\nBrowser annotation',
   )
+  await expect(longTip).toHaveAttribute("aria-hidden", "true")
   await page.clock.resume()
   await named.click()
   await expect(gallery.getByLabel("Selected attachment")).toHaveText("Named")

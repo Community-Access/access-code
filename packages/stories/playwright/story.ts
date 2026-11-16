@@ -1,7 +1,19 @@
 import { expect, test } from "@playwright/test"
-import type { Locator } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 
 export { expect }
+
+/**
+ * Glide the mouse to the element the way a person moves it. Tooltips only open for a pointer that was moving:
+ * a jump (a plain `hover()`) reads as a screen reader placing the pointer and never opens them.
+ */
+export async function hoverWithGlide(page: Page, target: Locator, steps = 16): Promise<void> {
+  const box = await target.boundingBox()
+
+  if (!box) throw new Error(`Cannot glide the mouse to ${target}: it has no box`)
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps })
+}
 
 /**
  * The dev server URL of a source module, in the form Vite rewrites imports to. A different spelling, such as

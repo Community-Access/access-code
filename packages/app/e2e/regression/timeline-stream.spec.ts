@@ -245,11 +245,9 @@ test.describe("static projection", () => {
 
     await expect(page.locator('[data-timeline-part-id="prt_expanded_shell"]')).toBeVisible()
     const group = page.locator('[data-timeline-part-ids="prt_collapsed_patch,prt_collapsed_read"]')
-    await expect(group.getByRole("button", { name: "Used 2 Patch, Read", exact: true })).toBeVisible()
-    await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-      "aria-label",
-      "Used 2 Patch, Read",
-    )
+    const trigger = group.getByRole("button", { name: "Used 2 Patch, Read", exact: true })
+    await expect(trigger).toBeVisible()
+    await expect(trigger).toHaveAttribute("aria-label", "Used 2 Patch, Read")
     await expect(page.locator('[data-timeline-spacing="tool"]')).toHaveCSS("padding-top", "8px")
   })
 })
@@ -3302,7 +3300,7 @@ test("reaches the quote action from the keyboard and blocks a selection over the
   await page.keyboard.press("Escape")
   await short.evaluate((element) => window.getSelection()?.selectAllChildren(element))
   await expect(toolbar).toBeVisible()
-  const more = page.getByRole("button", { name: "More actions" })
+  const more = page.getByRole("button", { name: "Message actions" })
   await more.focus()
   await expect(toolbar).toBeVisible()
   await page.keyboard.press("Tab")

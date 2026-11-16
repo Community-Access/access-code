@@ -1135,7 +1135,7 @@ export async function openUserMessageMenu(page: Page, row: Locator) {
 
   if ((await bubble.count()) > 0) await bubble.hover()
   else await message.hover()
-  await row.getByRole("button", { name: "More actions", exact: true }).click()
+  await row.getByRole("button", { name: "Message actions", exact: true }).click()
 
   return page.getByRole("menu")
 }

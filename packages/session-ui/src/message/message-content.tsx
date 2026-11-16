@@ -340,6 +340,16 @@ export function CurrentUserMessageDisplay(props: {
   // A waiting steer reads agent · model · Pending; mobile shows the agent and model in the composer instead.
   const metaLabels = createMemo(() => (mobile() ? [] : [...agentItems(), ...modelItems(data, props.model)]))
 
+  // The line is one VoiceOver stop: the chips are hidden from VoiceOver and this text reads the whole line,
+  // so the arrows skip the line instead of hopping between chips. Commas read where the dots render.
+  const metaLineLabel = createMemo(() => {
+    const labels = metaLabels().map((item) => item.label)
+
+    if (waiting()) labels.push(i18n.t("ui.message.pending"))
+
+    return labels.join(", ")
+  })
+
   // In a run, only the last message keeps the meta line; every bubble offers its actions from its own chevron.
   // Bubble corners tighten where two bubbles meet, as in the iOS app's grouped corners.
   const folded = createMemo(() => !!props.run?.below && !!props.text)
@@ -625,7 +635,7 @@ export function CurrentUserMessageDisplay(props: {
                             src={src()}
                             width={width()}
                             height={height()}
-                            alt={name()}
+                            alt={mediaView().clickable ? "" : name()}
                           />
                         )}
                       </Match>
@@ -648,6 +658,7 @@ export function CurrentUserMessageDisplay(props: {
                   title={getFilename(name())}
                   hover={name()}
                   clickable={!!props.actions?.openAttachment}
+                  label={[getFilename(name()), typeLabel(name(), file().mime, i18n.t("ui.common.file"))].join(" ")}
                   onClick={() => props.actions?.openAttachment?.(file())}
                 >
                   {typeLabel(name(), file().mime, i18n.t("ui.common.file"))}
@@ -723,7 +734,9 @@ export function CurrentUserMessageDisplay(props: {
       <Show when={props.text || comments().length > 0 || pending()}>
         <div data-slot="user-message-copy-wrapper">
           <span data-slot="user-message-meta-wrap">
-            <span data-slot="user-message-meta">
+            {/* Each chip would otherwise be its own VoiceOver stop on one line, so the arrows jump between
+                them; the chips are hidden and a clipped text reads the whole line as a single stop. */}
+            <span data-slot="user-message-meta" aria-hidden="true">
               <Show when={metaLabels().length > 0}>
                 <span data-slot="user-message-meta-label">
                   <MetaItems items={metaLabels()} slot="user-message" />
@@ -739,6 +752,11 @@ export function CurrentUserMessageDisplay(props: {
                 <span data-slot="user-message-pending">{i18n.t("ui.message.pending")}</span>
               </UserMessageTransition>
             </span>
+            <Show when={metaLineLabel()}>
+              <span data-slot="user-message-meta-vo" class="sr-only">
+                {metaLineLabel()}
+              </span>
+            </Show>
           </span>
           <Show when={!props.text}>{renderMenu()}</Show>
         </div>
@@ -1206,6 +1224,9 @@ export function AssistantTextContent(props: {
   // Mobile omits the per-response agent and model; see CurrentUserMessageDisplay.
   const mobile = createMediaQuery("(max-width: 767px)")
 
+  // The speed chip only renders on hover-capable pointers, so it only joins the line's name there too.
+  const hoverable = createMediaQuery("(hover: hover)")
+
   const meta = createMemo<MetaItem[]>(() => [
     ...(mobile() ? [] : labels()),
     ...[duration(), interrupted() ? i18n.t("ui.message.interrupted") : ""].flatMap((label) =>
@@ -1222,6 +1243,14 @@ export function AssistantTextContent(props: {
         maximumFractionDigits: 1,
       }).format(props.turnTokensPerSecond),
     })
+  })
+
+  // The line is one VoiceOver stop: the chips are hidden from VoiceOver and this text reads the whole line,
+  // so the arrows skip the line instead of hopping between chips. Commas read where the dots render.
+  const metaLineLabel = createMemo(() => {
+    const value = hoverable() ? speed() : undefined
+
+    return [...meta().map((item) => item.label), ...(value ? [value] : [])].join(", ")
   })
 
   const copy = createCopyFeedback()
@@ -1265,7 +1294,9 @@ export function AssistantTextContent(props: {
           aria-label={copy.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
         />
         <Show when={meta().length > 0}>
-          <span data-slot="text-part-meta">
+          {/* Each chip would otherwise be its own VoiceOver stop on one line; hidden chips plus a clipped text
+              read the whole line as a single stop. */}
+          <span data-slot="text-part-meta" aria-hidden="true">
             <MetaItems items={meta()} slot="text-part" />
             <Show when={speed()}>
               {(label) => (
@@ -1276,6 +1307,11 @@ export function AssistantTextContent(props: {
               )}
             </Show>
           </span>
+          <Show when={metaLineLabel()}>
+            <span data-slot="text-part-meta-vo" class="sr-only">
+              {metaLineLabel()}
+            </span>
+          </Show>
         </Show>
       </div>
     )

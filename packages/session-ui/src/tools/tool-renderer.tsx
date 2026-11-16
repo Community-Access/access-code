@@ -611,8 +611,10 @@ export function CurrentContextToolGroup(props: {
         allowOpenWhilePending
         open={props.open}
         onOpenChange={change}
+        // The trigger is one button, so its name comes from here; the content alone concatenates without spaces.
+        triggerLabel={[label().text, elapsed()].filter(Boolean).join(" ")}
         trigger={
-          <div data-component="context-tool-group-trigger" aria-label={label().text}>
+          <div data-component="context-tool-group-trigger">
             <span data-slot="context-tool-group-title">
               <Show when={label().before || label().count || label().between}>
                 <span data-slot="context-tool-group-usage">
@@ -781,10 +783,14 @@ export function CurrentContextToolGroup(props: {
                                   data-timeline-part-ids={group()
                                     .map((item) => item.id)
                                     .join(",")}
-                                  aria-label={i18n.plural("ui.tool.loadedSkills", skills().length, {
-                                    name: skills().join(", "),
-                                  })}
                                 >
+                                  {/* The visual spans are hidden from the accessibility tree, so the row carries its
+                                      full label as a single VoiceOver stop. */}
+                                  <span data-slot="tool-loaded-vo" class="sr-only">
+                                    {i18n.plural("ui.tool.loadedSkills", skills().length, {
+                                      name: skills().join(", "),
+                                    })}
+                                  </span>
                                   <span data-slot="tool-loaded-label" aria-hidden="true">
                                     {loaded().split(marker)[0]?.trim()}
                                   </span>
@@ -1555,10 +1561,12 @@ ToolRegistry.register({
           </Show>
         </BasicTool>
         <Show when={paths().length > 0}>
-          <div
-            data-component="tool-loaded-item"
-            aria-label={i18n.t("ui.tool.loadedFile", { path: paths().join(", ") })}
-          >
+          <div data-component="tool-loaded-item">
+            {/* The visual spans are hidden from the accessibility tree, so the row carries its full label as one
+                VoiceOver stop. */}
+            <span data-slot="tool-loaded-vo" class="sr-only">
+              {i18n.t("ui.tool.loadedFile", { path: paths().join(", ") })}
+            </span>
             <span data-slot="tool-loaded-label" aria-hidden="true">
               {parts()[0]?.trim()}
             </span>
@@ -2678,7 +2686,12 @@ ToolRegistry.register({
     return (
       <Show when={name()} fallback={<TextShimmer text={i18n.t("ui.tool.skill")} active={running()} />}>
         {(name) => (
-          <div data-component="tool-loaded-item" aria-label={i18n.t("ui.tool.loadedSkill", { name: name() })}>
+          <div data-component="tool-loaded-item">
+            {/* The visual spans are hidden from the accessibility tree, so the row carries its full label as one
+                VoiceOver stop. */}
+            <span data-slot="tool-loaded-vo" class="sr-only">
+              {i18n.t("ui.tool.loadedSkill", { name: name() })}
+            </span>
             <span data-slot="tool-loaded-label" aria-hidden="true">
               {parts()[0].trim()}
             </span>

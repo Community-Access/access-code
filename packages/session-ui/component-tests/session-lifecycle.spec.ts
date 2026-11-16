@@ -24,10 +24,7 @@ for (const [tool, title] of [
       for (const action of [undefined, "Complete input", "Run command", "Complete command"]) {
         if (action) await timeline.getByRole("button", { name: action, exact: true }).click()
         await expect(group).toHaveAttribute("data-timeline-part-ids", "tool_context_lifecycle,tool_shell_lifecycle")
-        await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-          "aria-label",
-          `Used 2 Read, ${title}`,
-        )
+        await expect(trigger).toHaveAttribute("aria-label", `Used 2 Read, ${title}`)
         await expect(timeline.locator('[data-timeline-row="AssistantPart"]')).toHaveCount(1)
         await expect(trigger).toHaveAttribute("aria-expanded", String(open))
         expect(await original!.evaluate((node) => node.isConnected)).toBe(true)
@@ -68,7 +65,7 @@ story("transitions a streaming shell from writing through command execution", as
   const title = tool.locator('[data-slot="basic-tool-tool-title"]')
   const shimmer = title.locator('[data-component="text-shimmer"]')
   const subtitle = tool.locator('[data-slot="basic-tool-tool-subtitle"]')
-  await expect(shimmer).toHaveAttribute("aria-label", "Shell")
+  await expect(shimmer.locator(".sr-only")).toHaveText("Shell")
   await expect(shimmer).toHaveAttribute("data-active", "true")
   await expect(subtitle).toHaveText("Writing command…")
   await expect(subtitle.locator('[data-component="text-shimmer"]')).toHaveCount(0)
@@ -149,10 +146,7 @@ for (const open of [false, true]) {
         "aria-expanded",
         String(open),
       )
-      await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-        "aria-label",
-        "Used 1 Shell",
-      )
+      await expect(used).toHaveAttribute("aria-label", "Used 1 Shell")
       await expect(timeline.locator('[data-timeline-row="Thinking"]')).toHaveCount(0)
       await expect(used).toHaveAttribute("aria-expanded", "true")
 

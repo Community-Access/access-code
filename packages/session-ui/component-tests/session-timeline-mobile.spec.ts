@@ -8,7 +8,7 @@ story.describe("touch timeline", () => {
     expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(true)
 
     for (const action of [
-      { slot: "user-message-menu", name: "More actions" },
+      { slot: "user-message-menu", name: "Message actions" },
       { slot: "text-part-copy-wrapper", name: "Copy response" },
     ]) {
       const actions = timeline.locator(`[data-slot="${action.slot}"]`)
@@ -33,7 +33,7 @@ story.describe("touch timeline", () => {
     const timeline = await mount("current-prompt-message--pending")
     await timeline.getByLabel("Delivery state").selectOption("delivered")
     const bubble = timeline.locator('[data-slot="user-message-text"]')
-    await expect(bubble.getByRole("button", { name: "More actions", exact: true })).toBeVisible()
+    await expect(bubble.getByRole("button", { name: "Message actions", exact: true })).toBeVisible()
 
     // Every rendered line box of the prompt, against the chevron's box: none may overlap.
     const overlaps = await bubble.evaluate((element) => {
@@ -103,7 +103,7 @@ story("desktop message actions still appear on hover and keyboard focus", async 
   expect(await page.evaluate(() => matchMedia("(hover: hover)").matches)).toBe(true)
 
   for (const action of [
-    { slot: "user-message-menu", name: "More actions" },
+    { slot: "user-message-menu", name: "Message actions" },
     { slot: "text-part-copy-wrapper", name: "Copy response" },
   ]) {
     const actions = timeline.locator(`[data-slot="${action.slot}"]`)
