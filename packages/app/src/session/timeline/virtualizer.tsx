@@ -209,12 +209,18 @@ export function createTimelineVirtualizer(input: Input) {
     return (index: number) => keys[index] ?? `removed:${index}`
   })
 
+  // The row holding keyboard focus, which is also where VoiceOver is when it moves focus. It stays mounted while
+  // scrolled away, so focus is not dropped to the page and VoiceOver does not jump.
+  const [focusedKey, setFocusedKey] = createSignal<string>()
+
   const rangeExtractor = createMemo(() => {
     const id = input.projection.activeMessageID()
     const active = id ? (input.projection.messageLastRowIndex().get(id) ?? -1) : -1
     const initialTail = coldTailOnly() && input.follow.following()
     const anchor = input.follow.anchor()
     const anchored = anchor ? rowKeys().indexOf(anchor.key) : -1
+    const key = focusedKey()
+    const focused = key ? rowKeys().indexOf(key) : -1
 
     return (range: Range) => {
       // Batch a bounded cheap suffix, but stop before unknown/large content.
@@ -242,7 +248,7 @@ export function createTimelineVirtualizer(input: Input) {
         : defaultRangeExtractor({ ...range, overscan: 2 })
 
       return filterVirtualIndexes(
-        [...new Set([...indexes, ...[active, anchored].filter((index) => index >= 0)])].sort((a, b) => a - b),
+        [...new Set([...indexes, ...[active, anchored, focused].filter((index) => index >= 0)])].sort((a, b) => a - b),
         range.count,
       )
     }
@@ -1040,6 +1046,20 @@ export function createTimelineVirtualizer(input: Input) {
     dispatchIntent(upwardKeys.has(key))
   }
 
+  // Tab or VoiceOver moving focus into a message is the reader going there: following would scroll it away under them.
+  const handleListFocusIn = (event: FocusEvent) => {
+    const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-timeline-key]") : null
+    setFocusedKey(row?.dataset.timelineKey)
+
+    if (row && active()) input.follow.dispatch({ type: "detach" })
+  }
+
+  const handleListFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget instanceof Element ? event.relatedTarget : null
+
+    if (!next?.closest("[data-timeline-key]") || !listRoot()?.contains(next)) setFocusedKey(undefined)
+  }
+
   const handleListScroll = (event: Event & { currentTarget: HTMLDivElement }) => {
     if (!active()) return
     const root = event.currentTarget
@@ -1171,6 +1191,8 @@ export function createTimelineVirtualizer(input: Input) {
           onTouchStart={handleListTouchStart}
           onKeyDown={handleListKeyDown}
           onScroll={handleListScroll}
+          onFocusIn={handleListFocusIn}
+          onFocusOut={handleListFocusOut}
           onClick={() => {
             // Following would scroll a selection away.
             if (window.getSelection()?.toString()) input.follow.dispatch({ type: "detach" })

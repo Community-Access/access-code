@@ -218,8 +218,13 @@ function scrolled(state: Unanchored, event: Extract<FollowEvent, { type: "scroll
     (arrived && event.maxScroll - event.scrollTop <= END_EPSILON)
 
   // Upward input is the one intent geometry cannot recover: a held pointer or touch moving the view up is the
-  // reader's, while an upward shift without one is the virtualizer compensating a size change.
-  if (state.type !== "detached") return !atEnd && movedUp && state.gesture ? detached(state.gesture, false) : state
+  // reader's, while an upward shift without one is the virtualizer compensating a size change. A compensation always
+  // comes with a changed scroll range, so an upward move over an unchanged range is the reader's too: VoiceOver and
+  // other assistive technology scroll what they read into view without a wheel, key or pointer.
+  if (state.type !== "detached")
+    return !atEnd && movedUp && (state.gesture || event.maxScroll === event.previousMaxScroll)
+      ? detached(state.gesture, false)
+      : state
 
   if (atEnd) return following(state.gesture)
 

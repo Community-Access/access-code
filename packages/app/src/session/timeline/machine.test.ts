@@ -53,6 +53,13 @@ test.each<{ name: string; events: FollowEvent[]; following: boolean }>([
     following: true,
   },
   {
+    // VoiceOver scrolls what it reads into view with no wheel, key or pointer. Following used to snap the view back
+    // to the end under it, so its cursor jumped to the newest message.
+    name: "detaches when an upward scroll without a gesture leaves the scroll range unchanged",
+    events: [scroll(300, 1000), scroll(1000, 1000, 1200, 1000)],
+    following: false,
+  },
+  {
     name: "detaches when a held pointer scrolls up, as a drag-select or scrollbar drag does",
     events: [{ type: "pointer.down" }, scroll(480, 500), { type: "pointer.up" }],
     following: false,
