@@ -69,6 +69,8 @@ const ensure = Effect.fn("BackgroundService.ensure")(function* (mode: Background
         "serve",
         "--service",
         ...(setup.isolated ? ["--hostname", "0.0.0.0", "--port", String(0x0c0c)] : []),
+        // AccessCode: its own fixed port, so it never binds or takes over the stock OpenCode service on 0xc0de.
+        ...(!setup.isolated && app.isPackaged ? ["--hostname", "127.0.0.1", "--port", String(ACCESSCODE_PORT)] : []),
       ],
       onStart: (reason, previousVersion) =>
         runFork(Effect.logInfo("v2 CLI background service starting", { reason, previousVersion })),
@@ -97,6 +99,9 @@ const ensure = Effect.fn("BackgroundService.ensure")(function* (mode: Background
   return ready.credentials
 })
 
+/** AccessCode's service port, 0xACC0, away from stock OpenCode's 0xC0DE and 0xC0DF. */
+const ACCESSCODE_PORT = 0xacc0
+
 const prepare = Effect.fn("BackgroundService.prepare")(function* (mode: BackgroundServiceMachine.ConnectMode) {
   yield* Effect.logInfo("starting v2 background service")
   const path = yield* Path.Path
@@ -105,7 +110,9 @@ const prepare = Effect.fn("BackgroundService.prepare")(function* (mode: Backgrou
   const cli = yield* desktopCli.resolve
   const version = serviceVersion({ channel: CHANNEL, isolated, mode, version: cli.version })
 
-  if (isolated) process.env.XDG_STATE_HOME = app.getPath("userData")
+  // AccessCode: an installed build keeps its service registration in its own folder too, so it finds and starts only
+  // its own server, never adopting or replacing stock OpenCode's. Config and conversation history stay shared.
+  if (isolated || app.isPackaged) process.env.XDG_STATE_HOME = app.getPath("userData")
   // AccessCode: the server this starts inherits the environment, and the GitHub MCP entry refers to the GitHub OAuth
   // app's client secret as {env:ACCESSCODE_GITHUB_CLIENT_SECRET}. A server something else started does not have it.
   if (import.meta.env.ACCESSCODE_GITHUB_CLIENT_SECRET)
