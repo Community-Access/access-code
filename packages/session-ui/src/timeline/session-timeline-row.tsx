@@ -807,6 +807,16 @@ export function createSessionTimelineRowRenderer(input: {
 
     const clickable = createMemo(() => !!shellID() || !!(childID() && (data.navigateToSession || href())))
 
+    // The line is one VoiceOver stop: each fragment would otherwise be its own stop, so the arrows hop along
+    // the line. This text reads the whole line; a comma stands in for the dot that renders between the parts.
+    const noticeLabel = createMemo(() => {
+      const value = content()
+
+      if (!value) return ""
+
+      return [value.label, ...(value.items ?? []), value.data].filter(Boolean).join(", ")
+    })
+
     const open = () => {
       const shell = shellID()
 
@@ -854,18 +864,22 @@ export function createSessionTimelineRowRenderer(input: {
                     <Show
                       when={content().items?.length}
                       fallback={
-                        <Dynamic
-                          component={href() ? "a" : "div"}
-                          data-slot="session-timeline-notice"
-                          data-outcome={content().outcome}
-                          class={`block w-full truncate ${props.grouped ? "py-1" : "pt-3 pb-1"} text-13-regular leading-text-compact text-v2-text-text-faint ${inset()}`}
-                          classList={{ "cursor-pointer hover:text-v2-text-text-base": clickable() }}
-                          href={href()}
-                          role={clickable() && !href() ? (shellID() ? "button" : "link") : undefined}
-                          tabIndex={clickable() && !href() ? 0 : undefined}
-                          onClick={navigate}
-                          onKeyDown={navigateKey}
-                        >
+                        <>
+                          <Dynamic
+                            component={href() ? "a" : "div"}
+                            data-slot="session-timeline-notice"
+                            data-outcome={content().outcome}
+                            class={`block w-full truncate ${props.grouped ? "py-1" : "pt-3 pb-1"} text-13-regular leading-text-compact text-v2-text-text-faint ${inset()}`}
+                            classList={{ "cursor-pointer hover:text-v2-text-text-base": clickable() }}
+                            href={href()}
+                            role={clickable() && !href() ? (shellID() ? "button" : "link") : undefined}
+                            tabIndex={clickable() && !href() ? 0 : undefined}
+                            // Clickable, the line is one button or link, so its name comes from here.
+                            aria-label={clickable() ? noticeLabel() || undefined : undefined}
+                            aria-hidden={!clickable() ? "true" : undefined}
+                            onClick={navigate}
+                            onKeyDown={navigateKey}
+                          >
                           <Show when={content().icon}>
                             {(icon) => (
                               <Icon
@@ -890,7 +904,12 @@ export function createSessionTimelineRowRenderer(input: {
                               </span>
                             )}
                           </Show>
-                        </Dynamic>
+                          </Dynamic>
+                          {/* Not clickable, the line is hidden above, so this text reads it as one stop. */}
+                          <Show when={!clickable() && noticeLabel()}>
+                            <span class="sr-only">{noticeLabel()}</span>
+                          </Show>
+                        </>
                       }
                     >
                       <div data-slot="session-timeline-notice" class={`w-full py-1 ${inset()}`}>
