@@ -408,7 +408,7 @@ test("a page reached through an opened result keeps its own way back", async ({ 
 
   // A Command Palette jump reveals its setting without a way back to a search.
   const key = await page.evaluate(() =>
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "Meta+Shift+P" : "Control+Shift+P",
+    /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "Meta+K" : "Control+K",
   )
 
   await page.keyboard.press(key)
@@ -436,7 +436,7 @@ test("project edits queued behind a save reach their project in order across jum
   await startup.blur()
 
   const key = await page.evaluate(() =>
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "Meta+Shift+P" : "Control+Shift+P",
+    /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "Meta+K" : "Control+K",
   )
 
   const jump = async (query: string, value: string) => {

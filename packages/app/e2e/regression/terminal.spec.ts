@@ -155,7 +155,7 @@ test("New terminal from the command palette opens the terminal focused", async (
   const { persistentPty, editor } = await openSession(page, { name: "Terminals", persistentPty: {} })
 
   await editor.click()
-  await page.keyboard.press("Control+Shift+P")
+  await page.keyboard.press("ControlOrMeta+K")
   const palette = page.getByRole("dialog")
   const input = palette.getByRole("combobox")
   await expect(input).toBeFocused()

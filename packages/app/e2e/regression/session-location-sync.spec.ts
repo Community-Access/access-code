@@ -253,7 +253,7 @@ test("keeps the side panel's tabs and selection when the session moves", async (
 
   // A lost selection would fall back to the first file tab, README.md, so NOTES.md stays selected only if it carries.
   for (const name of ["README", "NOTES"]) {
-    await page.keyboard.press("ControlOrMeta+Shift+P")
+    await page.keyboard.press("ControlOrMeta+K")
 
     const dialog = page.getByRole("dialog")
     const search = dialog.getByRole("combobox")

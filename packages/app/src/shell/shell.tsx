@@ -212,6 +212,8 @@ export default function Layout(props: ParentProps) {
       id: COMMAND_SEARCH_ID,
       title: language.t("command.commands.search"),
       category: language.t("command.category.view"),
+      // Like VS Code: Command+Shift+P lists only commands, while Command+K searches everything.
+      keybind: "mod+shift+p",
       onSelect: async () => {
         const { DialogCommandSearch } = await import("@/shell/commands/command-search")
         void dialog.show(() => <DialogCommandSearch />)

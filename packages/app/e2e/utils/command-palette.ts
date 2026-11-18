@@ -27,7 +27,7 @@ export function captureConsoleWarnings(page: Page) {
 
 export async function openCommandPalette(page: Page, home = false) {
   const mock = await openPaletteWorkspace(page, home)
-  await page.keyboard.press("ControlOrMeta+Shift+P")
+  await page.keyboard.press("ControlOrMeta+K")
   const dialog = page.getByRole("dialog")
   const input = dialog.getByRole("combobox")
   await expect(input).toBeFocused()

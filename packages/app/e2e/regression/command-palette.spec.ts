@@ -409,8 +409,21 @@ test("reopens from its shortcut as soon as it closes", async ({ page }) => {
   await input.press("Escape")
   await expect(dialog).toHaveCount(0)
   // A closed dialog stops blocking shortcuts when it leaves the screen, not when it is disposed afterwards.
-  await page.keyboard.press("ControlOrMeta+Shift+P")
+  await page.keyboard.press("ControlOrMeta+K")
   await expect(dialog.getByRole("combobox")).toBeFocused()
+})
+
+test("Command+Shift+P lists only commands and narrows them as you type", async ({ page }) => {
+  await openPaletteWorkspace(page)
+  await page.keyboard.press("ControlOrMeta+Shift+P")
+  const dialog = page.getByRole("dialog")
+  const input = dialog.getByRole("combobox")
+  await expect(input).toBeFocused()
+  await expect(input).toHaveAttribute("placeholder", "Search commands")
+  await expect(dialog.getByRole("option")).not.toHaveCount(0)
+  await expect(dialog.getByRole("option", { name: /Palette fixture session/ })).toHaveCount(0)
+  await input.fill("open settings")
+  await expect(dialog.getByRole("option", { name: /^Open settings/ })).toHaveAttribute("aria-selected", "true")
 })
 
 test("appends search results without resetting the selected command", async ({ page }) => {
@@ -589,7 +602,7 @@ test("navigation replaces commands without retaining disposed owners", async ({ 
   await editor.blur()
   await page.keyboard.press("Control+l")
   await expect(editor).toBeFocused()
-  await page.keyboard.press("ControlOrMeta+Shift+P")
+  await page.keyboard.press("ControlOrMeta+K")
   const dialog = page.getByRole("dialog")
   await expect(dialog.getByRole("combobox")).toBeFocused()
   await expect(dialog.getByRole("combobox")).toHaveAttribute("placeholder", "Search files, commands, and sessions")
@@ -621,7 +634,7 @@ test("navigation replaces commands without retaining disposed owners", async ({ 
   await expect(tabs.filter({ hasText: paletteSession.title })).toHaveCount(1)
   await tabs.filter({ hasText: paletteSession.title }).click()
   await expect(page.getByRole("heading", { name: paletteSession.title, exact: true })).toBeVisible()
-  await page.keyboard.press("ControlOrMeta+Shift+P")
+  await page.keyboard.press("ControlOrMeta+K")
   await expect(dialog.getByRole("combobox")).toBeFocused()
   await dialog.getByRole("combobox").fill("copy session")
   await expect(dialog.getByRole("option", { name: "Copy Session ID", exact: true })).toHaveAttribute(
@@ -636,7 +649,7 @@ test("keeps matching session and file results steady across keystrokes while sea
 }) => {
   await openPaletteWorkspace(page)
   const mac = await page.evaluate(() => /(Mac|iPod|iPhone|iPad)/.test(navigator.platform))
-  await page.keyboard.press(mac ? "Meta+Shift+P" : "Control+Shift+P")
+  await page.keyboard.press(mac ? "Meta+K" : "Control+K")
   const dialog = page.getByRole("dialog")
   const input = dialog.getByRole("combobox")
   await expect(input).toBeFocused()
