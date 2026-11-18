@@ -135,6 +135,14 @@ export function createTimelineCache(
                 get copyAlwaysVisible() {
                   return data.copyAlwaysVisible
                 },
+                get userHeadingLevel() {
+                  return data.userHeadingLevel
+                },
+                get assistantHeadingLevel() {
+                  return data.assistantHeadingLevel
+                },
+                onResponseCopied: data.onResponseCopied,
+                onResponseCopyError: data.onResponseCopyError,
                 get backgroundCompaction() {
                   return backgroundCompaction()
                 },

@@ -5,11 +5,15 @@ import { sidebarToggleCommand } from "@/shell/shell"
 import { previousSessionCommand, nextSessionCommand } from "@/shell/titlebar/tab-strip"
 import { goBackCommand, goForwardCommand, newTabCommand } from "@/shell/titlebar/titlebar"
 import { exportLogsCommand } from "./desktop"
-import { DESKTOP_MENU, nextDesktopZoomLevel } from "./desktop-menu"
+import { DESKTOP_MENU, desktopMenuVisible, nextDesktopZoomLevel, type DesktopMenuEntry } from "./desktop-menu"
 
 test("every desktop menu command is one its owner registers", () => {
   const registered = new Set([
     settingsOpenCommand.id,
+    "command.palette",
+    "settings.accessibility",
+    "announcements.test",
+    "announcements.repeat",
     exportLogsCommand.id,
     newTabCommand.id,
     sidebarToggleCommand.id,
@@ -21,11 +25,23 @@ test("every desktop menu command is one its owner registers", () => {
     `terminal.${terminalToggleCommand.id}`,
   ])
 
-  const commands = DESKTOP_MENU.flatMap((menu) => menu.items ?? []).flatMap((entry) =>
-    entry.type === "item" && entry.command ? [entry.command] : [],
-  )
+  const commandIDs = (entry: DesktopMenuEntry): string[] =>
+    entry.type === "separator" ? [] : entry.command ? [entry.command] : (entry.submenu ?? []).flatMap(commandIDs)
+  const commands = DESKTOP_MENU.flatMap((menu) => (menu.items ?? []).flatMap(commandIDs))
 
   expect(commands.filter((command) => !registered.has(command))).toEqual([])
+})
+
+test.each(["macos", "windows", "linux"] as const)("%s exposes command and accessibility menus", (platform) => {
+  const menus = DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, platform))
+  const view = menus.find((menu) => menu.id === "view")
+  const entries = (view?.items ?? []).filter((entry) => entry.type === "item" && desktopMenuVisible(entry, platform))
+  expect(entries).toContainEqual(expect.objectContaining({ command: "command.palette" }))
+  expect(entries).toContainEqual(
+    expect.objectContaining({
+      submenu: expect.arrayContaining([expect.objectContaining({ command: "settings.accessibility" })]),
+    }),
+  )
 })
 
 test.each([

@@ -702,7 +702,9 @@ export function createSessionTimelineRowRenderer(input: {
 
   const ReplyHeading = (props: { row: TimelineRow.TimelineRow }) => (
     <Show when={replyStarts().has(TimelineRow.key(props.row))}>
-      <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.assistant")}</h2>
+      <Dynamic component={`h${data.assistantHeadingLevel}` as const} class="sr-only">
+        {i18n.t("ui.sessionTimeline.heading.assistant")}
+      </Dynamic>
     </Show>
   )
 
@@ -1142,7 +1144,9 @@ export function createSessionTimelineRowRenderer(input: {
                   {...hoverZone(message().id)}
                 >
                   <div data-slot="session-turn-message-content" aria-live="off">
-                    <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
+                    <Dynamic component={`h${data.userHeadingLevel}` as const} class="sr-only">
+                      {i18n.t("ui.sessionTimeline.heading.user")}
+                    </Dynamic>
                     <SessionUserMessage
                       sessionID={input.sessionID()}
                       message={message()}

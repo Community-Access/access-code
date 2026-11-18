@@ -19,7 +19,6 @@ import {
   setTitlebar,
   setTrafficLightsPosition,
   setZoomLevel,
-  updateTitlebar,
   windowAppearance,
   wireFocus,
   wireFullscreen,
@@ -60,7 +59,6 @@ export {
   setTitlebar,
   setTrafficLightsPosition,
   setZoomLevel,
-  updateTitlebar,
 }
 
 export function getLastFocusedWindow() {
@@ -141,7 +139,6 @@ export const mainWindows = Effect.fn("Window.make")(function* (input: {
         width: state.width,
         height: state.height,
         show: false,
-        autoHideMenuBar: true,
         ...appearance,
         webPreferences: {
           ...appearance.webPreferences,

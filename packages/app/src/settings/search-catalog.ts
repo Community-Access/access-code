@@ -17,6 +17,29 @@ type Entry<Tab> = {
 
 export const clientSettings: Entry<SettingsRootTab>[] = [
   { tab: "general", label: "settings.tab.preferences" },
+  { tab: "accessibility", label: "settings.accessibility.title", keywords: "screen reader JAWS NVDA VoiceOver" },
+  {
+    tab: "accessibility",
+    label: "settings.accessibility.announceReplies",
+    target: "settings-announce-replies",
+    keywords: "screen reader ARIA alert reply ready read full reply test announcements repeat last announcement",
+  },
+  {
+    tab: "accessibility",
+    label: "settings.accessibility.announceReplyCopies",
+    target: "settings-announce-reply-copies",
+    keywords: "screen reader ARIA alert clipboard",
+  },
+  {
+    tab: "accessibility",
+    label: "settings.accessibility.userHeadingLevel",
+    target: "settings-user-heading-level",
+  },
+  {
+    tab: "accessibility",
+    label: "settings.accessibility.assistantHeadingLevel",
+    target: "settings-assistant-heading-level",
+  },
   { tab: "appearance", label: "settings.general.section.appearance" },
   { tab: "notifications", label: "settings.tab.notifications" },
   { tab: "shortcuts", label: "settings.shortcuts.title", keywords: "keybind keyboard hotkey" },

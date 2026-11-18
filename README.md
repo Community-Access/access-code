@@ -62,9 +62,81 @@ nix run github:anomalyco/opencode  # Nix
 > [!TIP]
 > Remove versions older than 0.1.x before installing.
 
-### Desktop App (BETA)
+## Access Code desktop and web
 
-OpenCode is also available as a desktop application. Download it from [opencode.ai/download](https://opencode.ai/download).
+Access Code is an accessibility-focused fork of OpenCode. The chat announcement changes use the same
+renderer on Windows, macOS, Linux, and the web. The installer and portable packaging described below
+are specific to Windows.
+
+### Run Access Code on Windows
+
+The [Windows build instructions](./packages/desktop/README.md#windows-x64-installer) produce three options.
+These paths are relative to the repository root and use the default x64 development build:
+
+- **Inno Setup installer:** Run `dist\desktop\accesscode-desktop-win-x64.exe` to install for the current user.
+- **Unpacked app:** Run `dist\desktop\app\AccessCode Dev.exe` without installing. Keep the unpacked folder
+  together. This option uses your normal app profile; it is not portable mode.
+- **Portable app:** Run `dist\portable\AccessCode-windows-x64\AccessCode Dev.exe`. Keep the whole directory
+  together, including `accesscode-portable.flag`. A writable copy stores its profile in `AccessCode-data`
+  beside the executable. See the [portable build instructions and limitations](./packages/desktop/README.md#windows-portable-edition).
+
+Local installers are unsigned and do not update automatically. Signed production releases can use the
+Inno Setup update flow when both the installer signatures and the release feed are configured. The
+[Windows build workflow](./.github/workflows/accesscode-windows.yml) is configured to produce unsigned
+x64 and ARM64 installer artifacts for testing, not to publish releases.
+
+### Connect a ChatGPT account
+
+In **Settings > Providers**, choose **OpenAI**, then **Sign in with ChatGPT**. Finish signing in in your
+browser and allow token sharing so eligible requests can use your ChatGPT plan. No API key is needed
+for this sign-in method. New connections ask OpenAI to register the app as **Access Code**; existing
+connections keep their issued client ID. The browser returns through a local loopback connection, which
+does not require the desktop protocol handler in portable mode.
+
+GitHub Copilot sign-in is separate. GitHub displays the name of its registered OAuth application on the
+authorization page. Showing **Access Code** there still requires a maintainer-managed GitHub OAuth
+registration with device flow and verified Copilot access.
+
+### Use and test chat announcements
+
+Under **Settings → Accessibility**, set **Reply announcements** to **Off**, **Reply ready** (a short
+announcement that waits for a pause in screen-reader speech), or **Read full reply** (the default,
+which can interrupt speech). Existing on/off preferences become **Read full reply** or **Off**.
+The separate **Announce copied replies** switch controls confirmation after a successful clipboard write.
+To get a system alert while working in another app, use the link to **Notifications settings**.
+
+The session screen has a level-1 heading, and the conversation title is level 2. In the Accessibility
+tab, choose levels 3 through 6 independently for your messages and assistant replies. Both default
+to level 3. An existing setting of level 2 falls back to level 3.
+
+In **Settings → Accessibility**, the command palette, or the desktop **View → Accessibility** menu:
+
+- **Repeat Last Announcement** replays the last message sent to the live region.
+- **Test Announcements** sends "Access Code announcement test". In Settings, the button uses the
+  polite region in **Reply ready** mode and the alert region otherwise. It does not detect whether the
+  screen reader received it.
+
+Open the command palette with **Ctrl+K** or **Ctrl+Shift+P** on Windows and Linux, or
+**Command+K** or **Command+Shift+P** on macOS. Type to filter, use the arrow keys to
+choose a result, press **Enter** to run it, or press **Escape** to close the palette.
+Desktop users can also choose **View → Command Palette**. **View → Accessibility**
+contains Accessibility Settings, Test Announcements, and Repeat Last Announcement.
+With English menus on Windows, press **Alt+F** for File, **Alt+E** for Edit,
+**Alt+V** for View, or **Alt+H** for Help. After opening a menu, press the
+underlined letter for an item, or use the arrow keys and **Enter**.
+
+### Verification status
+
+The Windows x64 portable app was launched successfully, and the unsigned x64 installer was built.
+The ChatGPT provider and announcement regression tests passed, as did the shared renderer build.
+The earlier portable previews predate the announcement changes; rebuild to try them. Live ChatGPT
+sign-in, ARM64 runtime behavior, signed updates, and announcements with NVDA or Narrator on Windows,
+VoiceOver on macOS, and Orca on Linux still need hands-on verification.
+
+### Upstream OpenCode desktop app (beta)
+
+The following downloads are for upstream OpenCode, not this Access Code build.
+See the [OpenCode desktop downloads](https://opencode.ai/download).
 
 | Platform              | Download                           |
 | --------------------- | ---------------------------------- |

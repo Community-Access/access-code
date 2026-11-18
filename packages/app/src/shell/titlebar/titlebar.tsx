@@ -13,7 +13,6 @@ import { usePlatform } from "@/runtime/platform/platform"
 import { useCommand } from "@/shell/commands/command"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useSettings } from "@/settings/model"
-import { WindowsAppMenu } from "./windows-menu"
 import { createTitlebarHistory } from "./history"
 import { TitlebarTabStrip } from "@/shell/titlebar/tab-strip"
 import { macVerticalTrafficLights, SidebarToggle } from "@/shell/sidebar-toggle"
@@ -56,11 +55,8 @@ export const goForwardCommand = { id: "common.goForward", keybind: "mod+]" }
 
 const titlebarHeight = 36
 
-const windowsTitlebarHeight = 44 // Includes the content inset; matches the native Windows overlay.
 
-const minTitlebarZoom = 0.25
 
-const windowsControlsBaseWidth = 138 // 3 native Windows caption buttons at 46px each.
 
 const macTrafficLightsBaseWidth = 74
 
@@ -85,21 +81,17 @@ export function Titlebar(props: { verticalTabs?: { mount?: HTMLElement } }) {
 
   const mac = createMemo(() => platform.platform === "desktop" && platform.os === "macos")
   const windows = createMemo(() => platform.platform === "desktop" && platform.os === "windows")
-  const linux = createMemo(() => platform.platform === "desktop" && platform.os === "linux")
   const macTrafficLights = createMemo(() => mac() && !platform.windowFullscreen?.())
   const macVerticalTabs = createMemo(() => mac() && !!props.verticalTabs)
   const zoom = () => platform.webviewZoom?.() ?? 1
-  const titlebarZoom = () => (windows() ? Math.max(zoom(), minTitlebarZoom) : zoom())
 
   const minHeight = () => {
     if (mac()) return `${titlebarHeight / zoom()}px`
 
-    if (windows()) return `env(titlebar-area-height, ${windowsTitlebarHeight / Math.min(titlebarZoom(), 1)}px)`
 
     return undefined
   }
 
-  const windowsControlsWidth = () => `${windowsControlsBaseWidth / Math.max(titlebarZoom(), 1)}px`
 
   let titlebarRow!: HTMLDivElement
 
@@ -189,8 +181,6 @@ export function Titlebar(props: { verticalTabs?: { mount?: HTMLElement } }) {
         "min-height": minHeight(),
         // Keep native macOS traffic lights clear even when the desktop window is narrow.
         "padding-left": macTrafficLights() ? `${macTrafficLightsBaseWidth / zoom()}px` : 0,
-        width: windows() ? `env(titlebar-area-width, calc(100vw - ${windowsControlsWidth()}))` : undefined,
-        "max-width": windows() ? `env(titlebar-area-width, calc(100vw - ${windowsControlsWidth()}))` : undefined,
         // Native Windows caption controls remain on the physical right in both writing directions.
         "margin-right": windows() ? "auto" : undefined,
       }}
@@ -578,14 +568,10 @@ export function Titlebar(props: { verticalTabs?: { mount?: HTMLElement } }) {
                   "pb-[max(0px,calc(8px-var(--shell-safe-area-bottom,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))))]":
                     bottom(),
                   "pl-2.5": macTrafficLights(),
-                  // The menu glyph sits 2px further into its slot than the sidebar icons sit into their rows.
                   "ps-[calc(var(--sidebar-inset-start)-2px)]": windows() && !!props.verticalTabs,
                   "ps-3.5": windows() && !props.verticalTabs,
                 }}
               >
-                <Show when={windows() || linux()}>
-                  <WindowsAppMenu command={command} platform={platform} />
-                </Show>
                 <Show when={windows() && props.verticalTabs}>
                   <SidebarToggle />
                 </Show>

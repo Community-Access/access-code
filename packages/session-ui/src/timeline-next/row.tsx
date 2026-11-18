@@ -697,7 +697,9 @@ export function createNextTimelineRowRenderer(input: {
 
   const ReplyHeading = (props: { row: TimelineRow.TimelineRow }) => (
     <Show when={replyStarts().has(TimelineRow.key(props.row))}>
-      <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.assistant")}</h2>
+      <Dynamic component={`h${data.assistantHeadingLevel}` as const} class="sr-only">
+        {i18n.t("ui.sessionTimeline.heading.assistant")}
+      </Dynamic>
     </Show>
   )
 
@@ -857,7 +859,9 @@ export function createNextTimelineRowRenderer(input: {
           {(objective) => (
             <div data-slot="session-turn-message-container" class={`w-full ${inset()}`}>
               <div data-component="user-message" data-goal="">
-                <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
+                <Dynamic component={`h${data.userHeadingLevel}` as const} class="sr-only">
+                  {i18n.t("ui.sessionTimeline.heading.user")}
+                </Dynamic>
                 <div data-slot="user-message-body">
                   <div data-slot="user-message-text" dir="auto">
                     <Badge data-slot="user-message-goal-badge" dir="ltr">
@@ -1138,7 +1142,9 @@ export function createNextTimelineRowRenderer(input: {
                   {...hoverZone(message().id)}
                 >
                   <div data-slot="session-turn-message-content" aria-live="off">
-                    <h2 class="sr-only">{i18n.t("ui.sessionTimeline.heading.user")}</h2>
+                    <Dynamic component={`h${data.userHeadingLevel}` as const} class="sr-only">
+                      {i18n.t("ui.sessionTimeline.heading.user")}
+                    </Dynamic>
                     <SessionUserMessage
                       sessionID={input.sessionID()}
                       message={message()}

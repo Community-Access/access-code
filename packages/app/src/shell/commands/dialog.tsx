@@ -162,6 +162,7 @@ function PaletteRow(props: {
   return (
     <button
       type="button"
+      tabIndex={-1}
       class="command-palette-row group"
       data-size="compact"
       aria-busy={props.busy || undefined}

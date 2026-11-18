@@ -74,6 +74,10 @@ export const {
     agents?: boolean
     /** Whether the assistant copy control stays visible at rest; the app enables this on dev/local builds. */
     copyAlwaysVisible?: boolean
+    userHeadingLevel?: 3 | 4 | 5 | 6
+    assistantHeadingLevel?: 3 | 4 | 5 | 6
+    onResponseCopied?: () => void
+    onResponseCopyError?: () => void
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
@@ -100,6 +104,14 @@ export const {
       get copyAlwaysVisible() {
         return props.copyAlwaysVisible === true
       },
+      get userHeadingLevel() {
+        return props.userHeadingLevel ?? 3
+      },
+      get assistantHeadingLevel() {
+        return props.assistantHeadingLevel ?? 3
+      },
+      onResponseCopied: props.onResponseCopied,
+      onResponseCopyError: props.onResponseCopyError,
       get backgroundCompaction() {
         return props.backgroundCompaction === true
       },

@@ -14,7 +14,6 @@ import { getStore } from "../storage/store"
 const oc2Theme = oc2ThemeJson as DesktopTheme
 
 // Match the renderer's 36px titlebar plus its former 8px content inset.
-export const titlebarHeight = 44
 
 export function tone() {
   return nativeTheme.shouldUseDarkColors ? "dark" : "light"
@@ -46,27 +45,12 @@ export function storedZoomLevel() {
   return desktopZoomLevels.find((level) => level === stored) ?? 1
 }
 
-export function titlebarOverlay(mode: "light" | "dark" = tone(), zoom = 1) {
-  return {
-    color: "#00000000",
-    symbolColor: mode === "dark" ? "white" : "black",
-    height: Math.max(titlebarHeight, Math.round(titlebarHeight * zoom)),
-  }
-}
-
-// macOS and Windows hide the titlebar; Windows draws its window controls in an overlay sized to the zoom.
-export function platformFrame(mode: "light" | "dark", zoom: number) {
+export function platformFrame() {
   const frame: BrowserWindowConstructorOptions = {}
 
   if (process.platform === "darwin") {
     frame.titleBarStyle = "hidden"
     frame.trafficLightPosition = { x: 14, y: 14 }
-  }
-
-  if (process.platform === "win32") {
-    frame.frame = false
-    frame.titleBarStyle = "hidden"
-    frame.titleBarOverlay = titlebarOverlay(mode, zoom)
   }
 
   return frame

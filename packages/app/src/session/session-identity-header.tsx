@@ -642,14 +642,14 @@ export function SessionIdentityHeader(props: { sessionID: string; session?: Sess
           <SessionWorkingIndicator sessionID={props.sessionID} />
           <Show when={title()}>
             {(value) => (
-              <h1
+              <h2
                 data-slot={parentID() ? "session-title-child" : undefined}
                 dir="auto"
                 class="w-fit truncate rounded-[6px] px-1 py-1.5 text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base"
                 classList={{ "max-w-[45%] shrink-0": !!parentID() }}
               >
                 {value()}
-              </h1>
+              </h2>
             )}
           </Show>
         </SessionHeaderLayout>

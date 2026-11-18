@@ -15,6 +15,7 @@ export function useSettingsCommand() {
   const command = useCommand()
   const language = useLanguage()
   const show = useSettingsDialog()
+  const showAccessibility = useSettingsDialog("accessibility")
 
   command.register("settings", () => [
     {
@@ -22,6 +23,12 @@ export function useSettingsCommand() {
       title: language.t("command.settings.open"),
       category: language.t("command.category.settings"),
       onSelect: show,
+    },
+    {
+      id: "settings.accessibility",
+      title: language.t("desktop.menu.accessibilitySettings"),
+      category: language.t("command.category.settings"),
+      onSelect: showAccessibility,
     },
   ])
 

@@ -37,8 +37,9 @@ export async function writeClipboard(text: string): Promise<boolean> {
 
 /** "Copied" feedback for one copy button. Owner cleanup clears the timer and ignores a write still in flight. */
 export function createCopyFeedback(options?: {
-  write: (text: string) => Promise<boolean | void>
-  onError: () => void
+  write?: (text: string) => Promise<boolean | void>
+  onError?: () => void
+  onSuccess?: () => void
 }) {
   const write = options?.write ?? writeClipboard
 
@@ -51,7 +52,8 @@ export function createCopyFeedback(options?: {
     if (next.state === untrack(state)) return
     setState(next.state)
 
-    if (event.type === "copy.failed") options?.onError()
+    if (event.type === "copy.failed") options?.onError?.()
+    if (event.type === "copy.succeeded") options?.onSuccess?.()
     next.effects.forEach(run)
   }
 

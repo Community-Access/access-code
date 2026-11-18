@@ -682,7 +682,7 @@ test("the title and message stay stable through worktree creation", async ({ pag
   const pending = await submitPending(page, mock)
   await draftFollowUp(page)
   await editor(page).press("ControlOrMeta+Home")
-  const title = page.locator("[data-session-title]").getByRole("heading", { level: 1 })
+  const title = page.locator("[data-session-title]").getByRole("heading", { level: 2 })
   const before = await title.boundingBox()
   const messageBefore = await pending.message.boundingBox()
 
@@ -695,7 +695,7 @@ test("the title and message stay stable through worktree creation", async ({ pag
       !!element?.checkVisibility({ checkVisibilityCSS: true, checkOpacity: true })
 
     const sample = () => {
-      const title = document.querySelector<HTMLElement>("[data-session-title] h1")
+      const title = document.querySelector<HTMLElement>("[data-session-title] h2")
       const editor = document.querySelector('[data-component="composer-editor"]')
       frames.push({
         title: visible(title) ? title!.textContent : null,
@@ -761,7 +761,7 @@ test("the created session's composer keeps focus and a caret placed mid-draft", 
   await editor(page).press("Home")
   mock.worktree.resolve({ status: 200, json: { directory: workspace } })
 
-  await expect(page.locator("[data-session-title]").getByRole("heading", { level: 1 })).toHaveText(
+  await expect(page.locator("[data-session-title]").getByRole("heading", { level: 2 })).toHaveText(
     "Created workspace session",
   )
   await expect(pending.shimmer).toHaveCount(0)
@@ -780,7 +780,7 @@ test("a user who leaves the pending composer keeps focus there once the session 
   await expect(editor(page)).not.toBeFocused()
   mock.worktree.resolve({ status: 200, json: { directory: workspace } })
 
-  await expect(page.locator("[data-session-title]").getByRole("heading", { level: 1 })).toHaveText(
+  await expect(page.locator("[data-session-title]").getByRole("heading", { level: 2 })).toHaveText(
     "Created workspace session",
   )
   await expect(pending.shimmer).toHaveCount(0)
@@ -1420,7 +1420,8 @@ async function submitPending(page: Page, mock: Awaited<ReturnType<typeof openWor
   const preparing = page.locator('[data-component="session-preparing"]')
   const message = page.locator('[data-component="user-message"]')
   const shimmer = preparing.getByRole("status").locator('[data-component="text-shimmer"]')
-  await expect(preparing.getByRole("heading", { level: 1 })).toHaveText("Session")
+  await expect(preparing.getByRole("heading", { level: 2 })).toHaveText("Session")
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText("AccessCode session")
   await expect(editor(page)).toBeEditable()
   await expect(submit(page)).toBeDisabled()
   await expect(preparing.locator('[data-component="user-message"]')).toHaveCount(1)

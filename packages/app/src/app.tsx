@@ -12,6 +12,8 @@ import { type Component, createRenderEffect, ErrorBoundary, type JSX, type Paren
 import { Dynamic } from "solid-js/web"
 import { CommandProvider } from "@/shell/commands/command"
 import { DesktopCommands } from "@/shell/commands/desktop"
+import { AnnouncementCommands } from "@/shell/commands/announcements"
+import { mountAnnouncers } from "@/session/announce"
 import { ProjectIconsProvider } from "@/shell/layout/project-icons"
 import { GlobalProvider } from "@/runtime/server/runtime"
 import { LanguageProvider, UiI18nBridge, type Locale } from "@/runtime/i18n/language"
@@ -90,6 +92,8 @@ export function AppInterface(props: {
   servers?: Array<ServerConnection.Any>
   router?: Component<BaseRouterProps>
 }) {
+  createRenderEffect(mountAnnouncers)
+
   // The visual layout lives in the router root so it remains mounted across
   // route changes. Draft and session routes override only their server-bound data
   // providers beneath it.
@@ -100,6 +104,7 @@ export function AppInterface(props: {
           <BodyTypography />
           <CommandProvider>
             <DesktopCommands />
+            <AnnouncementCommands />
             <VoiceProvider>
               {props.children}
               {rootProps.children}

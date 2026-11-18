@@ -11,6 +11,7 @@ import { DialogServer } from "@/servers/connect/dialog"
 import { LocationProvider } from "@/workspaces/location"
 import { SettingsGeneral } from "./general/general"
 import { SettingsAppearance } from "./appearance/appearance"
+import { SettingsAccessibility } from "./accessibility"
 import { experimentalSettingsAvailable, SettingsExperimental } from "./experimental/experimental"
 import { SettingsKeybinds } from "./keybinds/keybinds"
 import { SettingsNotifications } from "./notifications/notifications"
@@ -38,6 +39,7 @@ import "@/settings/settings.css"
 
 const rootClientTabs = [
   { value: "general", icon: pageIcons.general, label: "settings.tab.preferences" },
+  { value: "accessibility", icon: pageIcons.accessibility, label: pageLabels.accessibility },
   { value: "appearance", icon: pageIcons.appearance, label: "settings.general.section.appearance" },
   { value: "notifications", icon: pageIcons.notifications, label: "settings.tab.notifications" },
   { value: "shortcuts", icon: pageIcons.shortcuts, label: "settings.tab.shortcuts" },
@@ -89,6 +91,18 @@ export function SettingsScreen() {
     onCleanup(surface.search.attach(root!))
   })
   createEffect(() => surface.search.sync(surface.view()))
+  createEffect(
+    on(
+      createMemo(() => !!surface.focusTab() && surface.focusTab() === surface.view().tab),
+      (requested) => {
+        if (!requested) return
+        queueMicrotask(() => {
+          if (root?.isConnected) focusStart()
+        })
+      },
+      { defer: true },
+    ),
+  )
   createEffect(
     on(
       createMemo(() => surface.view().type),
@@ -257,6 +271,9 @@ function RootSettings() {
       </Tabs.Content>
       <Tabs.Content value="appearance" class="settings-panel">
         <SettingsAppearance />
+      </Tabs.Content>
+      <Tabs.Content value="accessibility" class="settings-panel">
+        <SettingsAccessibility />
       </Tabs.Content>
       <Tabs.Content value="notifications" class="settings-panel">
         <SettingsNotifications />

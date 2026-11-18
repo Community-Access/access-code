@@ -54,7 +54,11 @@ export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = cr
     const tabs = useTabs()
 
     const location = useLocation<{
-      settings?: { route: Exclude<LayoutRoute, { type: "settings" }>; view?: SettingsTransientView }
+      settings?: {
+        route: Exclude<LayoutRoute, { type: "settings" }>
+        view?: SettingsTransientView
+        focusTab?: SettingsRootTab
+      }
     }>()
 
     const plugins = createSettingsPages()
@@ -195,6 +199,7 @@ export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = cr
       active: open,
       route: source,
       view,
+      focusTab: () => location.state?.settings?.focusTab,
       /** The server per-server pages show; undefined only while no server is listed. */
       server,
       sourceServer,

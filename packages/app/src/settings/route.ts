@@ -3,6 +3,7 @@ import { canHoldProjectRoute, type SettingsServerAvailability } from "./servers/
 export type SettingsRootTab =
   | "general"
   | "appearance"
+  | "accessibility"
   | "notifications"
   | "shortcuts"
   | "projects"
@@ -48,6 +49,7 @@ export type SettingsTransientView = Pick<SettingsView, "target" | "searchActivat
 const rootTabs: Record<SettingsRootTab, true> = {
   general: true,
   appearance: true,
+  accessibility: true,
   notifications: true,
   shortcuts: true,
   projects: true,

@@ -1224,7 +1224,7 @@ export function AssistantTextContent(props: {
     })
   })
 
-  const copy = createCopyFeedback()
+  const copy = createCopyFeedback({ onSuccess: data.onResponseCopied, onError: data.onResponseCopyError })
 
   return (
     <Show when={props.text}>
@@ -1261,8 +1261,10 @@ export function AssistantTextContent(props: {
           size="small"
           label={copy.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => copy.copy(props.text)}
-          aria-label={copy.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+          onClick={() =>
+            copy.copy(props.message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n"))
+          }
+          aria-label={i18n.t("ui.message.copyResponse")}
         />
         <Show when={meta().length > 0}>
           <span data-slot="text-part-meta">

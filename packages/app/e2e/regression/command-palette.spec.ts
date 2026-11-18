@@ -11,6 +11,25 @@ import { mockRemoteServer, mockWorkspace } from "../utils/workspace"
 
 test.use({ serviceWorkers: "block", permissions: ["clipboard-read", "clipboard-write"] })
 
+test("keeps palette options out of the Tab order and restores focus on Escape", async ({ page }) => {
+  await openPaletteWorkspace(page, true)
+  const origin = page.getByRole("banner").getByRole("button", { name: "Search sessions", exact: true })
+  await origin.focus()
+  await page.keyboard.press("ControlOrMeta+K")
+  const dialog = page.getByRole("dialog")
+  const input = dialog.getByRole("combobox")
+  await expect(input).toBeFocused()
+  await input.fill("open settings")
+  const option = dialog.getByRole("option", { name: /^Open settings/ })
+  await expect(option).toHaveAttribute("tabindex", "-1")
+  const id = await option.getAttribute("id")
+  expect(id).toBeTruthy()
+  await expect(input).toHaveAttribute("aria-activedescendant", id ?? "")
+  await input.press("Escape")
+  await expect(dialog).toHaveCount(0)
+  await expect(origin).toBeFocused()
+})
+
 test("copies the session ID while file and session searches are still pending", async ({ page }) => {
   const warnings = captureConsoleWarnings(page)
   const { dialog, input } = await openCommandPalette(page)
