@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router"
 import { Button } from "@opencode/ui/button"
 import { Select } from "@opencode/ui/select"
 import { Switch } from "@opencode/ui/switch"
@@ -110,4 +111,3 @@ export function SettingsAccessibility() {
     </>
   )
 }
-import { A } from "@solidjs/router"

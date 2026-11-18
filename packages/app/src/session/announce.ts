@@ -2,7 +2,9 @@ import type { ReplyAnnouncementMode } from "@/settings/model"
 
 type Politeness = "polite" | "assertive"
 
-const regions = new Map<Politeness, { element: HTMLElement; pending?: ReturnType<typeof setTimeout> }>()
+type Region = { element: HTMLElement; pending?: ReturnType<typeof setTimeout> }
+
+const regions = new Map<Politeness, Region>()
 let lastAnnouncement: { message: string; politeness: Politeness } | undefined
 
 export function mountAnnouncers() {
@@ -47,7 +49,7 @@ function publish(message: string, politeness: Politeness, remember: boolean) {
   }, ready ? 50 : 150)
 }
 
-function createRegion(politeness: Politeness) {
+function createRegion(politeness: Politeness): Region {
   const region = document.createElement("div")
   region.className = "sr-only"
   region.setAttribute("data-component", "announcer")
