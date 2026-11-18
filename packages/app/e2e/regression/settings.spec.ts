@@ -1947,7 +1947,8 @@ test("providers: Back during a pending API key request does not report the provi
   await expect(dialog.getByPlaceholder("API key")).toHaveValue("")
 })
 
-test("providers: the free tier upsell opens Go on its own, sized to its content", async ({ page }) => {
+// AccessCode turns off OpenCode's Go subscription popup (SHOW_GO_UPSELL in usage-exceeded-dialogs.tsx); composer.spec checks it.
+test.skip("providers: the free tier upsell opens Go on its own, sized to its content", async ({ page }) => {
   const view = await openSession(page, { name: "FreeTier", integrations: consoleIntegrations })
   await view.push([
     {

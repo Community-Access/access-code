@@ -149,7 +149,77 @@ test("closing the @ menu aborts its session search", async ({ page }) => {
   }
 })
 
-test("the free usage limit opens the Go dialog once, swaps the composer for the free limit panel, and restores the prompt", async ({
+test("the free usage limit swaps the composer for a panel with no Go subscription offer", async ({ page, context }) => {
+  await page.clock.setFixedTime(T0)
+  await context.route("https://**", (route) => route.fulfill({ body: "Sign in" }))
+  const sessionID = "ses_free_limit_quiet"
+  const model = { id: "big-pickle", providerID: "opencode" }
+
+  const view = await openSession(page, {
+    name: "FreeLimitQuiet",
+    sessions: [{ id: sessionID, agent: "build", model }],
+    onFileWrite: () => undefined,
+    provider: () => ({
+      all: [
+        {
+          id: "opencode",
+          name: "OpenCode",
+          models: {
+            "big-pickle": {
+              id: "big-pickle",
+              name: "Big Pickle",
+              cost: { input: 0, output: 0 },
+              limit: { context: 200_000 },
+            },
+          },
+        },
+      ],
+      connected: ["opencode"],
+      default: { build: "opencode/big-pickle" },
+    }),
+    integrations: () => [
+      {
+        id: "opencode",
+        name: "OpenCode Console",
+        methods: [{ id: "device", type: "oauth", label: "OpenCode Console account" }],
+        connections: [],
+      },
+      { id: "opencode-go", name: "OpenCode Go", methods: [{ type: "key" }], connections: [] },
+    ],
+    pageMessages: () => ({
+      items: [
+        { id: "msg_quiet_user", type: "user", text: "Refactor the parser", time: { created: T0 } },
+        { id: "msg_quiet_assistant", type: "assistant", agent: "build", model, content: [], time: { created: T0 + 1 } },
+      ],
+    }),
+  })
+
+  await expect(page.getByText("Refactor the parser", { exact: true })).toBeVisible()
+  await view.push([
+    {
+      id: "evt_free_limit_quiet",
+      created: T0 + 2,
+      type: "session.step.failed",
+      location: { directory: view.directory },
+      durable: { aggregateID: sessionID, seq: 1, version: 1 as const },
+      data: {
+        sessionID,
+        assistantMessageID: "msg_quiet_assistant",
+        error: { type: "provider.free-limit", message: "Free usage limit reached.", status: 429, retryAfterMs: 3_600_000 },
+      },
+    },
+  ])
+
+  // The panel still says what happened and offers to connect any provider, but nothing pushes a Go subscription.
+  const panel = page.locator('[data-component="session-free-limit"]')
+  await expect(panel).toContainText("Free usage resets at")
+  await expect(panel.getByRole("button", { name: "Subscribe", exact: true })).toHaveCount(0)
+  await expect(panel.locator('[data-action="session-free-limit-connect"]')).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "Free limit reached" })).toHaveCount(0)
+})
+
+// AccessCode turns off OpenCode's Go subscription popup and the panel's Subscribe button; see the test above.
+test.skip("the free usage limit opens the Go dialog once, swaps the composer for the free limit panel, and restores the prompt", async ({
   page,
   context,
 }) => {

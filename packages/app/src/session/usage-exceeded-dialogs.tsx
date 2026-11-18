@@ -16,6 +16,10 @@ const GO_UPSELL_FREE_TIER_DONT_SHOW = "go_upsell_dont_show"
 
 const GO_UPSELL_WINDOW = 86_400_000 // 24 hrs
 
+// AccessCode: never pops up an OpenCode Go subscription offer. The composer's free limit panel still says what happened,
+// and OpenCode Go stays available in the provider list. Kept as one switch so OpenCode's code merges cleanly.
+const SHOW_GO_UPSELL = false
+
 const GO_URL = "https://opencode.ai/go"
 
 const MAX_RETRY_AFTER_MS = 45 * 86_400_000
@@ -85,6 +89,7 @@ export function useUsageExceededDialogs(input?: {
   )
 
   const showFreeLimitDialog = (evt: SessionStepFailed) => {
+    if (!SHOW_GO_UPSELL) return
     if (evt.data.sessionID !== params.id || dialog.active) return
     const seen = goUpsellState[GO_UPSELL_FREE_TIER_LAST_SEEN_AT]
 
