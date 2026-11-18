@@ -914,7 +914,7 @@ export function createSessionTimelineRowRenderer(input: {
                         </>
                       }
                     >
-                      <div data-slot="session-timeline-notice" class={`w-full py-1 ${inset()}`}>
+                      <div data-slot="session-timeline-notice" class={`w-full py-1 ${inset()}`} aria-hidden="true">
                         <div class="flex min-h-5 min-w-0 items-center gap-2 overflow-hidden">
                           <bdi
                             dir="auto"
@@ -934,6 +934,10 @@ export function createSessionTimelineRowRenderer(input: {
                           </For>
                         </div>
                       </div>
+                      {/* The row is hidden above, so this text reads it as one stop. */}
+                      <Show when={noticeLabel()}>
+                        <span class="sr-only">{noticeLabel()}</span>
+                      </Show>
                     </Show>
                   )}
                 </Show>
@@ -954,13 +958,23 @@ export function createSessionTimelineRowRenderer(input: {
           }
         >
           {(message) => (
-            <div data-slot="session-timeline-notice" data-type="location-switched" class={`w-full py-2 ${inset()}`}>
-              <TimelineSeparator
-                label={i18n.t("ui.sessionTimeline.notice.movedTo")}
-                value={message().location.directory}
-                tooltip={i18n.t("ui.sessionTimeline.notice.movedTooltip")}
-              />
-            </div>
+            <>
+              <div
+                data-slot="session-timeline-notice"
+                data-type="location-switched"
+                class={`w-full py-2 ${inset()}`}
+                aria-hidden="true"
+              >
+                <TimelineSeparator
+                  label={i18n.t("ui.sessionTimeline.notice.movedTo")}
+                  value={message().location.directory}
+                  tooltip={i18n.t("ui.sessionTimeline.notice.movedTooltip")}
+                />
+              </div>
+              <span class="sr-only">
+                {i18n.t("ui.sessionTimeline.notice.movedTo")} {message().location.directory}
+              </span>
+            </>
           )}
         </Show>
       </>

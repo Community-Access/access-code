@@ -51,16 +51,16 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
           {language.t("settings.timeline.description")}
         </div>
       </div>
-      <div data-slot="timeline-detail-scale">
+      <div data-slot="timeline-detail-scale" data-custom={preset() ? undefined : ""}>
         <div
           data-slot="timeline-detail-track"
           aria-hidden="true"
-          style={{ "--timeline-detail-progress": `${(position() / (presets.length - 1)) * 100}%` }}
+          style={{ "--timeline-detail-progress": `${preset() ? (position() / (presets.length - 1)) * 100 : 0}%` }}
         >
           <For each={presets}>
             {(_, index) => (
               <span
-                data-selected={index() <= position() ? "" : undefined}
+                data-selected={preset() && index() <= position() ? "" : undefined}
                 style={{ "inset-inline-start": `${(index() / (presets.length - 1)) * 100}%` }}
               />
             )}
@@ -78,6 +78,10 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
           aria-valuetext={label()}
           aria-describedby={`${id}-description ${id}-preset-description`}
           onInput={(event) => props.onChange({ ...presets[event.currentTarget.valueAsNumber].value })}
+          // A click on the current value fires no input event.
+          onClick={(event) => {
+            if (!preset()) props.onChange({ ...presets[event.currentTarget.valueAsNumber].value })
+          }}
         />
       </div>
       <p id={`${id}-preset-description`} aria-live="polite">
@@ -121,7 +125,6 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
                         <IconButton
                           id={`${id}-${category}-visibility`}
                           type="button"
-                          variant="ghost-muted"
                           size="small"
                           data-action="timeline-detail-visibility"
                           aria-label={language.t("settings.timeline.visibility.label", {
@@ -143,7 +146,7 @@ export function TimelineDetailControl(props: { value: TimelineDetail; onChange: 
                           }}
                           icon={
                             <Icon
-                              name={props.value[category].placement === "hidden" ? "outline-eye-slash" : "outline-eye"}
+                              name={props.value[category].placement === "hidden" ? "outline-eye-slash" : "eye"}
                             />
                           }
                         />

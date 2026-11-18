@@ -86,8 +86,11 @@ story("keeps Copied for two seconds after the latest click", async ({ mount, pag
   // The first click's reset falls due here, while the second click's feedback still runs.
   await page.clock.runFor(900)
   await expect(result.getByRole("button", { name: "Copied" })).toBeVisible()
-  await expect(page.getByRole("tooltip", { name: "Copied" })).toBeVisible()
+  // The tip is hidden from screen readers, so address it in the DOM; the button's own name carries the state.
+  const tip = page.locator('[data-component="tooltip-v2"]')
+  await expect(tip).toBeVisible()
+  await expect(tip).toHaveAttribute("aria-hidden", "true")
   await page.clock.runFor(1_200)
   await expect(result.getByRole("button", { name: "Copy output", exact: true })).toBeVisible()
-  await expect(page.getByRole("tooltip")).toBeHidden()
+  await expect(tip).toBeHidden()
 })

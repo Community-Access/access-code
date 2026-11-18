@@ -40,6 +40,11 @@ export interface BasicToolProps {
   onTriggerKeyDown?: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent>
   triggerHref?: string
   triggerAsLink?: boolean
+  /**
+   * Accessible name for the trigger. The trigger is a single button, so without a name its content
+   * concatenates into one word; the name also covers what its children otherwise would announce.
+   */
+  triggerLabel?: string
   clickable?: boolean
   compact?: boolean
   /** Rendered beside the trigger rather than inside it, so it can be its own button. Shown on hover or focus. */
@@ -179,6 +184,7 @@ export function BasicTool(props: BasicToolProps) {
           >
             <Collapsible.Trigger
               data-hide-details={props.hideDetails ? "true" : undefined}
+              aria-label={props.triggerLabel}
               onClick={props.onTriggerClick}
             >
               {trigger()}
@@ -191,6 +197,7 @@ export function BasicTool(props: BasicToolProps) {
           href={props.triggerHref}
           role={!props.triggerHref && props.clickable ? "button" : undefined}
           tabIndex={!props.triggerHref && props.clickable ? 0 : undefined}
+          aria-label={props.triggerLabel}
           data-hide-details={props.hideDetails ? "true" : undefined}
           onClick={props.onTriggerClick}
           onKeyDown={props.onTriggerKeyDown}

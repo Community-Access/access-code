@@ -60,7 +60,7 @@ import type {
 import type { SessionUserActions, SessionUserAttachmentReference, SessionUserComment } from "../actions"
 import { agentLabel } from "./agent-label"
 import { isInterruptedError } from "../timeline/turn-phase-machine"
-import { attached, imageAttachmentPlaceholderStyle, typeLabel } from "../components/message-file"
+import { attached, typeLabel } from "../components/message-file"
 import {
   DISPOSED_ATTACHMENT_MEDIA_EVENT,
   INITIAL_ATTACHMENT_MEDIA_STATE,
@@ -142,7 +142,7 @@ function MessageActionButton(
   return (
     <Tooltip appearance="compact" value={props.label} placement="top" gutter={4} forceOpen={props.copied || undefined}>
       <IconButton
-        icon={<Icon name={props.copied ? "check" : "outline-copy"} size="small" />}
+        icon={<Icon name={props.copied ? "check" : "copy"} />}
         size={props.size ?? "normal"}
         variant="ghost-muted"
         disabled={props.disabled}
@@ -340,6 +340,16 @@ export function CurrentUserMessageDisplay(props: {
   // A waiting steer reads agent · model · Pending; mobile shows the agent and model in the composer instead.
   const metaLabels = createMemo(() => (mobile() ? [] : [...agentItems(), ...modelItems(data, props.model)]))
 
+  // The line is one VoiceOver stop: the chips are hidden from VoiceOver and this text reads the whole line,
+  // so the arrows skip the line instead of hopping between chips. Commas read where the dots render.
+  const metaLineLabel = createMemo(() => {
+    const labels = metaLabels().map((item) => item.label)
+
+    if (waiting()) labels.push(i18n.t("ui.message.pending"))
+
+    return labels.join(", ")
+  })
+
   // In a run, only the last message keeps the meta line; every bubble offers its actions from its own chevron.
   // Bubble corners tighten where two bubbles meet, as in the iOS app's grouped corners.
   const folded = createMemo(() => !!props.run?.below && !!props.text)
@@ -432,7 +442,7 @@ export function CurrentUserMessageDisplay(props: {
           {/* The chevron explains itself, so it carries only an accessible name, no tooltip. */}
           <Menu.Trigger
             as={IconButton}
-            icon={<Icon name="chevron-down" size="small" />}
+            icon={<Icon name="chevron-down" />}
             size="small"
             variant="ghost-muted"
             onMouseDown={(event: MouseEvent) => event.preventDefault()}
@@ -451,26 +461,26 @@ export function CurrentUserMessageDisplay(props: {
               <Menu.Separator />
               <Show when={pending() && props.actions?.pending}>
                 <Menu.Item disabled={actionView().disabled.queue} onSelect={() => request("queue")}>
-                  <Icon name="bullet-list" size="small" />
+                  <Icon name="bullet-list" />
                   {i18n.t("ui.message.moveToQueue")}
                 </Menu.Item>
               </Show>
               <Menu.Item disabled={!copyText()} onSelect={() => void writeClipboard(copyText())}>
-                <Icon name="outline-copy" size="small" />
+                <Icon name="copy" />
 
                 {i18n.t("ui.message.copyMessage")}
               </Menu.Item>
               {/* Like the iOS app, a Voice message also offers the full prompt the session received. */}
               <Show when={props.voice}>
                 <Menu.Item onSelect={() => void writeClipboard(props.message.text)}>
-                  <Icon name="outline-copy" size="small" />
+                  <Icon name="copy" />
                   {i18n.t("ui.message.copyFullMessage")}
                 </Menu.Item>
               </Show>
               {/* A pending steer has no history to fork from yet. */}
               <Show when={!pending()}>
                 <Menu.Item disabled={actionView().disabled.fork} onSelect={() => request("fork")}>
-                  <Icon name="fork" size="small" />
+                  <Icon name="fork" />
                   {i18n.t("ui.message.forkMessage")}
                 </Menu.Item>
               </Show>
@@ -481,7 +491,7 @@ export function CurrentUserMessageDisplay(props: {
                   <Show when={props.actions?.revert}>
                     <Menu.Separator />
                     <Menu.Item disabled={actionView().disabled.revert} onSelect={() => request("revert")}>
-                      <Icon name={props.latest ? "outline-undo" : "reset"} size="small" />
+                      <Icon name="reset" />
                       {props.latest ? i18n.t("ui.message.undoMessage") : i18n.t("ui.message.revertMessage")}
                     </Menu.Item>
                   </Show>
@@ -493,7 +503,7 @@ export function CurrentUserMessageDisplay(props: {
                   disabled={actionView().disabled.remove}
                   onSelect={() => request("remove")}
                 >
-                  <Icon name="outline-trash" size="small" />
+                  <Icon name="trash" />
                   {i18n.t("ui.message.deletePending")}
                 </Menu.Item>
               </Show>
@@ -586,13 +596,6 @@ export function CurrentUserMessageDisplay(props: {
               if (mediaView().canRetry) dispatchMedia({ type: "retry.requested", target: mediaTarget() })
             }
 
-            const placeholderStyle = () =>
-              imageAttachmentPlaceholderStyle({
-                width: width(),
-                height: height(),
-                loaded: mediaView().status === "ready",
-              })
-
             return (
               <Show
                 when={!image()}
@@ -604,7 +607,6 @@ export function CurrentUserMessageDisplay(props: {
                     data-placeholder={mediaView().placeholder ? "true" : undefined}
                     data-width={width()}
                     data-height={height()}
-                    style={placeholderStyle()}
                     role={mediaView().clickable ? "button" : undefined}
                     tabIndex={mediaView().clickable ? 0 : undefined}
                     aria-label={
@@ -625,7 +627,7 @@ export function CurrentUserMessageDisplay(props: {
                             src={src()}
                             width={width()}
                             height={height()}
-                            alt={name()}
+                            alt={mediaView().clickable ? "" : name()}
                           />
                         )}
                       </Match>
@@ -648,6 +650,7 @@ export function CurrentUserMessageDisplay(props: {
                   title={getFilename(name())}
                   hover={name()}
                   clickable={!!props.actions?.openAttachment}
+                  label={[getFilename(name()), typeLabel(name(), file().mime, i18n.t("ui.common.file"))].join(" ")}
                   onClick={() => props.actions?.openAttachment?.(file())}
                 >
                   {typeLabel(name(), file().mime, i18n.t("ui.common.file"))}
@@ -723,7 +726,9 @@ export function CurrentUserMessageDisplay(props: {
       <Show when={props.text || comments().length > 0 || pending()}>
         <div data-slot="user-message-copy-wrapper">
           <span data-slot="user-message-meta-wrap">
-            <span data-slot="user-message-meta">
+            {/* Each chip would otherwise be its own VoiceOver stop on one line, so the arrows jump between
+                them; the chips are hidden and a clipped text reads the whole line as a single stop. */}
+            <span data-slot="user-message-meta" aria-hidden="true">
               <Show when={metaLabels().length > 0}>
                 <span data-slot="user-message-meta-label">
                   <MetaItems items={metaLabels()} slot="user-message" />
@@ -739,6 +744,11 @@ export function CurrentUserMessageDisplay(props: {
                 <span data-slot="user-message-pending">{i18n.t("ui.message.pending")}</span>
               </UserMessageTransition>
             </span>
+            <Show when={metaLineLabel()}>
+              <span data-slot="user-message-meta-vo" class="sr-only">
+                {metaLineLabel()}
+              </span>
+            </Show>
           </span>
           <Show when={!props.text}>{renderMenu()}</Show>
         </div>
@@ -776,7 +786,8 @@ function UserMessageFold(props: {
   }
 
   onMount(() => {
-    measure()
+    // The bubble gets its wrapping width after the surrounding view mounts.
+    queueMicrotask(measure)
     const observer = new ResizeObserver(measure)
     observer.observe(content!)
     onCleanup(() => observer.disconnect())
@@ -817,7 +828,7 @@ function UserMessageFold(props: {
           onClick={flip}
         >
           <span>{props.expanded ? i18n.t("ui.message.showLess") : i18n.t("ui.message.readMore")}</span>
-          <Icon name="chevron-down" size="small" />
+          <Icon name="chevron-down" />
         </button>
       </Show>
     </>
@@ -954,7 +965,6 @@ function CompactionDivider(props: { label: string }) {
 
 export function SessionCompactionMessage(props: { message: SessionMessageCompaction; error: string }) {
   const i18n = useI18n()
-  const data = useData()
   const summary = () => (props.message.status === "failed" ? "" : props.message.summary)
 
   const error = () => {
@@ -1001,7 +1011,7 @@ export function SessionCompactionMessage(props: { message: SessionMessageCompact
 
   return (
     <Show
-      when={!data.backgroundCompaction || props.message.reason === "manual" || props.message.status === "failed"}
+      when={props.message.reason === "manual" || props.message.status === "failed"}
       fallback={
         <QuietCompaction
           id={props.message.id}
@@ -1206,6 +1216,9 @@ export function AssistantTextContent(props: {
   // Mobile omits the per-response agent and model; see CurrentUserMessageDisplay.
   const mobile = createMediaQuery("(max-width: 767px)")
 
+  // The speed chip only renders on hover-capable pointers, so it only joins the line's name there too.
+  const hoverable = createMediaQuery("(hover: hover)")
+
   const meta = createMemo<MetaItem[]>(() => [
     ...(mobile() ? [] : labels()),
     ...[duration(), interrupted() ? i18n.t("ui.message.interrupted") : ""].flatMap((label) =>
@@ -1222,6 +1235,14 @@ export function AssistantTextContent(props: {
         maximumFractionDigits: 1,
       }).format(props.turnTokensPerSecond),
     })
+  })
+
+  // The line is one VoiceOver stop: the chips are hidden from VoiceOver and this text reads the whole line,
+  // so the arrows skip the line instead of hopping between chips. Commas read where the dots render.
+  const metaLineLabel = createMemo(() => {
+    const value = hoverable() ? speed() : undefined
+
+    return [...meta().map((item) => item.label), ...(value ? [value] : [])].join(", ")
   })
 
   const copy = createCopyFeedback({ onSuccess: data.onResponseCopied, onError: data.onResponseCopyError })
@@ -1251,11 +1272,7 @@ export function AssistantTextContent(props: {
 
   function copyFooter() {
     return (
-      <div
-        data-slot="text-part-copy-wrapper"
-        data-interrupted={interrupted() ? "" : undefined}
-        data-copy-always-visible={data.copyAlwaysVisible ? "" : undefined}
-      >
+      <div data-slot="text-part-copy-wrapper" data-interrupted={interrupted() ? "" : undefined}>
         <MessageActionButton
           copied={copy.copied()}
           size="small"
@@ -1267,7 +1284,9 @@ export function AssistantTextContent(props: {
           aria-label={i18n.t("ui.message.copyResponse")}
         />
         <Show when={meta().length > 0}>
-          <span data-slot="text-part-meta">
+          {/* Each chip would otherwise be its own VoiceOver stop on one line; hidden chips plus a clipped text
+              read the whole line as a single stop. */}
+          <span data-slot="text-part-meta" aria-hidden="true">
             <MetaItems items={meta()} slot="text-part" />
             <Show when={speed()}>
               {(label) => (
@@ -1278,6 +1297,11 @@ export function AssistantTextContent(props: {
               )}
             </Show>
           </span>
+          <Show when={metaLineLabel()}>
+            <span data-slot="text-part-meta-vo" class="sr-only">
+              {metaLineLabel()}
+            </span>
+          </Show>
         </Show>
       </div>
     )

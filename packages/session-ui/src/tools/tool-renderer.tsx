@@ -611,8 +611,10 @@ export function CurrentContextToolGroup(props: {
         allowOpenWhilePending
         open={props.open}
         onOpenChange={change}
+        // The trigger is one button, so its name comes from here; the content alone concatenates without spaces.
+        triggerLabel={[label().text, elapsed()].filter(Boolean).join(" ")}
         trigger={
-          <div data-component="context-tool-group-trigger" aria-label={label().text}>
+          <div data-component="context-tool-group-trigger">
             <span data-slot="context-tool-group-title">
               <Show when={label().before || label().count || label().between}>
                 <span data-slot="context-tool-group-usage">
@@ -781,10 +783,14 @@ export function CurrentContextToolGroup(props: {
                                   data-timeline-part-ids={group()
                                     .map((item) => item.id)
                                     .join(",")}
-                                  aria-label={i18n.plural("ui.tool.loadedSkills", skills().length, {
-                                    name: skills().join(", "),
-                                  })}
                                 >
+                                  {/* The visual spans are hidden from the accessibility tree, so the row carries its
+                                      full label as a single VoiceOver stop. */}
+                                  <span data-slot="tool-loaded-vo" class="sr-only">
+                                    {i18n.plural("ui.tool.loadedSkills", skills().length, {
+                                      name: skills().join(", "),
+                                    })}
+                                  </span>
                                   <span data-slot="tool-loaded-label" aria-hidden="true">
                                     {loaded().split(marker)[0]?.trim()}
                                   </span>
@@ -975,7 +981,7 @@ export function CurrentReadToolGroup(props: {
         </div>
         <Show when={expandable()}>
           <span data-slot="read-tool-group-arrow" aria-hidden="true">
-            <Icon name="fill-triangle-down" size="small" />
+            <Icon name="fill-triangle-down" />
           </span>
         </Show>
       </div>
@@ -1357,7 +1363,7 @@ function ToolFileAccordion(props: {
             </div>
             <div data-slot="apply-patch-trigger-actions">
               {props.actions}
-              <Icon name="chevron-grabber-vertical" size="small" />
+              <Icon name="chevron-grabber-vertical" />
             </div>
           </div>
         }
@@ -1555,10 +1561,12 @@ ToolRegistry.register({
           </Show>
         </BasicTool>
         <Show when={paths().length > 0}>
-          <div
-            data-component="tool-loaded-item"
-            aria-label={i18n.t("ui.tool.loadedFile", { path: paths().join(", ") })}
-          >
+          <div data-component="tool-loaded-item">
+            {/* The visual spans are hidden from the accessibility tree, so the row carries its full label as one
+                VoiceOver stop. */}
+            <span data-slot="tool-loaded-vo" class="sr-only">
+              {i18n.t("ui.tool.loadedFile", { path: paths().join(", ") })}
+            </span>
             <span data-slot="tool-loaded-label" aria-hidden="true">
               {parts()[0]?.trim()}
             </span>
@@ -1701,7 +1709,7 @@ ToolRegistry.register({
       <BasicTool
         {...props}
         hideDetails
-        icon="window-cursor"
+        icon="select-element"
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
@@ -1741,7 +1749,7 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
-        icon="window-cursor"
+        icon="select-element"
         trigger={{
           title: title(),
           subtitle: query(),
@@ -1904,7 +1912,7 @@ export function ConsoleCopy(props: { text: string; label: string }) {
     <div data-slot="bash-copy">
       <Tooltip value={label()} placement="top" forceOpen={copy.copied() || undefined}>
         <IconButton
-          icon={<Icon name={copy.copied() ? "check" : "outline-copy"} size="small" />}
+          icon={<Icon name={copy.copied() ? "check" : "copy"} />}
           size="normal"
           variant="ghost-muted"
           onMouseDown={(event) => event.preventDefault()}
@@ -1959,7 +1967,7 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
-        icon="console"
+        icon="terminal"
         rail={false}
         hasContent={calls().length > 0 || !!error() || !!output()}
         compact
@@ -1980,7 +1988,7 @@ ToolRegistry.register({
           viewable() ? (
             <Tooltip value={i18n.t("ui.tool.execute.viewCode")} placement="top">
               <IconButton
-                icon={<Icon name="code-slash" size="small" />}
+                icon={<Icon name="code" />}
                 size="normal"
                 variant="ghost"
                 aria-label={i18n.t("ui.tool.execute.viewCode")}
@@ -2107,7 +2115,7 @@ function ExecuteDetailsSection(props: {
           forceOpen={copy.copied() || undefined}
         >
           <IconButton
-            icon={<Icon name={copy.copied() ? "check" : "outline-copy"} size="small" />}
+            icon={<Icon name={copy.copied() ? "check" : "copy"} />}
             size="normal"
             variant="ghost-muted"
             aria-label={copy.copied() ? i18n.t("ui.message.copied") : props.copyLabel}
@@ -2300,7 +2308,7 @@ ToolRegistry.register({
       <BasicTool
         {...props}
         status={view().basicStatus}
-        icon="console"
+        icon="terminal"
         rail={false}
         hasContent
         compact
@@ -2578,7 +2586,7 @@ ToolRegistry.register({
                               />
                             </Match>
                           </Switch>
-                          <Icon name="chevron-grabber-vertical" size="small" />
+                          <Icon name="chevron-grabber-vertical" />
                         </div>
                       </div>
                     }
@@ -2637,7 +2645,7 @@ ToolRegistry.register({
       <BasicTool
         {...props}
         defaultOpen={completed()}
-        icon="bubble-5"
+        icon="comment"
         trigger={{
           title: i18n.t("ui.tool.questions"),
           subtitle: subtitle(),
@@ -2678,7 +2686,12 @@ ToolRegistry.register({
     return (
       <Show when={name()} fallback={<TextShimmer text={i18n.t("ui.tool.skill")} active={running()} />}>
         {(name) => (
-          <div data-component="tool-loaded-item" aria-label={i18n.t("ui.tool.loadedSkill", { name: name() })}>
+          <div data-component="tool-loaded-item">
+            {/* The visual spans are hidden from the accessibility tree, so the row carries its full label as one
+                VoiceOver stop. */}
+            <span data-slot="tool-loaded-vo" class="sr-only">
+              {i18n.t("ui.tool.loadedSkill", { name: name() })}
+            </span>
             <span data-slot="tool-loaded-label" aria-hidden="true">
               {parts()[0].trim()}
             </span>

@@ -41,10 +41,9 @@ story("merges follow-up patches into one stack with distinct files", async ({ mo
   await first.click()
   await expect(first).toHaveAttribute("aria-expanded", "true")
   await root.getByRole("button", { name: "Start follow-up patch" }).click()
-  await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-    "aria-label",
-    "Used 3 Shell, Patch",
-  )
+  await expect(
+    group.locator(':scope > [data-component="collapsible"] > [data-slot="collapsible-trigger"]'),
+  ).toHaveAttribute("aria-label", "Used 3 Shell, Patch")
   await expect(patches).toHaveCount(1)
   await expect(patches.locator('[data-slot="apply-patch-filename"]')).toHaveText(["a.ts", "b.ts"])
   await root.getByRole("button", { name: "Finish follow-up patch" }).click()

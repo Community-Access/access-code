@@ -126,7 +126,6 @@ describe("settings schema", () => {
         showTurnDiffs: false,
         backgroundActivity: "left",
         timelineWidth: "comfortable",
-        newIcons: false,
         foldUserMessages: false,
         newQuestionUI: false,
         sidebarOrganize: "list",

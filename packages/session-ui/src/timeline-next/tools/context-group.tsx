@@ -71,12 +71,19 @@ export function ContextGroup(props: {
   const label = createMemo(() => {
     const value = activity()
 
-    if (value)
+    if (value) {
+      // The dot separator renders between the main and the rest; commas read where the dots would.
+      const name = [value.verb, value.main, ...value.others].filter(Boolean).join(", ")
+
       return {
         text: [[value.verb, value.main].filter(Boolean).join(" "), value.others.join(", ")].filter(Boolean).join(" · "),
+        name,
       }
+    }
 
-    return usedLabel(props.parts, i18n)
+    const used = usedLabel(props.parts, i18n)
+
+    return { ...used, name: used.text }
   })
 
   const items = createMemo(() =>
@@ -193,8 +200,10 @@ export function ContextGroup(props: {
             allowOpenWhilePending
             open={props.open}
             onOpenChange={change}
+            // The trigger is one button, so its name comes from here; the content alone concatenates without spaces.
+            triggerLabel={label().name}
             trigger={
-              <div data-component="context-tool-group-trigger" aria-label={label().text}>
+              <div data-component="context-tool-group-trigger">
                 <Show when={activity()} fallback={<UsedTitle label={usedLabel(props.parts, i18n)} />}>
                   {(value) => (
                     <span data-slot="context-tool-group-title" data-activity="">
@@ -432,11 +441,12 @@ function SkillsItem(props: { tools: SessionMessageAssistantTool[] }) {
   const loaded = createMemo(() => i18n.plural("ui.tool.loadedSkills", skills().length, { name: marker }))
 
   return (
-    <div
-      data-component="tool-loaded-item"
-      data-timeline-part-ids={props.tools.map((item) => item.id).join(",")}
-      aria-label={i18n.plural("ui.tool.loadedSkills", skills().length, { name: skills().join(", ") })}
-    >
+    <div data-component="tool-loaded-item" data-timeline-part-ids={props.tools.map((item) => item.id).join(",")}>
+      {/* The visual spans are hidden from the accessibility tree, so the row carries its full label as one
+          VoiceOver stop. */}
+      <span data-slot="tool-loaded-vo" class="sr-only">
+        {i18n.plural("ui.tool.loadedSkills", skills().length, { name: skills().join(", ") })}
+      </span>
       <span data-slot="tool-loaded-label" aria-hidden="true">
         {loaded().split(marker)[0]?.trim()}
       </span>

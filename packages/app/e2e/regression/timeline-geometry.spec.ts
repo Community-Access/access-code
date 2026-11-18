@@ -887,7 +887,7 @@ test("groups consecutive sent prompts under the last one's meta line, with each 
   // The first message keeps its own actions, in a chevron its bubble shows on hover.
   await bubble(first).hover()
   await expect(first.locator('[data-slot="user-message-menu"]')).toHaveCSS("opacity", "1")
-  await expect(first.getByRole("button", { name: "More actions" })).toHaveCount(1)
+  await expect(first.getByRole("button", { name: "Message actions" })).toHaveCount(1)
 })
 
 test("keeps the meta lines under messages reachable in the New timeline", async ({ page }) => {

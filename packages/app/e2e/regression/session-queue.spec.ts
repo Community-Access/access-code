@@ -1485,7 +1485,7 @@ for (const delivery of ["steer", "queue"] as const) {
     const tools = page.locator('[data-timeline-part-ids="tool_queue_read,tool_queue_grep"]')
     await expect(tools).toBeVisible()
     await expect(tools).toHaveText(/^Used\s*2\s*Read, Grep$/)
-    await expect(tools.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
+    await expect(tools.getByRole("button", { name: "Used 2 Read, Grep", exact: true })).toHaveAttribute(
       "aria-label",
       "Used 2 Read, Grep",
     )

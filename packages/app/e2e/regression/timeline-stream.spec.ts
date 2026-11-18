@@ -245,11 +245,9 @@ test.describe("static projection", () => {
 
     await expect(page.locator('[data-timeline-part-id="prt_expanded_shell"]')).toBeVisible()
     const group = page.locator('[data-timeline-part-ids="prt_collapsed_patch,prt_collapsed_read"]')
-    await expect(group.getByRole("button", { name: "Used 2 Patch, Read", exact: true })).toBeVisible()
-    await expect(group.locator('[data-component="context-tool-group-trigger"]')).toHaveAttribute(
-      "aria-label",
-      "Used 2 Patch, Read",
-    )
+    const trigger = group.getByRole("button", { name: "Used 2 Patch, Read", exact: true })
+    await expect(trigger).toBeVisible()
+    await expect(trigger).toHaveAttribute("aria-label", "Used 2 Patch, Read")
     await expect(page.locator('[data-timeline-spacing="tool"]')).toHaveCSS("padding-top", "8px")
   })
 })
@@ -1566,16 +1564,11 @@ test.describe("compaction", () => {
     await expect(page.locator('[data-component="session-working"]')).toBeVisible()
   })
 
-  test("shows an automatic compaction as one quiet divider with background compaction on", async ({ page }) => {
-    const config = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/config")
-
+  test("shows an automatic compaction as one quiet divider", async ({ page }) => {
     const timeline = await setupTimeline(page, {
       sessionMessages: [user, completed],
       sessionStatus: { [sessionID]: { type: "busy" } },
-      configEntries: [{ type: "document", info: { experimental: { background_compaction: true } } }],
     })
-
-    await config
 
     await timeline.send(compactionStarted({ sessionID, reason: "auto" }))
     await timeline.send(compactionDelta({ sessionID, text: "Partial automatic summary." }))
@@ -1640,11 +1633,17 @@ test.describe("compaction", () => {
         await timeline.send(compactionDelta({ sessionID, text: outcome.partial }))
         await expect(compactions).toHaveCount(index + 1)
         const compaction = compactions.nth(index)
-        await expect(compaction).toContainText(outcome.partial)
+
+        // An automatic compaction runs as one quiet divider; a manual one streams its summary.
+        if (outcome.reason === "auto")
+          await expect(compaction.locator('[data-slot="session-compaction-divider"]')).toHaveAttribute(
+            "data-state",
+            "running",
+          )
+
+        if (outcome.reason === "manual") await expect(compaction).toContainText(outcome.partial)
 
         if (name === "interrupted") {
-          await expect(compaction.getByRole("status").getByLabel("Compacting", { exact: true })).toBeVisible()
-
           const request = page.waitForRequest(
             (request) =>
               request.method() === "POST" && new URL(request.url()).pathname === `/api/session/${sessionID}/interrupt`,
@@ -3302,7 +3301,7 @@ test("reaches the quote action from the keyboard and blocks a selection over the
   await page.keyboard.press("Escape")
   await short.evaluate((element) => window.getSelection()?.selectAllChildren(element))
   await expect(toolbar).toBeVisible()
-  const more = page.getByRole("button", { name: "More actions" })
+  const more = page.getByRole("button", { name: "Message actions" })
   await more.focus()
   await expect(toolbar).toBeVisible()
   await page.keyboard.press("Tab")
