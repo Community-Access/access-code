@@ -371,7 +371,7 @@ jobs:
           name: build-desktop-${{ matrix.target }}
           path: dist/desktop
 
-  # Packs the NSIS installer around the signed app. This runs repository config, so it is a build job; the
+  # Packs the Inno Setup installer around the signed app. This runs repository config, so it is a build job; the
   # installer is signed next.
   build-desktop-windows-installer:
     needs: [plan, tag, sign-windows]
@@ -397,6 +397,12 @@ jobs:
         with:
           name: sign-desktop-${{ matrix.target }}
           path: ${{ runner.temp }}/app
+      - name: Locate Inno Setup
+        shell: pwsh
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw "Inno Setup compiler not found: $compiler" }
+          "ISCC=$compiler" >> $env:GITHUB_ENV
       - name: Pack
         working-directory: packages/desktop
         timeout-minutes: 30

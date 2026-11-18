@@ -49,11 +49,30 @@ Settings, Extensions has an Add button for:
 
 Everything you add can be removed from the same page. If something is not listed, "Ask AI to add" or the /add command in any chat adds it for you.
 
+### Accessibility settings
+
+Settings, Accessibility lets you choose how chats sound and read:
+
+- **Reply announcements:** Off, Reply ready (a short "Response ready"), or Read full reply (the default).
+- **Announce copied replies:** confirms when a reply is copied to the clipboard.
+- **Heading levels:** choose levels 3 to 6 for your messages and for replies. The chat title is level 2.
+- **Test Announcements** and **Repeat Last Announcement** are on this page, in the command palette, and in the View, Accessibility menu.
+
+## Windows (in testing)
+
+Windows builds are being tested and are not on the Releases page yet. To build one yourself, follow the [Windows build instructions](./packages/desktop/README.md#windows-x64-installer). They make three versions:
+
+- **Installer:** `dist\desktop\accesscode-desktop-win-x64.exe` installs AccessCode for the current user.
+- **Unpacked app:** `dist\desktop\app\AccessCode Dev.exe` runs without installing and uses your normal profile.
+- **Portable app:** `dist\portable\AccessCode-windows-x64\AccessCode Dev.exe` keeps its settings in an `AccessCode-data` folder beside it. Keep the whole folder together. See the [portable build notes](./packages/desktop/README.md#windows-portable-edition).
+
+On Windows and Linux, menus have access keys: Alt+F for File, Alt+E for Edit, Alt+V for View and Alt+H for Help.
+
 ## Known limits
 
 - The terminal interface (TUI) has not been changed yet.
 - AccessCode does not update itself yet. Check the Releases page for new versions.
-- Only Apple silicon Macs are supported today.
+- Only Apple silicon Macs have released builds today. Windows is in testing.
 
 ## Staying close to OpenCode
 

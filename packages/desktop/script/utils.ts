@@ -83,6 +83,10 @@ export function nodePtyPackage(target?: string) {
   return `@lydell/node-pty-${cli.os}-${cli.cpu}`
 }
 
+export function windowsInstallerName(arch: string) {
+  return `accesscode-desktop-win-${arch}.exe`
+}
+
 export async function downloadCliToResources(version = CLI_VERSION, dest = windowsify("resources/opencode-cli")) {
   const { $ } = await import("bun")
   const cli = getCurrentCli()

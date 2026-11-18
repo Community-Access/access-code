@@ -3,6 +3,7 @@ import type { Endpoint } from "@opencode/client/service"
 import { Context, Effect, FileSystem, Layer, Option, Path, Schema } from "effect"
 import { SidecarChanged } from "../../shared/ipc-rpc/events"
 import { CHANNEL } from "../constants"
+import { portableRoot } from "../lifecycle/portable"
 import { emitIpcEvent } from "../ipc-events"
 import { getMainWindows } from "../windows"
 import { BackgroundServiceMachine } from "./background-service-machine"
@@ -70,7 +71,9 @@ const ensure = Effect.fn("BackgroundService.ensure")(function* (mode: Background
         "--service",
         ...(setup.isolated ? ["--hostname", "0.0.0.0", "--port", String(0x0c0c)] : []),
         // AccessCode: its own fixed port, so it never binds or takes over the stock OpenCode service on 0xc0de.
-        ...(!setup.isolated && app.isPackaged ? ["--hostname", "127.0.0.1", "--port", String(ACCESSCODE_PORT)] : []),
+        ...(!setup.isolated && app.isPackaged
+          ? ["--hostname", "127.0.0.1", "--port", portableRoot ? "0" : String(ACCESSCODE_PORT)]
+          : []),
       ],
       onStart: (reason, previousVersion) =>
         runFork(Effect.logInfo("v2 CLI background service starting", { reason, previousVersion })),
@@ -112,7 +115,7 @@ const prepare = Effect.fn("BackgroundService.prepare")(function* (mode: Backgrou
 
   // AccessCode: an installed build keeps its service registration in its own folder too, so it finds and starts only
   // its own server, never adopting or replacing stock OpenCode's. Config and conversation history stay shared.
-  if (isolated || app.isPackaged) process.env.XDG_STATE_HOME = app.getPath("userData")
+  if (!portableRoot && (isolated || app.isPackaged)) process.env.XDG_STATE_HOME = app.getPath("userData")
   // AccessCode: the server this starts inherits the environment, and the GitHub MCP entry refers to the GitHub OAuth
   // app's client secret as {env:ACCESSCODE_GITHUB_CLIENT_SECRET}. A server something else started does not have it.
   if (import.meta.env.ACCESSCODE_GITHUB_CLIENT_SECRET)

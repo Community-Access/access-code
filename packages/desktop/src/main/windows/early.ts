@@ -6,7 +6,7 @@ import { resolveExternalURL } from "../files/external-url"
 import { windowArguments } from "./bootstrap"
 import { WINDOW_IDS_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
-import { platformFrame, storedBackgroundColor, storedZoomLevel, tone } from "./defaults"
+import { platformFrame, storedBackgroundColor, storedZoomLevel } from "./defaults"
 import {
   initialEarlyWindowState,
   isEarlyWindowClosed,
@@ -94,11 +94,10 @@ export function createEarlyWindow() {
     width: state.width,
     height: state.height,
     show: !deferReveal,
-    autoHideMenuBar: true,
     title: "AccessCode",
     icon: path.join(icons, `icon.${process.platform === "win32" ? "ico" : "png"}`),
     backgroundColor: storedBackgroundColor(),
-    ...platformFrame(tone(), zoom),
+    ...platformFrame(),
     webPreferences: {
       preload: path.join(root, "../preload/index.cjs"),
       contextIsolation: true,

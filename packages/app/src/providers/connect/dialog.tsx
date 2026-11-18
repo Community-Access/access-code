@@ -1026,7 +1026,11 @@ function ProviderSteps(props: { provider: string; controller: ProviderDialogCont
   }
 
   function OAuthAutoView() {
-    const pasteOpen = () => connect().paste?.open ?? onRemote
+    const chatgpt = () => {
+      const method = connect().method
+      return method?.type === "oauth" && method.id === "chatgpt-token-sharing"
+    }
+    const pasteOpen = () => connect().paste?.open ?? (onRemote || chatgpt())
     // Stays up while the URL is being sent; once the server takes it, the sign-in is back to waiting.
     const pasteSendable = () => !connect().paste?.locked || connect().paste?.submitting
 

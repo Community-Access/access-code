@@ -2,6 +2,7 @@
 
 /** An icon from the app's catalog, for SDK fields such as `SessionPanelMenuItem.icon`. */
 export type IconName =
+  | "accessibility"
   | "align-right"
   | "appearance"
   | "archive"

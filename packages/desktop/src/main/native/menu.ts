@@ -7,12 +7,14 @@ import {
   desktopMenuWithPlugins,
   type DesktopMenu,
   type DesktopMenuEntry,
+  type DesktopMenuPlatform,
   type DesktopMenuRole,
 } from "@opencode/app/desktop-menu"
 import { MenuCommandTriggered } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
 
 import { runDesktopMenuAction } from "./menu-actions"
+import { withMenuMnemonics } from "./menu-mnemonics"
 import {
   createMenuState,
   selectMenuActionWindow,
@@ -70,19 +72,20 @@ export function disposeMenu() {
 }
 
 function build(deps: Deps, provider: MenubarProvider) {
-  if (process.platform !== "darwin") return
+  const platform = process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux"
 
   const extra = provider()
 
-  const template = DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "macos")).map((menu) =>
+  const template = DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, platform)).map((menu) =>
     nativeMenu(
       menu,
       extra.filter((item) => item.menu === menu.id),
       deps,
+      platform,
     ),
   )
 
-  const built = Menu.buildFromTemplate(template)
+  const built = Menu.buildFromTemplate(withMenuMnemonics(template, platform !== "macos"))
 
   // Electron freezes a built item's state; contributions re-read theirs whenever a menu opens.
   const refresh = () =>
@@ -100,46 +103,68 @@ export function sendMenuCommand(win: BrowserWindow, id: string) {
   emitIpcEvent(win.webContents, new MenuCommandTriggered({ id }))
 }
 
-function nativeMenu(menu: DesktopMenu, extra: readonly MenubarEntry[], deps: Deps): MenuItemConstructorOptions {
-  if (menu.role && !extra.length) return { role: nativeRole(menu.role), label: nativeT(menu.labelKey) }
+function nativeMenu(
+  menu: DesktopMenu,
+  extra: readonly MenubarEntry[],
+  deps: Deps,
+  platform: DesktopMenuPlatform,
+): MenuItemConstructorOptions {
+  const role = platform === "macos" && menu.role ? nativeRole(menu.role) : undefined
+  if (role && !extra.length) return { role, label: nativeT(menu.labelKey) }
 
   const items = desktopMenuWithPlugins(
     (menu.items ?? [])
-      .filter((entry) => desktopMenuVisible(entry, "macos"))
+      .filter((entry) => desktopMenuVisible(entry, platform))
       .map((entry) => ({ key: desktopMenuKey(entry), entry })),
     extra,
   )
 
   const options: MenuItemConstructorOptions = {
     label: nativeT(menu.labelKey),
-    submenu: items.map((item) => {
-      const entry = item.entry
+    submenu: withMenuMnemonics(
+      items.map((item) => {
+        const entry = item.entry
 
-      if ("menu" in entry)
-        return { id: entry.id, label: entry.label, enabled: entry.enabled(), click: () => entry.run() }
+        if ("menu" in entry)
+          return { id: entry.id, label: entry.label, enabled: entry.enabled(), click: () => entry.run() }
 
-      return nativeItem(entry, deps)
-    }),
+        return nativeItem(entry, deps, platform)
+      }),
+      platform !== "macos",
+    ),
   }
 
-  if (menu.role) options.role = nativeRole(menu.role)
+  if (role) options.role = role
 
   return options
 }
 
-function nativeItem(entry: DesktopMenuEntry, deps: Deps): MenuItemConstructorOptions {
+function nativeItem(entry: DesktopMenuEntry, deps: Deps, platform: DesktopMenuPlatform): MenuItemConstructorOptions {
   if (entry.type === "separator") return { type: "separator" }
+  const accelerator = (entry.accelerator?.[platform] ?? (platform === "linux" ? entry.accelerator?.windows : undefined))
+    ?.replace(/\+\+$/, "+Plus")
+
+  if (entry.submenu)
+    return {
+      label: entry.labelKey ? nativeT(entry.labelKey) : undefined,
+      submenu: withMenuMnemonics(
+        entry.submenu
+          .filter((item) => desktopMenuVisible(item, platform))
+          .map((item) => nativeItem(item, deps, platform)),
+        platform !== "macos",
+      ),
+    }
 
   if (entry.role)
     return {
       role: nativeRole(entry.role),
       label: entry.labelKey ? nativeT(entry.labelKey) : undefined,
-      accelerator: entry.accelerator?.macos,
+      accelerator,
     }
 
   const item: MenuItemConstructorOptions = {
     label: entry.labelKey ? nativeT(entry.labelKey) : undefined,
-    accelerator: entry.accelerator?.macos,
+    accelerator,
   }
 
   if (entry.command) {

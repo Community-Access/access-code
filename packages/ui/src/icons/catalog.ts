@@ -314,6 +314,11 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M7.5 11.5C7.5 12.6046 6.60457 13.5 5.5 13.5C4.39543 13.5 3.5 12.6046 3.5 11.5C3.5 10.3954 4.39543 9.5 5.5 9.5C6.60457 9.5 7.5 10.3954 7.5 11.5Z" stroke="currentColor"/><path d="M12.5 4.5C12.5 5.60457 11.6046 6.5 10.5 6.5C9.39543 6.5 8.5 5.60457 8.5 4.5C8.5 3.39543 9.39543 2.5 10.5 2.5C11.6046 2.5 12.5 3.39543 12.5 4.5Z" stroke="currentColor"/><path d="M8.0498 4C8.01702 4.16154 8 4.32878 8 4.5C8 4.67122 8.01702 4.83846 8.0498 5H1.5C1.22386 5 1 4.77614 1 4.5C1 4.22386 1.22386 4 1.5 4H8.0498ZM14.5 4C14.7761 4 15 4.22386 15 4.5C15 4.77614 14.7761 5 14.5 5H12.9502C12.983 4.83846 13 4.67122 13 4.5C13 4.32878 12.983 4.16154 12.9502 4H14.5Z" fill="currentColor"/><path d="M3.0498 11C3.01702 11.1615 3 11.3288 3 11.5C3 11.6712 3.01702 11.8385 3.0498 12H1.5C1.22386 12 1 11.7761 1 11.5C1 11.2239 1.22386 11 1.5 11H3.0498ZM14.5 11C14.7761 11 15 11.2239 15 11.5C15 11.7761 14.7761 12 14.5 12H7.9502C7.98298 11.8385 8 11.6712 8 11.5C8 11.3288 7.98298 11.1615 7.9502 11H14.5Z" fill="currentColor"/>`,
   },
+  // AccessCode: the universal access figure, a person with open arms inside a circle.
+  accessibility: {
+    viewBox: "0 0 20 20",
+    body: `<circle cx="10" cy="10" r="7.875" stroke="currentColor"/><circle cx="10" cy="6.25" r="1.125" fill="currentColor"/><path d="M5.875 8.25L10 9.125L14.125 8.25M10 9.125V11.625M10 11.625L8.125 15M10 11.625L11.875 15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>`,
+  },
   keyboard: {
     viewBox: "0 0 16 16",
     body: `<path d="M5.5 13.5H10.5V8.5H13.5L8 2.5L2.5 8.5H5.5V13.5Z" stroke-linejoin="round" stroke="currentColor"/>`,

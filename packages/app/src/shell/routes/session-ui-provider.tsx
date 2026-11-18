@@ -17,6 +17,7 @@ import { SessionExportProvider } from "@/session/commands/export-session"
 import { createTurnDiffCache } from "@/session/timeline/turn-diffs"
 import { SessionReferenceMenu, type SessionReferenceMenuTarget } from "@/session/session-reference-menu"
 import { useSettings } from "@/settings/model"
+import { announce } from "@/session/announce"
 import {
   INITIAL_SESSION_UI_NAVIGATE_STATE,
   transitionSessionUINavigate,
@@ -238,6 +239,14 @@ export function SessionUIProvider(
         directory={directory()}
         sessionID={params.id}
         agents={settings.visibility.customAgents()}
+        userHeadingLevel={settings.general.userHeadingLevel()}
+        assistantHeadingLevel={settings.general.assistantHeadingLevel()}
+        onResponseCopied={() => {
+          if (settings.general.announceReplyCopies()) announce(language.t("session.timeline.replyCopied"), "assertive")
+        }}
+        onResponseCopyError={() =>
+          showToast({ variant: "error", title: language.t("session.timeline.replyCopyFailed") })
+        }
         shellRunning={(id) => !!data.shell.get(id)}
         shellOutput={(input) => serverSDK.api.shell.output(input)}
         readMedia={(uri, mime, signal) => serverSDK.media.load(uri, mime, signal)}

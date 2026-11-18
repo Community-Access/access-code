@@ -653,7 +653,13 @@ export const SettingsProviders: Component<{
                       </Show>
                     </div>
                   </div>
-                  <Button size="normal" variant="neutral" icon="plus" onClick={() => connect(item.id)}>
+                  <Button
+                    size="normal"
+                    variant="neutral"
+                    icon="plus"
+                    aria-label={language.t("settings.providers.connect", { provider: item.name })}
+                    onClick={() => connect(item.id)}
+                  >
                     {language.t("common.connect")}
                   </Button>
                 </div>

@@ -1,0 +1,67 @@
+name: AccessCode Windows installers
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/accesscode-windows.yml
+      - packages/cli/**
+      - packages/desktop/**
+      - packages/gui-plugins/src/updater/**
+      - bun.lock
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - desktop: windows-x64
+            cli: windows-x64-baseline
+            install: ""
+          - desktop: windows-arm64
+            cli: windows-arm64
+            install: --cpu=*
+    env:
+      OPENCODE_CHANNEL: dev
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-bun
+        with:
+          install-flags: ${{ matrix.install }}
+      - name: Set version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "OPENCODE_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Build bundled CLI
+        run: bun run --cwd packages/cli build --skip-install
+        env:
+          OPENCODE_TARGET: ${{ matrix.cli }}
+      - name: Build desktop
+        run: bun run --cwd packages/desktop build
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+      - name: Pack Windows installer
+        shell: pwsh
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+        run: |
+          bun run --cwd packages\desktop pack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:ISCC = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          Move-Item dist\desktop\app $env:RUNNER_TEMP
+          $env:OPENCODE_DESKTOP_APP = Join-Path $env:RUNNER_TEMP 'app'
+          bun run --cwd packages\desktop pack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: accesscode-${{ matrix.desktop }}
+          path: dist/desktop/*.exe
+          if-no-files-found: error

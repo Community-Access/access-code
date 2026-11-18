@@ -1,6 +1,6 @@
 import type { DesktopNativeKey } from "@/runtime/i18n/desktop-native"
 
-export type DesktopMenuPlatform = "macos" | "windows"
+export type DesktopMenuPlatform = "macos" | "windows" | "linux"
 
 export type DesktopMenuAction =
   | "app.installCli"
@@ -48,6 +48,7 @@ export type DesktopMenuItem = {
   action?: DesktopMenuAction
   role?: DesktopMenuRole
   href?: string
+  submenu?: DesktopMenuEntry[]
   accelerator?: Partial<Record<DesktopMenuPlatform, string>>
   platforms?: DesktopMenuPlatform[]
 }
@@ -116,7 +117,7 @@ export const DESKTOP_MENU: DesktopMenu[] = [
         labelKey: "desktop.menu.settings",
         command: "settings.open",
         accelerator: { windows: "Ctrl+," },
-        platforms: ["windows"],
+        platforms: ["windows", "linux"],
       },
       {
         type: "item",
@@ -188,6 +189,17 @@ export const DESKTOP_MENU: DesktopMenu[] = [
     id: "view",
     labelKey: "desktop.menu.view",
     items: [
+      { type: "item", labelKey: "desktop.menu.commandPalette", command: "command.palette" },
+      {
+        type: "item",
+        labelKey: "desktop.menu.accessibility",
+        submenu: [
+          { type: "item", labelKey: "desktop.menu.accessibilitySettings", command: "settings.accessibility" },
+          { type: "item", labelKey: "desktop.menu.testAnnouncements", command: "announcements.test" },
+          { type: "item", labelKey: "desktop.menu.repeatAnnouncement", command: "announcements.repeat" },
+        ],
+      },
+      { type: "separator" },
       {
         type: "item",
         labelKey: "desktop.menu.toggleSidebar",

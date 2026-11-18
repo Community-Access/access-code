@@ -12,9 +12,7 @@ import { emitIpcEvent } from "../ipc-events"
 import type { DesktopPaths } from "../paths"
 import { BACKGROUND_COLOR_KEY, PINCH_ZOOM_ENABLED_KEY, ZOOM_LEVEL_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
-import { platformFrame, savedBackgroundColor, storedBackgroundColor, storedZoomLevel, titlebarOverlay, tone } from "./defaults"
-
-const titlebarThemes = new WeakMap<BrowserWindow, Partial<TitlebarTheme>>()
+import { platformFrame, savedBackgroundColor, storedBackgroundColor, storedZoomLevel } from "./defaults"
 
 const pinchZoomEnabled = new WeakMap<BrowserWindow, boolean>()
 
@@ -29,7 +27,7 @@ export function windowAppearance(path: Path.Path, paths: DesktopPaths.Resolved) 
     title: "AccessCode",
     icon: iconPath(path, paths),
     backgroundColor: backgroundColor ?? storedBackgroundColor(),
-    ...platformFrame(tone(), storedZoomLevel()),
+    ...platformFrame(),
     webPreferences: {
       preload: paths.preloadPath,
       contextIsolation: true,
@@ -62,25 +60,16 @@ export function getBackgroundColor() {
   return backgroundColor ?? savedBackgroundColor()
 }
 
-export function setTitlebar(win: BrowserWindow, theme: Partial<TitlebarTheme> = {}) {
-  titlebarThemes.set(win, theme)
-
+export function setTitlebar(theme: Partial<TitlebarTheme> = {}) {
   // Native window controls follow nativeTheme, not the renderer theme.
   if (process.platform === "darwin" || process.platform === "win32") {
     nativeTheme.themeSource = theme.scheme ?? theme.mode ?? "system"
   }
-
-  updateTitlebar(win)
 }
 
 export function setTrafficLightsPosition(win: BrowserWindow, position: { x: number; y: number }) {
   if (process.platform !== "darwin") return
   win.setWindowButtonPosition({ x: Math.round(position.x), y: Math.round(position.y) })
-}
-
-export function updateTitlebar(win: BrowserWindow) {
-  if (process.platform !== "win32") return
-  win.setTitleBarOverlay(overlay(titlebarThemes.get(win), win.webContents.getZoomFactor()))
 }
 
 export function setPinchZoomEnabled(enabled: boolean) {
@@ -110,7 +99,6 @@ export function setZoomLevel(level: DesktopZoomLevel) {
 export function wireZoom(win: BrowserWindow) {
   pinchZoomEnabled.set(win, getPinchZoomEnabled())
   win.webContents.setZoomFactor(storedZoomLevel())
-  updateTitlebar(win)
   win.webContents.on("zoom-changed", (event, direction) => {
     event.preventDefault()
 
@@ -155,16 +143,11 @@ function iconPath(path: Path.Path, paths: DesktopPaths.Resolved) {
   return path.join(iconsDir(path, paths), `icon.${process.platform === "win32" ? "ico" : "png"}`)
 }
 
-function overlay(theme: Partial<TitlebarTheme> = {}, zoom = 1) {
-  return titlebarOverlay(theme.mode ?? tone(), zoom)
-}
-
 function clampZoom(value: number) {
   return Math.min(Math.max(value, minZoomLevel), maxZoomLevel)
 }
 
 function updateZoom(win: BrowserWindow) {
-  updateTitlebar(win)
   emitIpcEvent(
     win.webContents,
     new WindowZoomChanged({ factor: win.webContents.getZoomFactor(), level: storedZoomLevel() }),

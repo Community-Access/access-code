@@ -10,9 +10,10 @@ const setup: Plugin.MainSetup = async (ctx) => {
   const builtin = builtinMainContext(ctx)
   const build = ctx.app
   const lifecycle = builtin.lifecycle
-  // AccessCode: OpenCode's update feed would replace this app with stock OpenCode, so updates stay off until
-  // AccessCode has its own feed.
-  const enabled = false
+  const platformModule =
+    build.packaged && build.channel === "prod" && process.platform === "win32" ? await import("./platform") : undefined
+  // Only release builds provisioned with the AccessCode publisher can download Windows updates.
+  const enabled = platformModule ? await platformModule.hasWindowsUpdateConfig() : false
   // Holds no resources, so it needs no cleanup.
   const context = logContext(ctx.log.write)
   const runPromise = Effect.runPromiseWith(context)
@@ -26,9 +27,7 @@ const setup: Plugin.MainSetup = async (ctx) => {
   })
 
   // electron-updater loads only in packaged builds, after the first window is up.
-  const platform = enabled
-    ? await import("./platform").then((module) => runPromise(module.make(build.channel)))
-    : undefined
+  const platform = enabled && platformModule ? await runPromise(platformModule.make(build.channel)) : undefined
 
   if (ctx.signal.aborted) return
   const scope = Scope.makeUnsafe()

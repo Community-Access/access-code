@@ -106,6 +106,11 @@ const activitySchema = Persistence.struct({ placement: placementSchema, details:
 
 const placementOnlySchema = Persistence.struct({ placement: placementSchema })
 
+export const conversationHeadingLevels = [3, 4, 5, 6] as const
+type ConversationHeadingLevel = (typeof conversationHeadingLevels)[number]
+export const replyAnnouncementModes = ["off", "ready", "full"] as const
+export type ReplyAnnouncementMode = (typeof replyAnnouncementModes)[number]
+
 const generalSchema = Persistence.struct({
   // Retired preferences without readers; kept so stored values still decode and round-trip.
   autoSave: Persistence.optional(Schema.Boolean),
@@ -126,6 +131,10 @@ const generalSchema = Persistence.struct({
     commentary: placementOnlySchema,
   }),
   showCustomAgents: Schema.Boolean,
+  replyAnnouncement: Schema.Literals(replyAnnouncementModes),
+  announceReplyCopies: Schema.Boolean,
+  userHeadingLevel: Schema.Literals(conversationHeadingLevels),
+  assistantHeadingLevel: Schema.Literals(conversationHeadingLevels),
   showTurnDiffs: Schema.Boolean,
   backgroundActivity: Schema.Literals(["off", "left", "center", "right"]),
   timelineWidth: Schema.Literals(["focused", "comfortable", "wide"]),
@@ -251,6 +260,8 @@ export const settingsPersistence = Persistence.migrate(
   Persistence.legacy({
     general: Persistence.optional(
       Persistence.legacy({
+        announceReplies: Persistence.optional(Schema.Boolean),
+        replyAnnouncement: Persistence.optional(Schema.Literals(replyAnnouncementModes)),
         // Keep invalid explicit values distinct from absent values so legacy preferences cannot replace them.
         timelineDetail: Schema.optional(
           Schema.NullOr(
@@ -277,19 +288,26 @@ export const settingsPersistence = Persistence.migrate(
       decode: SchemaGetter.transform((value) => {
         const general = value.general
 
-        if (!general || general.timelineDetail !== undefined) return value
+        if (!general) return value
+        const replyAnnouncement =
+          general.replyAnnouncement ??
+          (general.announceReplies === undefined ? undefined : general.announceReplies ? "full" : "off")
 
         return {
           ...value,
           general: {
             ...general,
-            timelineDetail: {
-              shell: legacyTimelineActivity(general.shellToolPartsExpanded),
-              edit: legacyTimelineActivity(general.editToolPartsExpanded),
-              thinking: legacyTimelineActivity(
-                general.reasoningMode === undefined ? general.showReasoningSummaries : general.reasoningMode,
-              ),
-            },
+            replyAnnouncement,
+            timelineDetail:
+              general.timelineDetail === undefined
+                ? {
+                    shell: legacyTimelineActivity(general.shellToolPartsExpanded),
+                    edit: legacyTimelineActivity(general.editToolPartsExpanded),
+                    thinking: legacyTimelineActivity(
+                      general.reasoningMode === undefined ? general.showReasoningSummaries : general.reasoningMode,
+                    ),
+                  }
+                : general.timelineDetail,
           },
         }
       }),
@@ -302,6 +320,10 @@ export const defaultSettings: Settings = {
   general: {
     timelineDetail: { ...timelinePresets[2].value },
     showCustomAgents: true,
+    replyAnnouncement: "full",
+    announceReplyCopies: true,
+    userHeadingLevel: 3,
+    assistantHeadingLevel: 3,
     showTurnDiffs: false,
     backgroundActivity: "left",
     timelineWidth: "comfortable",
@@ -405,6 +427,31 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
           setStore("general", "timelineDetail", structuredClone(unwrap(value)))
         },
         showCustomAgents,
+        replyAnnouncement: withFallback(
+          () => store.general?.replyAnnouncement,
+          defaultSettings.general.replyAnnouncement,
+        ),
+        announceReplyCopies: withFallback(
+          () => store.general?.announceReplyCopies,
+          defaultSettings.general.announceReplyCopies,
+        ),
+        setReplyAnnouncement(value: ReplyAnnouncementMode) {
+          setStore("general", "replyAnnouncement", value)
+        },
+        setAnnounceReplyCopies(value: boolean) {
+          setStore("general", "announceReplyCopies", value)
+        },
+        userHeadingLevel: withFallback(() => store.general?.userHeadingLevel, defaultSettings.general.userHeadingLevel),
+        assistantHeadingLevel: withFallback(
+          () => store.general?.assistantHeadingLevel,
+          defaultSettings.general.assistantHeadingLevel,
+        ),
+        setUserHeadingLevel(value: ConversationHeadingLevel) {
+          setStore("general", "userHeadingLevel", value)
+        },
+        setAssistantHeadingLevel(value: ConversationHeadingLevel) {
+          setStore("general", "assistantHeadingLevel", value)
+        },
         setShowCustomAgents(value: boolean) {
           setStore("general", "showCustomAgents", value)
         },

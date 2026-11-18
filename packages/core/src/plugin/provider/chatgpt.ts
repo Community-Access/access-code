@@ -21,7 +21,7 @@ import { ProviderRefresh } from "./refresh.js"
 
 // First-time sign-in registers a user-owned client; OpenAI returns its issued client ID on the callback.
 const registrationClientID = "dynamic_agent_client"
-const agentName = "OpenCode"
+const agentName = "Access Code"
 const issuer = "https://auth.openai.com"
 const tokenURL = `${issuer}/api/accounts/oauth/token`
 const resource = "https://api.openai.com/v1"
@@ -179,8 +179,8 @@ const signIn = (app: App.Info, savedClientID: () => string | undefined, storage:
                   new Error("ChatGPT returned a different client than this connection. Connect again."),
                 )
               const clientID = savedID ?? result.clientID
-              if (!clientID)
-                return yield* Effect.fail(new Error("ChatGPT sign-in did not return a client ID. Connect again."))
+              if (!clientID || clientID === registrationClientID)
+                return yield* Effect.fail(new Error("ChatGPT sign-in did not return a registered client ID. Connect again."))
               const tokens = yield* exchange(result.code, clientID, redirect, pkce, app)
               if (!tokens.scope?.split(" ").includes(tokenSharingScope))
                 return yield* Effect.fail(

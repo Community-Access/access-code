@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, on, onCleanup, Show, type Accessor, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, Show, type Accessor, type JSX } from "solid-js"
 import { Predicate } from "effect"
 import { abort } from "@opencode/util/abort"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
@@ -40,7 +40,8 @@ import {
 import { SessionHeaderSpacer } from "@/session/header/session-header"
 import { SessionHeaderGap } from "@/session/header/drag-area"
 import { SessionWorkingIndicator } from "@/session/header/session-working-indicator"
-import { announce } from "@/session/announce"
+import { announceCompletedReply } from "@/session/announce"
+import { watchReplyAnnouncement } from "./reply-announcement"
 
 type BlockingTask = { type: "shell"; partID: string; id?: string; label?: string; started: number }
 
@@ -501,26 +502,18 @@ function MessageTimelineView(
     return status ? language.t(`session.timeline.status.${status}`) : ""
   })
 
-  // A finished reply is read once, as its turn stops working, so a re-render or scrolling back never reads it again.
-  createEffect(
-    on(
-      () => ({ id: sessionID(), idle: sessionStatus().type === "idle" }),
-      (now, before) => {
-        if (!now.idle || before?.idle !== false || before.id !== now.id || props.active === false) return
-        const active = projection.activeMessageID()
-
-        if (!active) return
-
-        const reply = (projection.assistantMessagesByParent().get(active) ?? [])
-          .flatMap((message) => message.content)
-          .findLast((content) => content.type === "text" && !!content.text.trim())
-
-        if (reply?.type !== "text") return
-        announce(language.t("session.timeline.reply", { text: plainText(reply.text) }))
-      },
-      { defer: true },
-    ),
-  )
+  watchReplyAnnouncement({
+    sessionID,
+    active: () => props.active !== false,
+    idle: () => sessionStatus().type === "idle",
+    turn: projection.activeMessageID,
+    replies: (turn) => projection.assistantMessagesByParent().get(turn) ?? [],
+    announce: (text) =>
+      announceCompletedReply(settings.general.replyAnnouncement(), {
+        ready: () => language.t("notification.session.responseReady.title"),
+        full: () => language.t("session.timeline.reply", { text }),
+      }),
+  })
 
   // Undelivered input waits below the work the model has seen, so live status moves into the row above it.
   const activityRow = createMemo(() => projection.rows().some((row) => Predicate.isTagged(row, "Activity")))
@@ -672,13 +665,13 @@ function MessageTimelineView(
                   {(value) => (
                     <>
                       <SessionWorkingIndicator sessionID={sessionID()} />
-                      <h1
+                      <h2
                         data-slot="session-title-child"
                         dir="auto"
                         class="max-w-[45%] shrink-0 w-fit truncate rounded-[6px] px-1 py-1.5 text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base"
                       >
                         {value()}
-                      </h1>
+                      </h2>
                     </>
                   )}
                 </Show>
@@ -686,14 +679,14 @@ function MessageTimelineView(
                   <Show
                     when={title().editing}
                     fallback={
-                      <h1
+                      <h2
                         data-slot="session-title-child"
                         class="truncate text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base w-fit rounded-[6px] px-1 py-1.5 hover:bg-v2-overlay-simple-overlay-hover"
                         classList={{ "max-w-[45%] shrink-0": !!parentID() }}
                         onClick={props.title.edit}
                       >
                         {childTitle()}
-                      </h1>
+                      </h2>
                     }
                   >
                     <InlineInput
@@ -779,15 +772,4 @@ function MessageTimelineView(
       />
     </>
   )
-}
-
-// Reads a reply aloud as words, without the markdown marks around them.
-function plainText(text: string) {
-  return text
-    .replace(/```[^\n]*\n?/g, "")
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
-    .replace(/\*{1,3}|`+|~~/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
 }

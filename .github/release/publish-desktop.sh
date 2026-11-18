@@ -5,7 +5,7 @@
 . "$(dirname "$0")/lib.sh"
 
 macos=$1 windows=$2 linux_x64=$3 linux_arm64=$4
-win=("$windows/opencode-desktop-win-arm64.exe" "$windows/opencode-desktop-win-x64.exe")
+win=("$windows/accesscode-desktop-win-arm64.exe" "$windows/accesscode-desktop-win-x64.exe")
 mac=("$macos/opencode-desktop-mac-arm64.zip" "$macos/opencode-desktop-mac-arm64.dmg" "$macos/opencode-desktop-mac-x64.zip" "$macos/opencode-desktop-mac-x64.dmg")
 linux=("$linux_x64/opencode-desktop-linux-x86_64.AppImage" "$linux_x64/opencode-desktop-linux-amd64.deb" "$linux_x64/opencode-desktop-linux-x86_64.rpm")
 linux_arm=("$linux_arm64/opencode-desktop-linux-arm64.AppImage" "$linux_arm64/opencode-desktop-linux-arm64.deb" "$linux_arm64/opencode-desktop-linux-aarch64.rpm")

@@ -38,6 +38,32 @@ describe("settings timeline detail migration", () => {
 })
 
 describe("settings schema", () => {
+  test.each([
+    { saved: { announceReplies: true }, mode: "full" },
+    { saved: { announceReplies: false }, mode: "off" },
+    { saved: { announceReplies: false, replyAnnouncement: "ready" }, mode: "ready" },
+  ])("migrates or honors the saved announcement mode $mode", ({ saved, mode }) => {
+    const settings = decode({ general: { timelineDetail: timelinePresets[2].value, ...saved } })
+    expect(decode(encode(settings)).general.replyAnnouncement).toBe(mode)
+  })
+
+  test.each([1, 2])("preserves chat preferences and replaces unsupported speaker level %s with 3", (level) => {
+    const settings = decode({
+      general: {
+        replyAnnouncement: "off",
+        announceReplyCopies: true,
+        userHeadingLevel: level,
+        assistantHeadingLevel: 6,
+      },
+    })
+    expect(decode(encode(settings)).general).toMatchObject({
+      replyAnnouncement: "off",
+      announceReplyCopies: true,
+      userHeadingLevel: 3,
+      assistantHeadingLevel: 6,
+    })
+  })
+
   test("keeps the values plugins copy out once and discards retired preferences", () => {
     const settings = decode({
       general: {
@@ -93,6 +119,10 @@ describe("settings schema", () => {
       general: {
         timelineDetail: timelinePresets[2].value,
         showCustomAgents: true,
+        replyAnnouncement: "full",
+        announceReplyCopies: true,
+        userHeadingLevel: 3,
+        assistantHeadingLevel: 3,
         showTurnDiffs: false,
         backgroundActivity: "left",
         timelineWidth: "comfortable",

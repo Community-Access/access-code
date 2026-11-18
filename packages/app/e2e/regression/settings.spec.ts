@@ -114,6 +114,35 @@ test("a settings page survives refresh", async ({ page }) => {
   await expect(page).toHaveURL("/settings?tab=appearance")
 })
 
+test("accessibility announcement controls work by keyboard", async ({ page }) => {
+  await mockWorkspace(page, { name: "Settings demo", directory, provider: NO_PROVIDER, seed: { tabs: [] } })
+  await page.goto("/settings?tab=accessibility")
+  const settings = page.getByTestId("settings-screen")
+  const mode = settings.getByRole("button", { name: /Reply announcements/ })
+  await expect(mode).toHaveText("Read full reply")
+  await mode.press("Enter")
+  await expect(page.getByRole("listbox").getByRole("option", { name: "Read full reply" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  )
+  await page.keyboard.press("ArrowUp")
+  await page.keyboard.press("Enter")
+  await expect(mode).toHaveText("Reply ready")
+  await expect(mode).toBeFocused()
+
+  const testButton = settings.getByRole("button", { name: "Test Announcements" })
+  await testButton.press("Enter")
+  await expect(page.locator('[data-live-announcer][role="status"]')).toHaveText("Access Code announcement test.")
+  await expect(testButton).toBeFocused()
+  await page.keyboard.press("Tab")
+  await expect(settings.getByRole("button", { name: "Repeat Last Announcement" })).toBeFocused()
+  await page.keyboard.press("Tab")
+  await expect(settings.getByRole("link", { name: "Open Notifications settings" })).toBeFocused()
+  await page.keyboard.press("Enter")
+  await expect(page).toHaveURL("/settings?tab=notifications")
+  await expect(settings.getByRole("tab", { name: "Notifications", exact: true })).toBeFocused()
+})
+
 // The Arabic dictionary chunks: built (`_assets/ar-<hash>.js`) and dev (`.../i18n/ar.ts`), for the app and the UI.
 const arabic = /\/(?:_assets\/ar-[\w-]+\.js|i18n\/ar\.ts)(?:\?|$)/
 
@@ -1814,10 +1843,7 @@ test("providers: OpenCode Console signs in from its method list", async ({ page,
   const { settings } = await open(page, { integrations: consoleIntegrations, onIntegrationOAuth: () => ({ url }) })
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  await settings
-    .locator(".settings-provider-row", { hasText: "OpenCode Console" })
-    .getByRole("button", { name: "Connect", exact: true })
-    .click()
+  await settings.getByRole("button", { name: "Connect OpenCode Console", exact: true }).click()
   const methods = page.getByRole("dialog", { name: "Connect OpenCode Console", exact: true })
   // The methods come from the integration in the TUI's order: sign-ins first, API keys last.
   await expect(methods.locator('[data-action="provider-connect-method"]')).toHaveText([
@@ -1847,10 +1873,7 @@ test("providers: OpenCode Go connects with its own methods, not the Console sign
   })
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  await settings
-    .locator(".settings-provider-row", { hasText: "OpenCode Go" })
-    .getByRole("button", { name: "Connect", exact: true })
-    .click()
+  await settings.getByRole("button", { name: "Connect OpenCode Go", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "Connect OpenCode Go", exact: true })
   await expect(dialog.getByPlaceholder("API key")).toBeVisible()
   expect(attempts).toEqual([])
@@ -1869,10 +1892,7 @@ test("providers: a rejected API key shows the server error and can be sent again
   })
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  await settings
-    .locator(".settings-provider-row", { hasText: "OpenRouter" })
-    .getByRole("button", { name: "Connect", exact: true })
-    .click()
+  await settings.getByRole("button", { name: "Connect OpenRouter", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "Connect OpenRouter", exact: true })
   const submit = dialog.getByRole("button", { name: "Continue", exact: true })
   await dialog.getByPlaceholder("API key").fill("sk-bad")
@@ -1906,10 +1926,7 @@ test("providers: Back during a pending API key request does not report the provi
 
   const held = await holdRoute(page, /\/api\/integration\/openrouter\/connect\/key(\?|$)/, { method: "POST" })
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  await settings
-    .locator(".settings-provider-row", { hasText: "OpenRouter" })
-    .getByRole("button", { name: "Connect", exact: true })
-    .click()
+  await settings.getByRole("button", { name: "Connect OpenRouter", exact: true }).click()
   const dialog = connectDialog(page)
   await dialog.getByRole("button", { name: "API key", exact: true }).click()
   await dialog.getByPlaceholder("API key").fill("sk-late")
@@ -2143,6 +2160,36 @@ test("providers: Back from a pending sign-in cancels it and lets a backdrop clic
   await expect(dialog).toHaveCount(0)
 })
 
+test("providers: ChatGPT offers the redirect recovery field without opening a disclosure", async ({ page, context }) => {
+  await context.route("https://auth.example.test/**", (route) => route.fulfill({ body: "Sign in" }))
+  const redirect = "http://127.0.0.1:12345/auth/callback?code=test-code&state=test-state&client_id=test-client"
+  const submitted: unknown[] = []
+  const { settings } = await open(page, {
+    integrations: [
+      {
+        id: "openai",
+        name: "OpenAI",
+        methods: [{ id: "chatgpt-token-sharing", type: "oauth", label: "Sign in with ChatGPT" }],
+        connections: [],
+      },
+    ],
+    onIntegrationOAuth: () => ({ url: "https://auth.example.test/sign-in", paste: true }),
+    onIntegrationOAuthComplete: ({ body }) => submitted.push(body),
+    onIntegrationOAuthStatus: () => (submitted.length ? "complete" : "pending"),
+  })
+
+  await settings.getByRole("tab", { name: "Providers", exact: true }).click()
+  await settings.getByRole("button", { name: "Show more providers", exact: true }).click()
+  const dialog = page.getByRole("dialog")
+  const popup = page.waitForEvent("popup")
+  await dialog.locator('[data-provider-id="openai"]').click()
+  await popup
+  await dialog.getByLabel("Redirect URL", { exact: true }).fill(redirect)
+  await dialog.getByRole("button", { name: "Continue", exact: true }).click()
+  await expect.poll(() => submitted).toEqual([expect.objectContaining({ code: redirect })])
+  await expect(page.getByRole("dialog", { name: "ChatGPT connected", exact: true })).toBeVisible()
+})
+
 test("providers: Back from a Claude Agent check started by Add account returns to its accounts", async ({ page }) => {
   const { settings } = await open(page, {
     integrations: [
@@ -2200,10 +2247,7 @@ test("providers: Back from a Console connection without models returns to its si
   })
 
   await settings.getByRole("tab", { name: "Providers", exact: true }).click()
-  await settings
-    .locator(".settings-provider-row", { hasText: "OpenCode Console" })
-    .getByRole("button", { name: "Connect", exact: true })
-    .click()
+  await settings.getByRole("button", { name: "Connect OpenCode Console", exact: true }).click()
   const dialog = connectDialog(page)
   const popup = page.waitForEvent("popup")
   await dialog.getByRole("button", { name: "OpenCode Console account", exact: true }).click()

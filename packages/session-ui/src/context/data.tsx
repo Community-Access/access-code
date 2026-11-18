@@ -72,6 +72,10 @@ export const {
     sessionID?: string
     /** Whether message meta names the agent; the app follows its Show agent setting. Defaults to true. */
     agents?: boolean
+    userHeadingLevel?: 3 | 4 | 5 | 6
+    assistantHeadingLevel?: 3 | 4 | 5 | 6
+    onResponseCopied?: () => void
+    onResponseCopyError?: () => void
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
@@ -93,6 +97,14 @@ export const {
       get agents() {
         return props.agents ?? true
       },
+      get userHeadingLevel() {
+        return props.userHeadingLevel ?? 3
+      },
+      get assistantHeadingLevel() {
+        return props.assistantHeadingLevel ?? 3
+      },
+      onResponseCopied: props.onResponseCopied,
+      onResponseCopyError: props.onResponseCopyError,
       navigateToSession: props.onNavigateToSession,
       sessionHref: props.onSessionHref,
       shellRunning: props.shellRunning,

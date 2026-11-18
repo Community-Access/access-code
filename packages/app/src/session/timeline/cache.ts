@@ -120,6 +120,14 @@ export function createTimelineCache(
                 get agents() {
                   return agents()
                 },
+                get userHeadingLevel() {
+                  return data.userHeadingLevel
+                },
+                get assistantHeadingLevel() {
+                  return data.assistantHeadingLevel
+                },
+                onResponseCopied: data.onResponseCopied,
+                onResponseCopyError: data.onResponseCopyError,
                 navigateToSession: data.navigateToSession,
                 sessionHref: data.sessionHref,
                 readMedia: data.readMedia,

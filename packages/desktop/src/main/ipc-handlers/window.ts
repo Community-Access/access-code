@@ -9,7 +9,6 @@ import {
   setTrafficLightsPosition,
   setWindowThemeReady,
   setZoomLevel,
-  updateTitlebar,
 } from "../windows"
 import { storedZoomLevel } from "../windows/defaults"
 import { focusWindow, showWindow } from "../windows/focus"
@@ -48,9 +47,6 @@ export const windowHandlers = WindowRpcs.toLayer(
         Effect.sync(() => {
           const contents = sender(handoff, context)
           contents.setZoomFactor(factor)
-          const win = BrowserWindow.fromWebContents(contents)
-
-          if (win) updateTitlebar(win)
         }),
       WindowGetZoomLevel: () => Effect.sync(storedZoomLevel),
       WindowSetZoomLevel: ({ level }) => Effect.sync(() => setZoomLevel(level)),
@@ -60,7 +56,7 @@ export const windowHandlers = WindowRpcs.toLayer(
         Effect.sync(() => {
           const win = BrowserWindow.fromWebContents(sender(handoff, context))
 
-          if (win) setTitlebar(win, theme)
+          if (win) setTitlebar(theme)
         }),
       WindowSetTrafficLightsPosition: (position, context) =>
         Effect.sync(() => {
