@@ -404,7 +404,7 @@ describe("ChatGPTPlugin", () => {
       expect(`${url.origin}${url.pathname}`).toBe("https://auth.openai.com/api/accounts/authorize")
       expect(Object.fromEntries(url.searchParams)).toMatchObject({
         client_id: "dynamic_agent_client",
-        agent_name_hint: "OpenCode",
+        agent_name_hint: "Access Code",
         response_type: "code",
         scope: "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct",
         resource: "https://api.openai.com/v1",
@@ -429,17 +429,20 @@ describe("ChatGPTPlugin", () => {
     Effect.gen(function* () {
       yield* addPlugin()
       const integrations = yield* Integration.Service
-      const attempt = yield* integrations.oauth.connect({
-        integrationID: Integration.ID.make("openai"),
-        methodID: Integration.MethodID.make("chatgpt-token-sharing"),
-      })
-      const authorization = new URL(attempt.url)
-      const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "")
-      callback.searchParams.set("code", "test-code")
-      callback.searchParams.set("state", authorization.searchParams.get("state") ?? "")
-      const response = yield* Effect.promise(() => fetch(callback))
-      expect(response.status).toBe(400)
-      expect(yield* Effect.promise(() => response.text())).toContain("did not return a client ID")
+      for (const clientID of [undefined, "dynamic_agent_client"]) {
+        const attempt = yield* integrations.oauth.connect({
+          integrationID: Integration.ID.make("openai"),
+          methodID: Integration.MethodID.make("chatgpt-token-sharing"),
+        })
+        const authorization = new URL(attempt.url)
+        const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "")
+        callback.searchParams.set("code", "test-code")
+        callback.searchParams.set("state", authorization.searchParams.get("state") ?? "")
+        if (clientID) callback.searchParams.set("client_id", clientID)
+        const response = yield* Effect.promise(() => fetch(callback))
+        expect(response.status).toBe(400)
+        expect(yield* Effect.promise(() => response.text())).toContain("did not return a registered client ID")
+      }
     }),
   )
 
