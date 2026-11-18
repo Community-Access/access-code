@@ -1,0 +1,17 @@
+# AccessCode: package and workflow versions come from OpenCode with each merged release, so Dependabot opens pull
+# requests only for security fixes (version update limit 0). Routine bumps here would conflict with every OpenCode merge.
+version: 2
+updates:
+  - package-ecosystem: "bun"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
