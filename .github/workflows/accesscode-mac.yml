@@ -1,0 +1,153 @@
+# AccessCode Mac releases.
+#
+# - Every push to main builds a signed, notarized beta and publishes it as a GitHub prerelease
+#   (AccessCode Beta, its own app next to the stable one).
+# - Running this workflow by hand with "stable" publishes a stable release. The accesscode-release environment
+#   limits who can approve that run to Taylor, Jeff and repo admins.
+#
+# Repository secrets:
+#   APPLE_SIGNING_CERTIFICATE           base64 of the Developer ID Application .p12
+#   APPLE_SIGNING_CERTIFICATE_PASSWORD  password of that .p12
+#   APPLE_NOTARY_KEY                    contents of the App Store Connect API key (.p8) used for notarization
+#   APPLE_NOTARY_KEY_ID                 that key's ID
+#   APPLE_NOTARY_ISSUER_ID              that key's issuer ID
+#   ACCESSCODE_GITHUB_CLIENT_SECRET     GitHub OAuth app secret the GitHub MCP sign-in uses (optional)
+name: AccessCode Mac
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "beta or stable"
+        type: choice
+        options: [stable, beta]
+        default: stable
+
+concurrency:
+  group: accesscode-mac-${{ github.event_name == 'push' && 'beta' || inputs.channel }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+permissions:
+  contents: write
+
+jobs:
+  # Until the signing secrets are added, pushes skip the build instead of failing.
+  ready:
+    if: github.repository == 'taylorarndt/access-code'
+    runs-on: ubuntu-latest
+    outputs:
+      signing: ${{ steps.check.outputs.signing }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "$CERTIFICATE" ] && [ -n "$NOTARY_KEY" ]; then echo "signing=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::Mac signing secrets are not set yet, so no Mac build runs."
+            echo "signing=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_SIGNING_CERTIFICATE }}
+          NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+
+  mac:
+    needs: ready
+    if: needs.ready.outputs.signing == 'true'
+    runs-on: macos-15
+    timeout-minutes: 120
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.channel == 'stable') && 'accesscode-release' || 'accesscode-beta' }}
+    env:
+      STABLE: ${{ github.event_name == 'workflow_dispatch' && inputs.channel == 'stable' }}
+      OPENCODE_TARGET: darwin-arm64
+    steps:
+      - name: Check out
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Choose version and channel
+        run: |
+          base=$(jq -r .version packages/desktop/package.json)
+          if [ "$STABLE" = true ]; then
+            version=$base channel=prod tag="accesscode-$base"
+            if gh release view "$tag" > /dev/null 2>&1; then
+              echo "::error::Release $tag already exists. Merge a newer OpenCode release first."
+              exit 1
+            fi
+          else
+            version="$base-beta.$GITHUB_RUN_NUMBER" channel=beta tag="accesscode-$base-beta.$GITHUB_RUN_NUMBER"
+          fi
+          {
+            echo "OPENCODE_VERSION=$version"
+            echo "OPENCODE_CHANNEL=$channel"
+            echo "RELEASE_TAG=$tag"
+          } >> "$GITHUB_ENV"
+          echo "Building AccessCode $version ($channel)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Set up Bun
+        uses: ./.github/actions/setup-bun
+        with:
+          install-flags: --os=darwin --cpu=arm64
+
+      - name: Build the CLI
+        working-directory: packages/cli
+        run: bun run build --single && rm -rf dist/.bun
+        env:
+          BUN_COMPILE_RELEASE: bun-v1.4.4
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build the app
+        working-directory: packages/desktop
+        run: bun run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          ACCESSCODE_GITHUB_CLIENT_SECRET: ${{ secrets.ACCESSCODE_GITHUB_CLIENT_SECRET }}
+
+      - name: Pack the app
+        working-directory: packages/desktop
+        timeout-minutes: 60
+        run: bun run pack
+
+      - name: Import the signing certificate
+        run: |
+          umask 077
+          cert="$RUNNER_TEMP/cert.p12"
+          keychain_password=$(openssl rand -base64 32)
+          printf '%s' "$APPLE_SIGNING_CERTIFICATE" | base64 --decode > "$cert"
+          security create-keychain -p "$keychain_password" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security unlock-keychain -p "$keychain_password" build.keychain
+          security import "$cert" -k build.keychain -P "$APPLE_SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" build.keychain > /dev/null
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
+          rm -f "$cert"
+        env:
+          APPLE_SIGNING_CERTIFICATE: ${{ secrets.APPLE_SIGNING_CERTIFICATE }}
+          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+
+      # Signs inside-out with hardened runtime, notarizes, staples, then makes the zip and dmg.
+      - name: Sign and notarize
+        run: bash .github/release/sign-desktop-macos.sh "$RUNNER_TEMP/out" dist/desktop/opencode-desktop-mac-arm64.app.tar
+        env:
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+
+      - name: Publish the release
+        run: |
+          name=$([ "$STABLE" = true ] && echo AccessCode || echo "AccessCode Beta")
+          mkdir -p "$RUNNER_TEMP/release"
+          cp "$RUNNER_TEMP/out/opencode-desktop-mac-arm64.dmg" "$RUNNER_TEMP/release/$(echo "$name" | tr ' ' '-')-mac-arm64.dmg"
+          cp "$RUNNER_TEMP/out/opencode-desktop-mac-arm64.zip" "$RUNNER_TEMP/release/$(echo "$name" | tr ' ' '-')-mac-arm64.zip"
+          flags=(--target "$GITHUB_SHA" --title "$name $OPENCODE_VERSION" --generate-notes)
+          if [ "$STABLE" = true ]; then flags+=(--latest); else flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${flags[@]}" "$RUNNER_TEMP"/release/*
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Remove the signing keychain
+        if: always()
+        run: security delete-keychain build.keychain 2> /dev/null || true
