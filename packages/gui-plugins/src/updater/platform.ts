@@ -1,19 +1,89 @@
 import { execFile } from "node:child_process"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
 import { promisify } from "node:util"
 import { app, autoUpdater } from "electron"
 import pkg from "electron-updater"
 import { Effect } from "effect"
 import type { Platform } from "./machine"
 
-const updateClient = pkg.autoUpdater
-
-const execFileAsync = promisify(execFile)
-
 const restartTimeout = 10_000
+const runFile = promisify(execFile)
+const updateConfigPath = path.join(process.resourcesPath, "accesscode-update.json")
 
-const unpackTimeout = 120_000
+export async function hasWindowsUpdateConfig() {
+  return (await windowsPublisher()) !== undefined
+}
+
+async function windowsPublisher() {
+  const contents = await readFile(updateConfigPath, "utf8").catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return undefined
+      throw error
+    },
+  )
+  if (contents === undefined) return undefined
+  const config = JSON.parse(contents)
+  return (
+    config.provider === "generic" &&
+    config.url === "https://github.com/taylorarndt/access-code/releases/latest/download/" &&
+    Array.isArray(config.publisherName) &&
+    config.publisherName.length === 1 &&
+    typeof config.publisherName[0] === "string" &&
+    config.publisherName[0].trim().length > 0
+      ? config.publisherName[0] as string
+      : undefined
+  )
+}
+
+async function verifyWindowsInstaller(publisher: string, installer: string) {
+  const { stdout } = await runFile(
+    path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "$s = Get-AuthenticodeSignature -LiteralPath $env:ACCESSCODE_UPDATE_FILE -ErrorAction Stop; " +
+        "if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -cne $env:ACCESSCODE_UPDATE_SUBJECT) { exit 1 }; 'valid'",
+    ],
+    {
+      env: { ...process.env, ACCESSCODE_UPDATE_FILE: installer, ACCESSCODE_UPDATE_SUBJECT: publisher },
+      timeout: 20_000,
+      windowsHide: true,
+    },
+  )
+  if (stdout.trim() !== "valid") throw new Error("Could not verify the AccessCode installer signature")
+}
+
+// Reuse electron-updater's verified full-file transport, but never run its NSIS install command.
+class InnoUpdater extends pkg.NsisUpdater {
+  protected override doInstall() {
+    const installer = this.installerPath
+    if (!installer) {
+      this.dispatchError(new Error("No verified AccessCode installer is available"))
+      return false
+    }
+    void this.spawnLog(installer, [
+      "/VERYSILENT",
+      "/SUPPRESSMSGBOXES",
+      "/NORESTART",
+      "/ACCESSCODERESTART=1",
+    ]).catch((error) => this.dispatchError(error))
+    return true
+  }
+}
 
 export const make = Effect.fn("Updater.platform")(function* (channel: string) {
+  const publisher = yield* Effect.promise(windowsPublisher)
+  if (!publisher) throw new Error("AccessCode's Windows update publisher is not configured")
+  const updateClient = new InnoUpdater()
+  updateClient.updateConfigPath = updateConfigPath
+  updateClient.verifyUpdateCodeSignature = async (_, installer) => {
+    await verifyWindowsInstaller(publisher, installer)
+    return null
+  }
+  updateClient.disableDifferentialDownload = true
+  updateClient.disableWebInstaller = true
   const userAgent = `opencode/${channel === "prod" ? "latest" : channel}/${app.getVersion()}/desktop`
   const runFork = Effect.runForkWith(yield* Effect.context())
   updateClient.logger = {
@@ -25,9 +95,9 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
   updateClient.channel = "latest"
   updateClient.requestHeaders = { "User-Agent": userAgent }
   updateClient.allowPrerelease = false
-  updateClient.allowDowngrade = true
+  updateClient.allowDowngrade = false
   updateClient.autoDownload = false
-  updateClient.autoInstallOnAppQuit = process.platform === "darwin"
+  updateClient.autoInstallOnAppQuit = false
   yield* Effect.logInfo("auto updater configured", {
     channel: updateClient.channel,
     allowPrerelease: updateClient.allowPrerelease,
@@ -58,72 +128,22 @@ export const make = Effect.fn("Updater.platform")(function* (channel: string) {
       },
       catch: (error) => error,
     }),
-    stageUpdate,
-    installAndRestart,
+    stageUpdate: () =>
+      Effect.tryPromise({
+        try: async () => {
+          const files = await updateClient.downloadUpdate()
+          const installer = files.find((file) => file.endsWith(".exe"))
+          if (!installer) throw new Error("The AccessCode update did not contain a Windows installer")
+          // Also verify cached downloads, which may bypass the downloader's validation callback.
+          await verifyWindowsInstaller(publisher, installer)
+        },
+        catch: (error) => error,
+      }),
+    installAndRestart: installAndRestart(updateClient),
   } satisfies Platform
 })
 
-function stageUpdate(options: { readonly differential: boolean }) {
-  if (process.platform !== "darwin")
-    return Effect.tryPromise({
-      try: () => {
-        // Only the NSIS cache goes stale: macOS refreshes its cached zip with every download and AppImage reads the
-        // blockmap embedded in the running file. An emulated x64 install updates to the ARM64 installer, which cannot
-        // be patched from the cached x64 one.
-        updateClient.disableDifferentialDownload =
-          process.platform === "win32" && (!options.differential || app.runningUnderARM64Translation)
-
-        return updateClient.downloadUpdate()
-      },
-      catch: (error) => error,
-    }).pipe(Effect.flatMap(unpackInstaller))
-
-  return Effect.callback<void, Error>((resume) => {
-    const cleanup = () => {
-      autoUpdater.removeListener("update-downloaded", complete)
-      updateClient.removeListener("error", fail)
-    }
-
-    const complete = () => {
-      cleanup()
-      resume(Effect.void)
-    }
-
-    const fail = (error: Error) => {
-      cleanup()
-      resume(Effect.fail(error))
-    }
-
-    autoUpdater.once("update-downloaded", complete)
-    updateClient.once("error", fail)
-    void updateClient.downloadUpdate().catch(fail)
-
-    return Effect.sync(cleanup)
-  })
-}
-
-// The NSIS installer unpacks the update beside the install directory while the app keeps running, so the
-// install after the restart moves one directory into place instead of decompressing the whole app. When this
-// fails, the restart still installs the update, only slower.
-function unpackInstaller(files: string[]) {
-  const installer = files.find((file) => file.endsWith(".exe"))
-
-  if (process.platform !== "win32" || !app.isPackaged || !installer) return Effect.void
-
-  return Effect.tryPromise(() =>
-    execFileAsync(installer, ["--stage"], { windowsHide: true, timeout: unpackTimeout }),
-  ).pipe(
-    Effect.andThen(Effect.logInfo("update unpacked before restart", { installer })),
-    Effect.catch((error) =>
-      Effect.logWarning("update not unpacked before restart", {
-        installer,
-        message: error.cause instanceof Error ? error.cause.message : String(error.cause),
-      }),
-    ),
-  )
-}
-
-const installAndRestart = Effect.callback<void, Error>((resume) => {
+const installAndRestart = (updateClient: InnoUpdater) => Effect.callback<void, Error>((resume) => {
   const cleanup = () => {
     autoUpdater.removeListener("before-quit-for-update", started)
     updateClient.removeListener("error", fail)

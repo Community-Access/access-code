@@ -178,15 +178,7 @@ const getBase = (appId: string): Configuration => {
     },
     win: {
       icon: `resources/icons/icon.ico`,
-      target: ["nsis"],
-      verifyUpdateCodeSignature: false,
-    },
-    nsis: {
-      include: path.join(packageDir, "resources", "windows", "installer.nsh"),
-      oneClick: true,
-      perMachine: false,
-      installerIcon: `resources/icons/icon.ico`,
-      installerHeaderIcon: `resources/icons/icon.ico`,
+      target: ["dir"],
     },
     linux: {
       icon: `resources/icons`,

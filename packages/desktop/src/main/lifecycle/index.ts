@@ -19,6 +19,7 @@ import {
   type State,
 } from "./machine"
 import { initializeFirstLaunchOnboarding } from "./onboarding"
+import { portableRoot } from "./portable"
 import { Shutdown } from "./shutdown"
 
 export interface Interface {
@@ -51,6 +52,14 @@ const runtime = Layer.effect(
       stop: () =>
         runPromise(
           shutdown.stop.pipe(
+            Effect.andThen(
+              portableRoot
+                ? Effect.tryPromise(async () => {
+                    const { Service } = await import("@opencode/client/service")
+                    await Service.stop()
+                  }).pipe(Effect.catch((error) => Effect.logError("Could not stop the portable background service", error)))
+                : Effect.void,
+            ),
             Effect.timeoutOrElse({
               duration: "10 seconds",
               orElse: () => Effect.logError("shutdown timed out, continuing anyway"),

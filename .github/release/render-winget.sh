@@ -36,10 +36,10 @@ manifests Anomaly.OpenCode "OpenCode CLI" "The open source AI coding agent for t
   "- Architecture: x64" "  InstallerUrl: $base/opencode-windows-x64-baseline.zip" "  InstallerSha256: $(sum "$cli/opencode-windows-x64-baseline.zip")" \
   "- Architecture: arm64" "  InstallerUrl: $base/opencode-windows-arm64.zip" "  InstallerSha256: $(sum "$cli/opencode-windows-arm64.zip")"
 
-# The display name and uninstall key match what the NSIS installer registers for ai.opencode.desktop.
-manifests Anomaly.OpenCode.Desktop "OpenCode" "The open source AI coding agent as a desktop app." opencode-desktop \
-  "InstallerType: nullsoft" "Scope: user" "UpgradeBehavior: install" "ProductCode: d074f30d-5f88-5885-b075-be1348cc7676" \
+# Inno Setup uses the production AccessCode AppId followed by _is1 as its uninstall key.
+manifests Techopolis.AccessCode "AccessCode" "The accessible AI coding agent for desktop." accesscode \
+  "InstallerType: inno" "Scope: user" "UpgradeBehavior: install" "ProductCode: app.techopolis.accesscode_is1" \
   "Protocols:" "- opencode" "Installers:" \
-  "- Architecture: x64" "  InstallerUrl: $base/opencode-desktop-win-x64.exe" "  InstallerSha256: $(sum "$desktop/opencode-desktop-win-x64.exe")" \
-  "- Architecture: arm64" "  InstallerUrl: $base/opencode-desktop-win-arm64.exe" "  InstallerSha256: $(sum "$desktop/opencode-desktop-win-arm64.exe")"
+  "- Architecture: x64" "  InstallerUrl: $base/accesscode-desktop-win-x64.exe" "  InstallerSha256: $(sum "$desktop/accesscode-desktop-win-x64.exe")" \
+  "- Architecture: arm64" "  InstallerUrl: $base/accesscode-desktop-win-arm64.exe" "  InstallerSha256: $(sum "$desktop/accesscode-desktop-win-arm64.exe")"
 tail -n +1 "$out"/*/*

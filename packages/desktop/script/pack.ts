@@ -3,10 +3,11 @@ import { $ } from "bun"
 import { cp, mkdir, readdir, rm } from "node:fs/promises"
 import path from "node:path"
 import { getConfig } from "../electron-builder.config"
-import { getCurrentCli, resolveChannel } from "./utils"
+import { portableMarker } from "../src/main/lifecycle/portable"
+import { getCurrentCli, resolveChannel, windowsInstallerName } from "./utils"
 
 // Packages the built app (out/) for OPENCODE_TARGET into dist/desktop at the repository root, unsigned:
-// macOS: the .app as a tarball. Windows: the unpacked app in app/, or with OPENCODE_DESKTOP_APP, the NSIS
+// macOS: the .app as a tarball. Windows: the unpacked app in app/, or with OPENCODE_DESKTOP_APP, the Inno Setup
 // installer around that (signed) app. Linux: AppImage, deb and rpm. The release workflow signs afterwards.
 const dir = path.resolve(import.meta.dir, "..")
 
@@ -21,22 +22,57 @@ const os =
   ]).get(cli.os) ?? "linux"
 
 const app = process.env.OPENCODE_DESKTOP_APP
+const portable = process.argv.includes("--portable")
+const portableOutput = path.resolve(dir, `../../dist/portable/AccessCode-${cli.target}`)
 
 const flags = [`--${os}`, `--${cli.cpu}`, "--publish", "never", "--config", "electron-builder.config.ts"]
 
 process.chdir(dir)
 
-await rm("dist", { recursive: true, force: true })
+if (portable) {
+  if (os !== "win" || process.platform !== "win32" || app)
+    throw new Error("Portable packaging requires a Windows build host and an unpacked Windows target")
+  await mkdir(path.dirname(portableOutput), { recursive: true })
+  // Never replace a portable folder: it may already hold the user's profile.
+  await mkdir(portableOutput)
+  await $`bunx electron-builder ${flags} --dir --config.directories.output=dist/portable`
+  const unpacked = path.join("dist", "portable", cli.cpu === "arm64" ? "win-arm64-unpacked" : "win-unpacked")
+  await cp(unpacked, portableOutput, { recursive: true })
+  await Bun.write(path.join(portableOutput, portableMarker), "")
+  console.log(`Portable app is in ${portableOutput}`)
+  process.exit(0)
+}
 
+await rm("dist", { recursive: true, force: true })
 await rm(out, { recursive: true, force: true })
 
 await mkdir(out, { recursive: true })
 
 if (app) {
-  // The installer uses the channel's icons; the rest of the app is already built and signed.
+  if (os !== "win" || process.platform !== "win32") throw new Error("Inno Setup requires a Windows build host")
+
+  const iscc = process.env.ISCC ?? Bun.which("ISCC.exe")
+  if (!iscc) throw new Error("Install Inno Setup and add ISCC.exe to PATH, or set ISCC to its absolute path")
   await $`bun ./script/copy-icons.ts ${resolveChannel()}`
-  await $`bunx electron-builder ${flags} --prepackaged ${app}`
-  await cp(`dist/opencode-desktop-win-${cli.cpu}.exe`, path.join(out, `opencode-desktop-win-${cli.cpu}.exe`))
+  const config = getConfig()
+  const version = process.env.OPENCODE_VERSION ?? (await Bun.file("package.json").json()).version
+  const architecture = cli.cpu === "arm64" ? "arm64" : "x64compatible"
+  const payload = path.resolve(app)
+  const executable = path.join(payload, `${config.productName}.exe`)
+  if (!(await Bun.file(executable).exists())) throw new Error(`Missing packaged application: ${executable}`)
+  if (!(await Bun.file(path.join(payload, "resources", "opencode-cli.exe")).exists()))
+    throw new Error(`Missing bundled Windows CLI in ${payload}`)
+
+  await $`${iscc} ${[
+    `/O${out}`,
+    `/DAccessCodeAppId=${config.appId}`,
+    `/DAccessCodeProduct=${config.productName}`,
+    `/DAccessCodeVersion=${version}`,
+    `/DAccessCodeArchitecture=${architecture}`,
+    `/DAccessCodePayload=${payload}`,
+    `/DAccessCodeInstaller=${path.parse(windowsInstallerName(cli.cpu)).name}`,
+    path.join(dir, "resources", "windows", "installer.iss"),
+  ]}`
 }
 
 if (!app && os === "linux") {
@@ -58,12 +94,23 @@ if (!app && os === "mac") {
 if (!app && os === "win") {
   await $`bunx electron-builder ${flags} --dir`
   const unpacked = path.join("dist", cli.cpu === "arm64" ? "win-arm64-unpacked" : "win-unpacked")
-  await writeUpdateConfig(path.join(unpacked, "resources"))
+  const publisher = process.env.ACCESSCODE_WINDOWS_UPDATE_PUBLISHER?.trim()
+  if (publisher) {
+    const config = getConfig().publish
+    // JSON is also valid YAML. The updater plugin uses this file to opt signed builds in.
+    await Bun.write(
+      path.join(unpacked, "resources", "accesscode-update.json"),
+      JSON.stringify({
+        ...config,
+        publisherName: [publisher],
+        updaterCacheDirName: `${getConfig().appId}-updater`,
+      }),
+    )
+  }
   await cp(unpacked, path.join(out, "app"), { recursive: true })
 }
 
-// electron-builder writes resources/app-update.yml only for dmg, zip and nsis targets, not for --dir builds.
-// electron-updater reads its feed from that file, so write the one those targets would.
+// electron-builder doesn't write resources/app-update.yml for --dir builds.
 async function writeUpdateConfig(resources: string) {
   const publish = getConfig().publish
   const name: string = (await Bun.file("package.json").json()).name
