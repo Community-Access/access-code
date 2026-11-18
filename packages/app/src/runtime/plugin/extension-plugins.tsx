@@ -10,6 +10,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsList } from "@/settings/list"
 import { showToast } from "@/shell/notifications/toast"
+import type { PluginUpdateView } from "@/settings/providers/plugin-update-machine"
 import "@/settings/settings.css"
 import { builtins } from "./builtins"
 import { usePluginHost } from "./host"
@@ -17,13 +18,24 @@ import { useReservedPlugins } from "./root"
 
 /** What the Extensions page adds to a plugin's row: where it comes from, and Remove when it can be removed there. */
 export type PluginRowDetails = (plugin: PluginInfo) => { lines: (string | undefined)[]; actions?: JSX.Element }
+/** Update controls for the listed plugins' packages; without them the rows offer no update. */
+export type ExtensionPluginUpdates = {
+  readonly view: (source: Extract<PluginInfo["source"], { type: "package" }>) => PluginUpdateView
+  readonly update: (target: string) => void
+}
 
 /**
  * The plugins a server lists, for the Plugins tab of Extensions. Only the desktop app's own server (`own`) runs its
  * plugins' GUIs in this window, so only its rows add the window's controls; other servers and the web list names.
  * Each name is a heading, so heading navigation moves between plugins as it does in the Add extension dialog.
+ * Any server's package plugins can be updated.
  */
-export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: boolean; details?: PluginRowDetails }) {
+export function ExtensionPlugins(props: {
+  plugins: readonly PluginInfo[]
+  own: boolean
+  details?: PluginRowDetails
+  updates?: ExtensionPluginUpdates
+}) {
   const listed = () => props.plugins.filter((plugin) => plugin.source.type !== "builtin")
 
   return (
@@ -44,9 +56,10 @@ export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: b
                       <RowLines lines={details()?.lines} />
                     </div>
                   </div>
-                  <Show when={details()?.actions}>
-                    {(actions) => <div class="settings-servers-actions">{actions()}</div>}
-                  </Show>
+                  <div class="settings-servers-actions">
+                    <PluginUpdateButton plugin={plugin} updates={props.updates} />
+                    {details()?.actions}
+                  </div>
                 </div>
               )
             }}
@@ -54,7 +67,7 @@ export function ExtensionPlugins(props: { plugins: readonly PluginInfo[]; own: b
         </SettingsList>
       }
     >
-      <OwnServerPlugins plugins={listed()} details={props.details} />
+      <OwnServerPlugins plugins={listed()} details={props.details} updates={props.updates} />
     </Show>
   )
 }
@@ -72,7 +85,11 @@ function RowLines(props: { lines?: (string | undefined)[] }) {
  * switch that turns off only the desktop UI, Reload, status and errors, and rows for plugins main lists that the
  * server list does not name. Built-ins always run and stay hidden unless they failed, which only this list reports.
  */
-function OwnServerPlugins(props: { plugins: readonly PluginInfo[]; details?: PluginRowDetails }) {
+function OwnServerPlugins(props: {
+  plugins: readonly PluginInfo[]
+  details?: PluginRowDetails
+  updates?: ExtensionPluginUpdates
+}) {
   const language = useLanguage()
   const host = usePluginHost()
   const bridge = usePlatform().plugins
@@ -208,12 +225,20 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[]; details?: Plu
             <RowLines lines={details()?.lines} />
           </div>
         </div>
-        <Show when={!live() && details()?.actions}>
-          {(actions) => <div class="settings-servers-actions">{actions()}</div>}
+        <Show when={!live()}>
+          <div class="settings-servers-actions">
+            <Show when={input.plugin}>
+              {(plugin) => <PluginUpdateButton plugin={plugin()} updates={props.updates} />}
+            </Show>
+            {details()?.actions}
+          </div>
         </Show>
         <Show when={live()}>
           {(id) => (
             <div class="settings-servers-actions">
+              <Show when={input.plugin}>
+                {(plugin) => <PluginUpdateButton plugin={plugin()} updates={props.updates} />}
+              </Show>
               {details()?.actions}
               <Button size="small" variant="ghost" onClick={() => reload(id())}>
                 {language.t("settings.plugins.reload")}
@@ -242,6 +267,39 @@ function OwnServerPlugins(props: { plugins: readonly PluginInfo[]; details?: Plu
         <p class="text-11-regular text-v2-text-text-muted">{language.t("settings.plugins.parts.note")}</p>
       </Show>
     </>
+  )
+}
+
+/** Update for a package plugin with a newer version, or the update in progress; nothing otherwise. */
+function PluginUpdateButton(props: { plugin: PluginInfo; updates?: ExtensionPluginUpdates }) {
+  const language = useLanguage()
+
+  const view = createMemo(() => {
+    const source = props.plugin.source
+
+    if (source.type !== "package" || !props.updates) return undefined
+
+    const current = props.updates.view(source)
+
+    return current.outdated || current.updating ? { ...current, target: source.target } : undefined
+  })
+
+  return (
+    <Show when={view()}>
+      {(current) => (
+        <Button
+          size="small"
+          variant="ghost"
+          class="shrink-0 whitespace-nowrap"
+          disabled={current().updating}
+          aria-busy={current().updating}
+          aria-label={language.t("settings.plugins.update.label", { name: pluginLabel(props.plugin) })}
+          onClick={() => props.updates?.update(current().target)}
+        >
+          {language.t(current().updating ? "settings.plugins.updating" : "settings.plugins.update")}
+        </Button>
+      )}
+    </Show>
   )
 }
 

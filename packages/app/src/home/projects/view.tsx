@@ -113,7 +113,7 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
           aria-label={props.language.t("home.projects.current", { project: currentProjectLabel() })}
           class="flex h-10 w-full min-w-0 items-center gap-2 rounded-[6px] bg-v2-background-bg-base px-1.5 text-start text-v2-text-text-base outline-none hover:bg-v2-background-bg-layer-01"
         >
-          <Show when={selected()} fallback={<Icon name="folder" size="small" />}>
+          <Show when={selected()} fallback={<Icon name="folder" />}>
             {(project) => <HomeProjectAvatar project={project()} />}
           </Show>
           <span class="flex min-w-0 flex-1 flex-col leading-[var(--line-height-compact)]">
@@ -126,7 +126,7 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
               )}
             </Show>
           </span>
-          <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+          <Icon name="chevron-down" class="shrink-0 text-v2-icon-icon-muted" />
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
@@ -248,7 +248,7 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
               data-selected={!props.selection.directory ? "" : undefined}
               onClick={() => props.onFocusServer(props.servers[0])}
             >
-              <Icon name="folder" size="small" />
+              <Icon name="folder" />
               <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("home.projects.all")}</span>
             </HomeProjectNavButton>
           </Show>
@@ -271,7 +271,7 @@ function HomeProjectsPanel(props: HomeProjectsViewProps) {
                           disabled={isServerFailed(props.serverHealth(server()))}
                           onClick={() => props.onChooseProject(server())}
                         >
-                          <Icon name="folder-add-left" size="small" />
+                          <Icon name="folder-add-left" />
                           <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("home.project.add")}</span>
                         </HomeProjectNavButton>
                       </Show>
@@ -358,7 +358,7 @@ export function HomeUtilityNav(props: {
         class="text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted"
         onClick={props.onOpenSettings}
       >
-        <Icon name="settings-gear" size="small" />
+        <Icon name="settings-gear" />
         <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.settings")}</span>
       </HomeProjectNavButton>
       <HomeProjectNavButton
@@ -366,7 +366,7 @@ export function HomeUtilityNav(props: {
         class="text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted"
         onClick={props.onOpenHelp}
       >
-        <Icon name="help" size="small" />
+        <Icon name="help" />
         <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.help")}</span>
       </HomeProjectNavButton>
     </div>
@@ -454,7 +454,6 @@ function HomeServerRow(props: {
           >
             <Icon
               name="chevron-down"
-              size="small"
               class="transition-transform duration-150 ease-in-out"
               style={{ transform: `rotate(${props.collapsed || !canToggle() ? -90 : 0}deg)` }}
             />
@@ -592,7 +591,7 @@ function HomeProjectEmpty(props: HomeProjectsViewProps & { server: ServerConnect
       disabled={unreachable()}
       onClick={() => props.onChooseProject(props.server)}
     >
-      <Icon name="folder-add-left" size="small" />
+      <Icon name="folder-add-left" />
       <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("home.project.add")}</span>
     </HomeProjectNavButton>
   )
