@@ -1,0 +1,329 @@
+name: AccessCode Windows release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version from package.json (for example, 2.3.2)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accesscode-windows-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build-app:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - desktop: windows-x64
+            cli: windows-x64-baseline
+            install: ""
+          - desktop: windows-arm64
+            cli: windows-arm64
+            install: --cpu=*
+    env:
+      OPENCODE_CHANNEL: latest
+      OPENCODE_VERSION: ${{ inputs.version }}
+      ACCESSCODE_WINDOWS_UPDATE_PUBLISHER: ${{ vars.ACCESSCODE_WINDOWS_UPDATE_PUBLISHER }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-bun
+        with:
+          install-flags: ${{ matrix.install }}
+      - name: Validate stable version and publisher
+        shell: pwsh
+        run: |
+          $version = $env:OPENCODE_VERSION
+          $manifestVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $version -ne $manifestVersion) {
+            throw "Release candidate version must be the stable package.json version ($manifestVersion)."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:ACCESSCODE_WINDOWS_UPDATE_PUBLISHER)) {
+            throw "Set the ACCESSCODE_WINDOWS_UPDATE_PUBLISHER repository variable to the approved Authenticode subject."
+          }
+      - name: Build bundled CLI
+        run: bun run --cwd packages/cli build --skip-install
+        env:
+          OPENCODE_TARGET: ${{ matrix.cli }}
+      - name: Build desktop
+        run: bun run --cwd packages/desktop build
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+      - name: Pack unpacked app
+        run: bun run --cwd packages/desktop pack
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+      - name: Stage app and pack portable edition
+        shell: pwsh
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+        run: |
+          Move-Item dist\desktop\app (Join-Path $env:RUNNER_TEMP 'app')
+          bun run --cwd packages\desktop pack --portable
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Move-Item "dist\portable\AccessCode-$env:OPENCODE_TARGET" (Join-Path $env:RUNNER_TEMP 'portable')
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-app-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/app
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-portable-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/portable
+          if-no-files-found: error
+
+  sign-app:
+    needs: build-app
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    environment: accesscode-release
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: [windows-x64, windows-arm64]
+    env:
+      ACCESSCODE_WINDOWS_UPDATE_PUBLISHER: ${{ vars.ACCESSCODE_WINDOWS_UPDATE_PUBLISHER }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: build-app-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/app
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: build-portable-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/portable
+      - name: Log in to Azure
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Preserve valid third-party signatures
+        shell: pwsh
+        run: |
+          $backup = Join-Path $env:RUNNER_TEMP 'third-party-signed'
+          New-Item -ItemType Directory -Path $backup -Force | Out-Null
+          foreach ($name in @('app', 'portable')) {
+            $root = Join-Path $env:RUNNER_TEMP $name
+            Get-ChildItem -LiteralPath $root -File -Recurse |
+              Where-Object { $_.Extension -in @('.exe', '.node') } |
+              ForEach-Object {
+                $signature = Get-AuthenticodeSignature -FilePath $_.FullName
+                if ($signature.Status -eq 'Valid' -and
+                  $signature.SignerCertificate.Subject -ne $env:ACCESSCODE_WINDOWS_UPDATE_PUBLISHER) {
+                  $relative = [IO.Path]::GetRelativePath($root, $_.FullName)
+                  $destination = Join-Path (Join-Path $backup $name) $relative
+                  New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+                  Move-Item -LiteralPath $_.FullName -Destination $destination
+                }
+              }
+          }
+      - name: Sign app binaries
+        uses: azure/artifact-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16 # v1.2.0
+        with:
+          cache-dependencies: false
+          endpoint: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ runner.temp }}\app
+          files-folder-filter: exe,node
+          files-folder-recurse: true
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: Sign portable binaries
+        uses: azure/artifact-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16 # v1.2.0
+        with:
+          cache-dependencies: false
+          endpoint: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ runner.temp }}\portable
+          files-folder-filter: exe,node
+          files-folder-recurse: true
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: Restore valid third-party signatures
+        shell: pwsh
+        run: |
+          $backup = Join-Path $env:RUNNER_TEMP 'third-party-signed'
+          foreach ($name in @('app', 'portable')) {
+            $saved = Join-Path $backup $name
+            if (!(Test-Path -LiteralPath $saved -PathType Container)) { continue }
+            $root = Join-Path $env:RUNNER_TEMP $name
+            Get-ChildItem -LiteralPath $saved -File -Recurse | ForEach-Object {
+              $relative = [IO.Path]::GetRelativePath($saved, $_.FullName)
+              $destination = Join-Path $root $relative
+              New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+              Move-Item -LiteralPath $_.FullName -Destination $destination
+            }
+          }
+      - name: Verify signed payloads and archive portable edition
+        shell: pwsh
+        run: |
+          foreach ($root in @((Join-Path $env:RUNNER_TEMP 'app'), (Join-Path $env:RUNNER_TEMP 'portable'))) {
+            $files = Get-ChildItem -LiteralPath $root -File -Recurse |
+              Where-Object { $_.Extension -in @('.exe', '.node') }
+            if (!$files) { throw "No signed Windows binaries found in $root" }
+            foreach ($file in $files) {
+              $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+              $mustUseReleasePublisher = $file.Extension -eq '.node' -or $file.Name -in @('AccessCode.exe', 'opencode-cli.exe')
+              if ($signature.Status -ne 'Valid' -or
+                ($mustUseReleasePublisher -and $signature.SignerCertificate.Subject -ne $env:ACCESSCODE_WINDOWS_UPDATE_PUBLISHER)) {
+                throw "Invalid or unexpected Authenticode signature: $($file.FullName)"
+              }
+            }
+          }
+          Compress-Archive -Path (Join-Path $env:RUNNER_TEMP 'portable\*') `
+            -DestinationPath (Join-Path $env:RUNNER_TEMP "accesscode-portable-$env:GITHUB_RUN_ID.zip") `
+            -CompressionLevel Optimal
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-app-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/app
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: accesscode-portable-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/accesscode-portable-${{ github.run_id }}.zip
+          if-no-files-found: error
+
+  build-installer:
+    needs: sign-app
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - desktop: windows-x64
+            install: ""
+          - desktop: windows-arm64
+            install: --cpu=*
+    env:
+      OPENCODE_CHANNEL: latest
+      OPENCODE_VERSION: ${{ inputs.version }}
+      OPENCODE_TARGET: ${{ matrix.desktop }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-bun
+        with:
+          install-flags: ${{ matrix.install }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signed-app-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/app
+      - name: Locate Inno Setup
+        shell: pwsh
+        run: |
+          $candidates = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\ISCC.exe')
+          )
+          $compiler = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          if (!$compiler) { throw 'Inno Setup 6.7.4 or newer was not found on the Windows runner.' }
+          "ISCC=$compiler" >> $env:GITHUB_ENV
+      - name: Pack signed app into Inno Setup installer
+        run: bun run --cwd packages/desktop pack
+        env:
+          OPENCODE_DESKTOP_APP: ${{ runner.temp }}/app
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-installer-${{ matrix.desktop }}
+          path: dist/desktop/*.exe
+          if-no-files-found: error
+
+  sign-installer:
+    needs: build-installer
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    environment: accesscode-release
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: [windows-x64, windows-arm64]
+    env:
+      ACCESSCODE_WINDOWS_UPDATE_PUBLISHER: ${{ vars.ACCESSCODE_WINDOWS_UPDATE_PUBLISHER }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: build-installer-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/installer
+      - name: Log in to Azure
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign installer
+        uses: azure/artifact-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16 # v1.2.0
+        with:
+          cache-dependencies: false
+          endpoint: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ runner.temp }}\installer
+          files-folder-filter: exe
+          files-folder-recurse: true
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: Verify signed installer
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'installer') -Filter '*.exe' -File -Recurse
+          if (!$files) { throw 'No Inno Setup installer was produced.' }
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -ne $env:ACCESSCODE_WINDOWS_UPDATE_PUBLISHER) {
+              throw "Invalid or unexpected Authenticode signature: $($file.FullName)"
+            }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: accesscode-installer-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/installer/*.exe
+          if-no-files-found: error

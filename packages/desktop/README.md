@@ -72,13 +72,21 @@ try {
 The resulting installer is `dist\desktop\accesscode-desktop-win-x64.exe`. The temporary staged copy can be
 removed after packaging. This procedure does not sign or publish the installer.
 
-For an update-enabled production release, use `OPENCODE_CHANNEL=latest` and set
-`ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` to the exact Authenticode signer subject before packing the unpacked app.
-Build x64 and ARM64, sign their unpacked payloads, then compile and sign both final Inno installers. From the
-repository root in PowerShell 7, run `.github\release\write-accesscode-windows-feed.ps1` with the installer
-directory, stable version and signing subject. Publish the two signed installers and `latest.yml` together as
-assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases). Do not
-publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
+The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
+portable editions for x64 and ARM64. These are for testing, not public release.
+
+For a stable public-release candidate, merge the stable version to `main`, then run the
+[Windows release-candidate workflow](../../.github/workflows/accesscode-windows-release.yml) from `main` with that
+version. The workflow signs the app payload before compiling each Inno Setup installer, preserves valid third-party
+signatures, signs each installer, and uploads signed x64/ARM64 installer and portable artifacts. It does not publish
+a GitHub release or update feed.
+Configure its Azure OpenID connection and `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` variable as described below before
+running it.
+
+To publish automatic updates, run `.github\release\write-accesscode-windows-feed.ps1` with the signed installer
+directory, stable version and signing subject. Publish both signed installers and the generated `latest.yml`
+together as assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
+Do not publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
 
 #### Sign Windows builds with Azure Artifact Signing
 
@@ -86,6 +94,22 @@ The Windows machine used for Quill can reuse its Azure Artifact Signing
 (formerly Trusted Signing) setup for an approved Access Code build. This
 produces an embedded Authenticode signature, not a detached provenance
 signature. Azure holds the private key; no local PFX is needed.
+
+For the GitHub release-candidate workflow, configure these variables in the
+`accesscode-release` GitHub Actions environment:
+
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` for a service
+  principal with a federated credential whose subject is
+  `repo:Community-Access/access-code:environment:accesscode-release`.
+- `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT_NAME` and
+  `AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE` for the approved signing profile.
+- Set the non-secret `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` repository variable
+  to the exact Authenticode subject from that profile.
+
+Grant the federated identity the **Artifact Signing Certificate Profile Signer**
+role on the certificate profile. The workflow uses the protected
+`accesscode-release` environment for signing approvals. Never commit Azure
+credentials, certificates or private keys.
 
 1. Use a Windows SDK with `signtool.exe`, the approved Azure signing account
    and certificate profile, and an Azure identity with the **Artifact Signing
