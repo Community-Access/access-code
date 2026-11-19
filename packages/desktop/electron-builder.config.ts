@@ -213,7 +213,7 @@ export function getConfig() {
         productName: "AccessCode Dev",
         publish: {
           provider: "generic",
-          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
+          url: "https://github.com/Community-Access/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [...previewCompressionFpm("deb"), metainfoFpm(appId)] },
@@ -232,7 +232,7 @@ export function getConfig() {
         protocols: { name: "AccessCode Beta", schemes: ["opencode"] },
         publish: {
           provider: "generic",
-          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
+          url: "https://github.com/Community-Access/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [...previewCompressionFpm("deb"), metainfoFpm(appId)] },
@@ -256,7 +256,7 @@ export function getConfig() {
         dmg: { icon: "resources/icons/icon.icns" },
         publish: {
           provider: "generic",
-          url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
+          url: "https://github.com/Community-Access/access-code/releases/latest/download/",
           channel: "latest",
         },
         deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },

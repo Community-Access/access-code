@@ -52,7 +52,7 @@ test.each(channels)("channel identity for $channel", ({ channel, appId }) => {
   expect(config.appId).toBe(appId)
   // AccessCode: every channel points at the fork's own releases, never OpenCode's update feed.
   expect(config.publish).toMatchObject({
-    url: "https://github.com/taylorarndt/access-code/releases/latest/download/",
+    url: "https://github.com/Community-Access/access-code/releases/latest/download/",
   })
   expect(config.extraMetadata?.desktopName).toBe(`${appId}.desktop`)
   // The executable must never end in `.desktop`: libappimage resolves the

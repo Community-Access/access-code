@@ -26,7 +26,7 @@ async function windowsPublisher() {
   const config = JSON.parse(contents)
   return (
     config.provider === "generic" &&
-    config.url === "https://github.com/taylorarndt/access-code/releases/latest/download/" &&
+    config.url === "https://github.com/Community-Access/access-code/releases/latest/download/" &&
     Array.isArray(config.publisherName) &&
     config.publisherName.length === 1 &&
     typeof config.publisherName[0] === "string" &&

@@ -38,7 +38,7 @@ permissions:
 jobs:
   # Until the signing secrets are added, pushes skip the build instead of failing.
   ready:
-    if: github.repository == 'taylorarndt/access-code'
+    if: github.repository == 'Community-Access/access-code'
     runs-on: ubuntu-latest
     outputs:
       signing: ${{ steps.check.outputs.signing }}

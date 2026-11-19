@@ -409,7 +409,7 @@ describe("MCP OAuth", () => {
       expect(registrations).toHaveLength(1)
       expect(registrations[0]).toMatchObject({
         client_name: "AccessCode",
-        client_uri: "https://github.com/taylorarndt/access-code",
+        client_uri: "https://github.com/Community-Access/access-code",
       })
     })
 

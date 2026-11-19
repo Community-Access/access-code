@@ -77,7 +77,7 @@ For an update-enabled production release, use `OPENCODE_CHANNEL=latest` and set
 Build x64 and ARM64, sign their unpacked payloads, then compile and sign both final Inno installers. From the
 repository root in PowerShell 7, run `.github\release\write-accesscode-windows-feed.ps1` with the installer
 directory, stable version and signing subject. Publish the two signed installers and `latest.yml` together as
-assets of the latest [AccessCode GitHub release](https://github.com/taylorarndt/access-code/releases). Do not
+assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases). Do not
 publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
 
 #### Sign Windows builds with Azure Artifact Signing

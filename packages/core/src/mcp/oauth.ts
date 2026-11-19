@@ -168,7 +168,7 @@ const provider = (options: Options): OAuthClientProvider => {
       redirect_uris: redirect.registered,
       // AccessCode: sign-in pages show this name, so people approve AccessCode, not OpenCode.
       client_name: CLIENT_NAME,
-      client_uri: "https://github.com/taylorarndt/access-code",
+      client_uri: "https://github.com/Community-Access/access-code",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       token_endpoint_auth_method: client?.client_secret ? "client_secret_post" : "none",

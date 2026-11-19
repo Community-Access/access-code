@@ -6,7 +6,7 @@ You chat with an AI model, and it reads, writes and runs code in your projects. 
 
 ## Download
 
-Get the latest version from the [Releases page](https://github.com/taylorarndt/access-code/releases). Download **AccessCode-mac-arm64.dmg**, open it, and drag AccessCode to Applications.
+Get the latest version from the [Releases page](https://github.com/Community-Access/access-code/releases). Download **AccessCode-mac-arm64.dmg**, open it, and drag AccessCode to Applications.
 
 - Needs a Mac with Apple silicon.
 - Signed and notarized by Apple.
@@ -82,6 +82,6 @@ AccessCode is not built by the OpenCode team and is not affiliated with them.
 
 ## Feedback and contributing
 
-Found something that does not work with your screen reader? [Open an issue](https://github.com/taylorarndt/access-code/issues). Pull requests are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
+Found something that does not work with your screen reader? [Open an issue](https://github.com/Community-Access/access-code/issues). Pull requests are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
 
 AccessCode is made by Taylor Arndt.
