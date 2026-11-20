@@ -14,7 +14,7 @@ bun dev
 
 `bun run build` prepares `resources/` (icons, metainfo and the bundled CLI) and builds the app into `out/`.
 `bun run pack` then packages it, unsigned, into `dist/desktop/` at the repository root: a `.app` tarball on macOS,
-the unpacked app on Windows, and AppImage/deb/rpm on Linux. The release workflow signs and notarizes afterwards.
+the unpacked app on Windows, and AppImage/deb/rpm on Linux. Mac release builds are signed and notarized in CI. Windows releases are signed manually.
 
 ```bash
 bun run build && bun run pack
@@ -75,13 +75,16 @@ removed after packaging. This procedure does not sign or publish the installer.
 The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
 portable editions for x64 and ARM64. These are for testing, not public release.
 
-For a stable public-release candidate, merge the stable version to `main`, then run the
-[Windows release-candidate workflow](../../.github/workflows/accesscode-windows-release.yml) from `main` with that
-version. The workflow signs the app payload before compiling each Inno Setup installer, preserves valid third-party
-signatures, signs each installer, and uploads signed x64/ARM64 installer and portable artifacts. It does not publish
-a GitHub release or update feed.
-Configure its Azure OpenID connection and `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` variable as described below before
-running it.
+For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
+from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with
+the maintainer. The workflow builds x64 and ARM64 and uploads an unpacked app and a portable folder for each.
+
+On the signing machine, check out the same commit and download the four unsigned stable payloads. For each
+architecture, manually sign the release-owned binaries in both folders and verify their signatures and publisher.
+Preserve and verify the expected third-party signatures. Archive the signed portable folder with its marker intact.
+Set `OPENCODE_CHANNEL=latest`, the matching `OPENCODE_VERSION` and `OPENCODE_TARGET`, and point `OPENCODE_DESKTOP_APP`
+at the signed unpacked app. Run the Inno packaging command above, then sign and verify the resulting installer.
+Stage each installer outside `dist/desktop` before packing the next architecture, since packing clears that directory.
 
 To publish automatic updates, run `.github\release\write-accesscode-windows-feed.ps1` with the signed installer
 directory, stable version and signing subject. Publish both signed installers and the generated `latest.yml`
@@ -94,22 +97,6 @@ The Windows machine used for Quill can reuse its Azure Artifact Signing
 (formerly Trusted Signing) setup for an approved Access Code build. This
 produces an embedded Authenticode signature, not a detached provenance
 signature. Azure holds the private key; no local PFX is needed.
-
-For the GitHub release-candidate workflow, configure these variables in the
-`accesscode-release` GitHub Actions environment:
-
-- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` for a service
-  principal with a federated credential whose subject is
-  `repo:Community-Access/access-code:environment:accesscode-release`.
-- `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT_NAME` and
-  `AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE` for the approved signing profile.
-- Set the non-secret `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` repository variable
-  to the exact Authenticode subject from that profile.
-
-Grant the federated identity the **Artifact Signing Certificate Profile Signer**
-role on the certificate profile. The workflow uses the protected
-`accesscode-release` environment for signing approvals. Never commit Azure
-credentials, certificates or private keys.
 
 1. Use a Windows SDK with `signtool.exe`, the approved Azure signing account
    and certificate profile, and an Azure identity with the **Artifact Signing
