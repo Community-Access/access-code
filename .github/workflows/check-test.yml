@@ -85,7 +85,8 @@ jobs:
       matrix:
         # Pull requests run Linux only; Windows runs the same tests on pushes, nightly runs and the release gate.
         settings: ${{ fromJSON(github.event_name == 'pull_request' && '[{"name":"linux","host":"blacksmith-4vcpu-ubuntu-2404"}]' || '[{"name":"linux","host":"blacksmith-4vcpu-ubuntu-2404"},{"name":"windows","host":"blacksmith-4vcpu-windows-2025"}]') }}
-    runs-on: ${{ matrix.settings.host }}
+    # Access Code uses GitHub-hosted Linux runners for its pull requests.
+    runs-on: ${{ github.repository == 'Community-Access/access-code' && github.event_name == 'pull_request' && 'ubuntu-24.04' || matrix.settings.host }}
     defaults:
       run:
         shell: bash
@@ -117,6 +118,10 @@ jobs:
         run: |
           git config --global user.email "bot@opencode.ai"
           git config --global user.name "opencode"
+
+      - name: Install ripgrep for offline search tests
+        if: runner.os == 'Linux' && github.repository == 'Community-Access/access-code' && github.event_name == 'pull_request'
+        run: sudo apt-get update -qq && sudo apt-get install -y ripgrep
 
       - name: Run unit tests
         timeout-minutes: 20

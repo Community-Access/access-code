@@ -57,11 +57,19 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $env:ISCC = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
           Move-Item dist\desktop\app $env:RUNNER_TEMP
+          bun run --cwd packages\desktop pack --portable
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Move-Item "dist\portable\AccessCode-$env:OPENCODE_TARGET" (Join-Path $env:RUNNER_TEMP 'portable')
           $env:OPENCODE_DESKTOP_APP = Join-Path $env:RUNNER_TEMP 'app'
           bun run --cwd packages\desktop pack
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: accesscode-${{ matrix.desktop }}
+          name: accesscode-installer-${{ matrix.desktop }}
           path: dist/desktop/*.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: accesscode-portable-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/portable
           if-no-files-found: error

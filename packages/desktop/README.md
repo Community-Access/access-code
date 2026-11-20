@@ -14,7 +14,7 @@ bun dev
 
 `bun run build` prepares `resources/` (icons, metainfo and the bundled CLI) and builds the app into `out/`.
 `bun run pack` then packages it, unsigned, into `dist/desktop/` at the repository root: a `.app` tarball on macOS,
-the unpacked app on Windows, and AppImage/deb/rpm on Linux. The release workflow signs and notarizes afterwards.
+the unpacked app on Windows, and AppImage/deb/rpm on Linux. Mac release builds are signed and notarized in CI. Windows releases are signed manually.
 
 ```bash
 bun run build && bun run pack
@@ -72,13 +72,24 @@ try {
 The resulting installer is `dist\desktop\accesscode-desktop-win-x64.exe`. The temporary staged copy can be
 removed after packaging. This procedure does not sign or publish the installer.
 
-For an update-enabled production release, use `OPENCODE_CHANNEL=latest` and set
-`ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` to the exact Authenticode signer subject before packing the unpacked app.
-Build x64 and ARM64, sign their unpacked payloads, then compile and sign both final Inno installers. From the
-repository root in PowerShell 7, run `.github\release\write-accesscode-windows-feed.ps1` with the installer
-directory, stable version and signing subject. Publish the two signed installers and `latest.yml` together as
-assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases). Do not
-publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
+The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
+portable editions for x64 and ARM64. These are for testing, not public release.
+
+For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
+from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with
+the maintainer. The workflow builds x64 and ARM64 and uploads an unpacked app and a portable folder for each.
+
+On the signing machine, check out the same commit and download the four unsigned stable payloads. For each
+architecture, manually sign the release-owned binaries in both folders and verify their signatures and publisher.
+Preserve and verify the expected third-party signatures. Archive the signed portable folder with its marker intact.
+Set `OPENCODE_CHANNEL=latest`, the matching `OPENCODE_VERSION` and `OPENCODE_TARGET`, and point `OPENCODE_DESKTOP_APP`
+at the signed unpacked app. Run the Inno packaging command above, then sign and verify the resulting installer.
+Stage each installer outside `dist/desktop` before packing the next architecture, since packing clears that directory.
+
+To publish automatic updates, run `.github\release\write-accesscode-windows-feed.ps1` with the signed installer
+directory, stable version and signing subject. Publish both signed installers and the generated `latest.yml`
+together as assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
+Do not publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
 
 #### Sign Windows builds with Azure Artifact Signing
 

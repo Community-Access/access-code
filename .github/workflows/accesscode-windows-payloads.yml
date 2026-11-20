@@ -1,0 +1,89 @@
+name: Build unsigned AccessCode Windows release payloads
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version from package.json (for example, 2.3.2)
+        required: true
+        type: string
+
+      publisher:
+        description: Exact Authenticode subject for the manually signed Windows update
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accesscode-windows-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build-app:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - desktop: windows-x64
+            cli: windows-x64-baseline
+            install: ""
+          - desktop: windows-arm64
+            cli: windows-arm64
+            install: --cpu=*
+    env:
+      OPENCODE_CHANNEL: latest
+      OPENCODE_VERSION: ${{ inputs.version }}
+      ACCESSCODE_WINDOWS_UPDATE_PUBLISHER: ${{ inputs.publisher }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-bun
+        with:
+          install-flags: ${{ matrix.install }}
+      - name: Validate stable version and publisher
+        shell: pwsh
+        run: |
+          $version = $env:OPENCODE_VERSION
+          $manifestVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $version -ne $manifestVersion) {
+            throw "Release candidate version must be the stable package.json version ($manifestVersion)."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:ACCESSCODE_WINDOWS_UPDATE_PUBLISHER)) {
+            throw "Enter the approved Authenticode subject as the publisher input."
+          }
+      - name: Build bundled CLI
+        run: bun run --cwd packages/cli build --skip-install
+        env:
+          OPENCODE_TARGET: ${{ matrix.cli }}
+      - name: Build desktop
+        run: bun run --cwd packages/desktop build
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+      - name: Pack unpacked app
+        run: bun run --cwd packages/desktop pack
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+      - name: Stage app and pack portable edition
+        shell: pwsh
+        env:
+          OPENCODE_TARGET: ${{ matrix.desktop }}
+        run: |
+          Move-Item dist\desktop\app (Join-Path $env:RUNNER_TEMP 'app')
+          bun run --cwd packages\desktop pack --portable
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Move-Item "dist\portable\AccessCode-$env:OPENCODE_TARGET" (Join-Path $env:RUNNER_TEMP 'portable')
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-stable-app-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/app
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-stable-portable-${{ matrix.desktop }}
+          path: ${{ runner.temp }}/portable
+          if-no-files-found: error
