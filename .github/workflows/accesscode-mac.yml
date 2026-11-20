@@ -1,8 +1,9 @@
 # AccessCode Mac releases.
 #
-# - Every push to main builds a signed, notarized beta and publishes it as a GitHub prerelease
+# - Releases only run by hand. Pushes to main never publish anything.
+# - Running this workflow with "beta" publishes a signed, notarized beta as a GitHub prerelease
 #   (AccessCode Beta, its own app next to the stable one).
-# - Running this workflow by hand with "stable" publishes a stable release. The accesscode-release environment
+# - Running it with "stable" publishes a stable release. The accesscode-release environment
 #   limits who can approve that run to Taylor, Jeff and repo admins.
 #
 # Repository secrets:
@@ -15,28 +16,23 @@
 name: AccessCode Mac
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**.md"
-      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
     inputs:
       channel:
         description: "beta or stable"
         type: choice
-        options: [stable, beta]
-        default: stable
+        options: [beta, stable]
+        default: beta
 
 concurrency:
-  group: accesscode-mac-${{ github.event_name == 'push' && 'beta' || inputs.channel }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  group: accesscode-mac-${{ inputs.channel }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  # Until the signing secrets are added, pushes skip the build instead of failing.
+  # Until the signing secrets are added, runs skip the build instead of failing.
   ready:
     if: github.repository == 'Community-Access/access-code'
     runs-on: ubuntu-latest
@@ -58,9 +54,9 @@ jobs:
     if: needs.ready.outputs.signing == 'true'
     runs-on: macos-15
     timeout-minutes: 120
-    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.channel == 'stable') && 'accesscode-release' || 'accesscode-beta' }}
+    environment: ${{ inputs.channel == 'stable' && 'accesscode-release' || 'accesscode-beta' }}
     env:
-      STABLE: ${{ github.event_name == 'workflow_dispatch' && inputs.channel == 'stable' }}
+      STABLE: ${{ inputs.channel == 'stable' }}
       OPENCODE_TARGET: darwin-arm64
     steps:
       - name: Check out
