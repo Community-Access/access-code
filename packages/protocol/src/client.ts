@@ -77,6 +77,15 @@ export const clientNamespace = (endpoint: { readonly path: string }) =>
 // The client paths that shipped before experimental methods moved under `client.experimental`. Each keeps a
 // deprecated alias until the next minor. Frozen: endpoints added since never had another path.
 export const deprecatedClientPaths = new Set([
+  "config.extensionPaths",
+  "config.mcpDocker",
+  "config.mcpPopular",
+  "config.mcpRegistry",
+  "config.mcpSignIn",
+  "config.skillInstall",
+  "config.skillRemove",
+  "config.skillSearch",
+  "config.tools",
   "config.update",
   "file.unwatch",
   "file.watch",
