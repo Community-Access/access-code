@@ -1,16 +1,19 @@
 import { Button } from "@opencode/ui/button"
 import { useDialog } from "@opencode/ui/context/dialog"
-import { createSignal, onMount, Show } from "solid-js"
+import { createSignal, onCleanup, onMount, Show } from "solid-js"
+import type { ComposerModel } from "@/composer/model"
 import type { LocalVoice } from "@/runtime/platform/platform"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useLanguage } from "@/runtime/i18n/language"
 import { announce } from "@/session/announce"
+import { useCommand } from "@/shell/commands/command"
+import { insert, voiceMode } from "./mode"
 import { startRecorder, type Recorder } from "./recorder"
 import { DialogVoiceSetup } from "./setup"
 import { useLocalVoiceSettings } from "./settings"
 
 /** On-device voice controls for the composer: Dictate first, then Start Voice Mode. Hidden where unsupported. */
-export function LocalVoiceActions() {
+export function LocalVoiceActions(props: { controller: ComposerModel }) {
   const platform = usePlatform()
   const [supported, setSupported] = createSignal(false)
 
@@ -19,15 +22,21 @@ export function LocalVoiceActions() {
   })
 
   return (
-    <Show when={supported() && platform.voice}>{(voice) => <DictateButton voice={voice()} />}</Show>
+    <Show when={supported() && platform.voice}>
+      {(voice) => (
+        <>
+          <DictateButton voice={voice()} />
+          <VoiceModeButton voice={voice()} controller={props.controller} />
+        </>
+      )}
+    </Show>
   )
 }
 
 function DictateButton(props: { voice: LocalVoice }) {
   const platform = usePlatform()
   const language = useLanguage()
-  const dialog = useDialog()
-  const local = useLocalVoiceSettings()
+  const setup = useSetup(props.voice)
   const [listening, setListening] = createSignal(false)
   const session: { recorder?: Recorder; queue: Promise<void>; parts: string[] } = { queue: Promise.resolve(), parts: [] }
   let button!: HTMLButtonElement
@@ -64,20 +73,7 @@ function DictateButton(props: { voice: LocalVoice }) {
     announce(language.t("voice.local.dictate.stopped"))
   }
 
-  const toggle = async () => {
-    if (listening()) return stop()
-    const status = await props.voice.status()
-
-    if (status.installed) return start()
-    dialog.show(() => (
-      <DialogVoiceSetup
-        voice={props.voice}
-        current={local.settings.voice}
-        onVoice={(voice) => local.setSettings("voice", voice)}
-        onReady={() => void start()}
-      />
-    ))
-  }
+  onCleanup(() => session.recorder?.stop())
 
   return (
     <Button
@@ -88,27 +84,80 @@ function DictateButton(props: { voice: LocalVoice }) {
       class="me-1"
       data-action="composer-dictate"
       title={language.t("voice.local.dictate.hint")}
-      onClick={() => void toggle()}
+      disabled={voiceMode.active()}
+      onClick={() => void (listening() ? stop() : setup(start))}
     >
       {listening() ? language.t("voice.local.dictate.stop") : language.t("voice.local.dictate")}
     </Button>
   )
 }
 
-// Types the text into the composer as if it were typed, so drafts, history, and undo all see it.
-function insert(from: HTMLElement, text: string) {
-  const editor = from.closest("form")?.querySelector<HTMLElement>('[data-component="composer-editor"]')
+/** Starts and ends Voice Mode (see mode.ts) and gives it this composer while mounted. */
+function VoiceModeButton(props: { voice: LocalVoice; controller: ComposerModel }) {
+  const platform = usePlatform()
+  const language = useLanguage()
+  const command = useCommand()
+  const setup = useSetup(props.voice)
+  const local = useLocalVoiceSettings()
+  let button!: HTMLButtonElement
 
-  if (!editor) return
-  editor.focus()
-  const selection = window.getSelection()
+  const toggle = () =>
+    voiceMode.active()
+      ? voiceMode.end()
+      : setup(() => voiceMode.start({ voice: props.voice, platform, language, settings: () => local.settings }))
 
-  if (selection && !editor.contains(selection.anchorNode)) {
-    selection.selectAllChildren(editor)
-    selection.collapseToEnd()
+  command.register("voice-mode", () => [
+    {
+      id: "voice.mode.toggle",
+      title: voiceMode.active() ? language.t("voice.local.mode.stop") : language.t("voice.local.mode"),
+      category: language.t("command.category.session"),
+      keybind: "mod+alt+v",
+      onSelect: () => void toggle(),
+    },
+    {
+      id: "voice.mode.stopSpeaking",
+      title: language.t("voice.local.mode.stopSpeaking"),
+      category: language.t("command.category.session"),
+      keybind: "mod+alt+s",
+      disabled: !voiceMode.active(),
+      onSelect: voiceMode.stopSpeaking,
+    },
+  ])
+
+  onMount(() => onCleanup(voiceMode.bind(props.controller, button)))
+
+  return (
+    <Button
+      ref={button}
+      type="button"
+      size="small"
+      variant="ghost"
+      class="me-1"
+      data-action="composer-voice-mode"
+      title={language.t("voice.local.mode.hint")}
+      onClick={() => void toggle()}
+    >
+      {voiceMode.active() ? language.t("voice.local.mode.stop") : language.t("voice.local.mode")}
+    </Button>
+  )
+}
+
+/** Runs `then` once the voice model is installed, showing the first-run setup screen when it is not. */
+function useSetup(voice: LocalVoice) {
+  const dialog = useDialog()
+  const local = useLocalVoiceSettings()
+
+  return async (then: () => Promise<void> | void) => {
+    const status = await voice.status()
+
+    if (status.installed) return then()
+    dialog.show(() => (
+      <DialogVoiceSetup
+        voice={voice}
+        current={local.settings.voice}
+        onVoice={(name) => local.setSettings("voice", name)}
+        onReady={() => void then()}
+      />
+    ))
   }
-
-  const before = editor.textContent ?? ""
-  const spacer = before && !/\s$/.test(before) ? " " : ""
-  document.execCommand("insertText", false, spacer + text)
 }

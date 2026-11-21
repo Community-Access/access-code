@@ -72,7 +72,7 @@ export function Composer(props: {
         queueFirstLabel={language.t("session.queue.first")}
         exitShellKeybind={[formatKeybind("esc", language.t)]}
         suggestionBoundary={props.suggestionBoundary}
-        voiceActions={<LocalVoiceActions />}
+        voiceActions={<LocalVoiceActions controller={props.model} />}
         modelControl={
           <ComposerModelControl
             loading={props.model.model.loading}

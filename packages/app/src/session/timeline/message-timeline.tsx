@@ -41,6 +41,7 @@ import { SessionHeaderSpacer } from "@/session/header/session-header"
 import { SessionHeaderGap } from "@/session/header/drag-area"
 import { SessionWorkingIndicator } from "@/session/header/session-working-indicator"
 import { announceCompletedReply } from "@/session/announce"
+import { voiceMode } from "@/voice/local/mode"
 import { watchReplyAnnouncement } from "./reply-announcement"
 
 type BlockingTask = { type: "shell"; partID: string; id?: string; label?: string; started: number }
@@ -508,11 +509,14 @@ function MessageTimelineView(
     idle: () => sessionStatus().type === "idle",
     turn: projection.activeMessageID,
     replies: (turn) => projection.assistantMessagesByParent().get(turn) ?? [],
-    announce: (text) =>
+    announce: (text, markdown) => {
+      // Voice Mode speaks the reply itself, so the screen reader does not read it over the voice.
+      if (voiceMode.active()) return voiceMode.reply(markdown)
       announceCompletedReply(settings.general.replyAnnouncement(), {
         ready: () => language.t("notification.session.responseReady.title"),
         full: () => language.t("session.timeline.reply", { text }),
-      }),
+      })
+    },
   })
 
   // Undelivered input waits below the work the model has seen, so live status moves into the row above it.

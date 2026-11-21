@@ -7,7 +7,8 @@ export function watchReplyAnnouncement(input: {
   idle: Accessor<boolean>
   turn: Accessor<string | undefined>
   replies: (turn: string) => readonly SessionMessageAssistant[]
-  announce: (text: string) => void
+  /** Plain text for a screen reader, and the reply's markdown for Voice Mode, which drops code before speaking. */
+  announce: (text: string, markdown: string) => void
 }) {
   let sessionID: string | undefined
   let pending: string | undefined
@@ -37,15 +38,16 @@ export function watchReplyAnnouncement(input: {
       pending = undefined
       return
     }
-    const text = plainText(reply.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"))
+    const markdown = reply.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n")
+    const text = plainText(markdown)
     if (!text) return
     pending = undefined
     last = reply.id
-    input.announce(text)
+    input.announce(text, markdown)
   })
 }
 
-function plainText(text: string) {
+export function plainText(text: string) {
   return text
     .replace(/```[^\n]*\n?/g, "")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
