@@ -24,9 +24,9 @@ jobs:
             echo "accesscode_contributors<<EOF"
             git log --no-merges HEAD ^upstream/dev --format='%aN' | grep -v '\[bot\]' | sort | uniq -c | sort -rn
             echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          } >> "$GITHUB_ENV"
       - name: Refresh README sections
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const repo = { owner: context.repo.owner, repo: context.repo.repo }
@@ -37,7 +37,7 @@ jobs:
 
             const releases = []
             for (let page = 1; ; page++) {
-              const res = await github.rest.releases.list({ ...repo, per_page: 100, page })
+              const res = await github.rest.repos.listReleases({ ...repo, per_page: 100, page })
               releases.push(...res.data)
               if (res.data.length < 100) break
             }
