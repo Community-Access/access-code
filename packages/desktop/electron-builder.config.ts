@@ -107,6 +107,8 @@ const getBase = (appId: string): Configuration => {
         to: "",
         filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version"],
       },
+      // The local voice helper and its MLX resource bundles; build-voice.ts only produces them on Apple silicon.
+      { from: "resources/voice/", to: "voice", filter: ["**/*"] },
     ],
     afterPack: async (context) => {
       const arch = Arch[context.arch]

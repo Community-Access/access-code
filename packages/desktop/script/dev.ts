@@ -31,6 +31,9 @@ async function prepareDesktop() {
   ])
 
   if (process.platform === "darwin") process.env.ELECTRON_EXEC_PATH = await prepareDevElectron()
+  // The local voice helper takes minutes to build, so dev reuses it once built (bun script/build-voice.ts rebuilds).
+  if (!(await Bun.file(join(import.meta.dirname, "../resources/voice/accesscode-voice")).exists()))
+    await $`bun ./script/build-voice.ts`
 }
 
 function selectOptions(): DevOptions {

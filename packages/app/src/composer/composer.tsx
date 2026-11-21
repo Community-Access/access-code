@@ -8,6 +8,7 @@ import { Keybind } from "@opencode/ui/keybind"
 import { Slash } from "@opencode/ui/slash"
 import { Tooltip } from "@opencode/ui/tooltip"
 import { ComposerEditor } from "./editor/editor"
+import { LocalVoiceActions } from "@/voice/local/actions"
 import { DialogSelectModel, ModelSelectorDrawer } from "@/providers/models/select-dialog"
 import { DialogSelectModelUnpaid } from "@/providers/models/unpaid"
 import { formatKeybind, useCommand } from "@/shell/commands/command"
@@ -71,6 +72,7 @@ export function Composer(props: {
         queueFirstLabel={language.t("session.queue.first")}
         exitShellKeybind={[formatKeybind("esc", language.t)]}
         suggestionBoundary={props.suggestionBoundary}
+        voiceActions={<LocalVoiceActions />}
         modelControl={
           <ComposerModelControl
             loading={props.model.model.loading}

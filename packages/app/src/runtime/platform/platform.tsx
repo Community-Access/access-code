@@ -33,9 +33,31 @@ export type FatalRendererErrorLog = {
   os?: DesktopOS
 }
 
+export type LocalVoiceStatus = {
+  supported: boolean
+  installed: boolean
+  download: { received: number; total: number } | null
+  error: string | null
+}
+
+/** On-device speech for dictation and voice mode (desktop on Apple silicon only). */
+export type LocalVoice = {
+  status(): Promise<LocalVoiceStatus>
+  /** Starts the one-time model download; poll status() for progress. */
+  download(): Promise<void>
+  cancelDownload(): Promise<void>
+  remove(): Promise<void>
+  /** 16 kHz mono WAV in, recognized text out. */
+  transcribe(audio: ArrayBuffer): Promise<string>
+  /** Speech for one sentence as a WAV, or null when cancelled. */
+  speak(id: string, text: string, voice: string): Promise<ArrayBuffer | null>
+  cancel(id: string): Promise<void>
+}
+
 type PlatformBase = {
   requestMicrophone?(): Promise<boolean>
   setVoiceCallActive?(active: boolean): Promise<void>
+  voice?: LocalVoice
   /** App version */
   version?: string
 

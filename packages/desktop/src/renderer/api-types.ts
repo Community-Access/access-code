@@ -57,6 +57,18 @@ export type ElectronAPI = {
   getWindowFocused(): Promise<boolean>
   requestMicrophone(): Promise<boolean>
   setVoiceCallActive(active: boolean): Promise<void>
+  voiceStatus(): Promise<{
+    supported: boolean
+    installed: boolean
+    download: { received: number; total: number } | null
+    error: string | null
+  }>
+  voiceDownload(): Promise<void>
+  voiceCancelDownload(): Promise<void>
+  voiceRemove(): Promise<void>
+  voiceTranscribe(audio: ArrayBuffer): Promise<string>
+  voiceSpeak(id: string, text: string, voice: string): Promise<ArrayBuffer | null>
+  voiceCancel(id: string): Promise<void>
   getWindowFullscreen(): Promise<boolean>
   onWindowFullscreenChanged(cb: (fullscreen: boolean) => void): () => void
   setWindowFocus(): Promise<void>

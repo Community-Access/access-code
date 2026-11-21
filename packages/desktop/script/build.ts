@@ -26,6 +26,8 @@ await $`bun ./script/copy-icons.ts ${channel}`
 
 await $`bun ./script/copy-metainfo.ts ${channel}`
 
+await $`bun ./script/build-voice.ts`
+
 const built = await exists(path.join(cli, getCurrentCli().package.replace("@opencode/", "")))
 
 if (channel === "prod" && !built)

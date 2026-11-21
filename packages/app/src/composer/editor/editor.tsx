@@ -91,6 +91,8 @@ export type ComposerEditorProps = {
   borderUnderlay?: boolean
   class?: string
   modelControl?: JSX.Element
+  /** Voice controls shown before the send button, such as Dictate. */
+  voiceActions?: JSX.Element
   modelControlsVisible?: boolean
   attachKeybind?: string[]
   attachShortcut?: string
@@ -537,6 +539,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
           </div>
           <Show when={!touch()}>
             <div data-slot="composer-actions" class="flex shrink-0 items-center">
+              <Show when={mode() === "normal"}>{props.voiceActions}</Show>
               <Show when={mode() === "normal"}>
                 <ComposerEditorAlternateDelivery
                   controller={props.controller}
