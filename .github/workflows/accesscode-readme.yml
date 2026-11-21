@@ -1,0 +1,133 @@
+name: accesscode-readme
+
+on:
+  release:
+    types: [created, edited, published, unpublished, deleted]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: List AccessCode contributors
+        run: |
+          git remote add upstream https://github.com/anomalyco/opencode.git 2>/dev/null || git remote set-url upstream https://github.com/anomalyco/opencode.git
+          git fetch --no-tags upstream dev
+          {
+            echo "accesscode_contributors<<EOF"
+            git log --no-merges HEAD ^upstream/dev --format='%aN' | grep -v '\[bot\]' | sort | uniq -c | sort -rn
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Refresh README sections
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const repo = { owner: context.repo.owner, repo: context.repo.repo }
+            const dstart = "<!-- accesscode:downloads:start -->"
+            const dend = "<!-- accesscode:downloads:end -->"
+            const cstart = "<!-- accesscode:contributors:start -->"
+            const cend = "<!-- accesscode:contributors:end -->"
+
+            const releases = []
+            for (let page = 1; ; page++) {
+              const res = await github.rest.releases.list({ ...repo, per_page: 100, page })
+              releases.push(...res.data)
+              if (res.data.length < 100) break
+            }
+            const published = releases
+              .filter((release) => !release.draft)
+              .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
+
+            const platformOf = (name) => (/windows/i.test(name) ? "Windows" : /mac/i.test(name) ? "Mac" : null)
+
+            const assetLabel = (name) => {
+              const lower = name.toLowerCase()
+              const ext = lower.endsWith(".dmg") ? "dmg" : lower.endsWith(".zip") ? "zip" : lower.endsWith(".exe") ? "exe" : name
+              const bits = [
+                lower.includes("portable") ? "portable" : lower.includes("installer") ? "installer" : "",
+                /x64/.test(lower) ? "x64" : /arm64/.test(lower) ? "arm64" : "",
+              ].filter((bit) => bit !== "")
+              return bits.length ? ext + " (" + bits.join(" ") + ")" : ext
+            }
+
+            const platforms = { Mac: { stable: null, pre: null }, Windows: { stable: null, pre: null } }
+            for (const release of published) {
+              for (const platform of Object.keys(platforms)) {
+                const assets = (release.assets || []).filter((asset) => platformOf(asset.name) === platform)
+                if (!assets.length) continue
+                const bucket = release.prerelease ? "pre" : "stable"
+                if (platforms[platform][bucket]) continue
+                platforms[platform][bucket] = { release, assets }
+              }
+            }
+
+            const releaseLine = (entry) => {
+              const status = entry.release.prerelease ? "beta" : "latest"
+              const links = entry.assets.map((asset) => "[" + assetLabel(asset.name) + "](" + asset.browser_download_url + ")").join(" \u00b7 ")
+              return "- **" + entry.release.name + "** (" + status + "): " + links
+            }
+
+            const blocks = []
+            for (const platform of ["Mac", "Windows"]) {
+              const { stable, pre } = platforms[platform]
+              if (!stable && !pre) continue
+              const heading = platform === "Mac" ? "### Mac (Apple silicon)" : "### Windows (in testing)"
+              const lines = [heading, ""]
+              if (stable) lines.push(releaseLine(stable))
+              if (pre) lines.push(releaseLine(pre))
+              blocks.push(lines.join("\n"))
+            }
+            const downloads = blocks.join("\n\n")
+
+            const aliases = { "Taylor Arndt": "taylorarndt", "Jeff Bishop": "accesswatch" }
+            const names = (process.env.accesscode_contributors || "")
+              .split("\n")
+              .map((line) => line.match(/^\s*\d+\s+(.*)$/))
+              .filter((match) => match && match[1].trim() !== "")
+              .map((match) => match[1].trim())
+
+            const display = []
+            for (const name of names) {
+              const login = aliases[name] || name
+              let linked = name
+              try {
+                await github.rest.users.getByUsername({ username: login })
+                linked = "[" + name + "](https://github.com/" + login + ")"
+              } catch {
+                // not a GitHub account; list the plain name
+              }
+              display.push(linked)
+            }
+
+            let contributors
+            if (display.length === 1) contributors = "AccessCode is made by " + display[0] + "."
+            else contributors = "AccessCode is made by " + display[0] + ", with contributions from " + display.slice(1).join(", ").replace(/, ([^,]*)$/, " and $1") + "."
+            contributors += " Thank you!"
+
+            const replaceSection = (text, markerStart, markerEnd, body) => {
+              const i = text.indexOf(markerStart)
+              const j = text.indexOf(markerEnd)
+              if (i === -1 || j === -1 || j < i) throw new Error("README markers not found: " + markerStart)
+              return text.slice(0, i + markerStart.length) + "\n" + body + "\n" + text.slice(j)
+            }
+
+            const res = await github.rest.repos.getContent({ ...repo, path: "README.md", ref: "main" })
+            const current = Buffer.from(res.data.content, res.data.encoding).toString("utf8")
+
+            let next = current
+            next = replaceSection(next, dstart, dend, downloads)
+            next = replaceSection(next, cstart, cend, contributors)
+
+            if (next === current) {
+              core.info("README is already up to date")
+            } else {
+              await github.rest.repos.createOrUpdateContents({ ...repo, path: "README.md", content: next, sha: res.data.sha, branch: "main", message: "docs: refresh AccessCode downloads and contributors" })
+              core.info("README updated")
+            }
