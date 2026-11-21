@@ -1,0 +1,47 @@
+name: triage-windows-assign
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled]
+
+jobs:
+  assign-windows:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Route Windows issues to accesswatch
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const issue = context.payload.issue
+            const action = context.payload.action
+            const labelName = context.payload.label ? context.payload.label.name : ""
+            const hasWindows = (issue.labels || []).some((label) => label.name === "windows")
+
+            if (action === "opened" && /windows/i.test(issue.title) && !hasWindows) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ["windows"],
+              })
+            }
+
+            if (action === "labeled" && labelName === "windows") {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: ["accesswatch"],
+              })
+            }
+
+            if (action === "unlabeled" && labelName === "windows") {
+              await github.rest.issues.removeAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: ["accesswatch"],
+              })
+            }
