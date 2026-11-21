@@ -10,8 +10,6 @@ const startLevel = 0.000225
 
 const continueLevel = 0.000064
 
-const pauseMs = 800
-
 const leadInFrames = 5
 
 const maxMs = 30000
@@ -22,7 +20,11 @@ export type Recorder = {
   stop(): void
 }
 
-export async function startRecorder(onUtterance: (wav: ArrayBuffer) => void): Promise<Recorder> {
+/**
+ * `pauseMs` is the quiet that ends an utterance. Dictation keeps Perspective Chat's 800 ms because it joins every
+ * utterance anyway; Voice Mode sends each one, so it waits longer and people can pause mid-thought.
+ */
+export async function startRecorder(onUtterance: (wav: ArrayBuffer) => void, pauseMs = 800): Promise<Recorder> {
   const stream = await navigator.mediaDevices.getUserMedia({
     // Echo cancellation keeps the assistant's own speech from being heard as the user talking over it.
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },

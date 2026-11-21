@@ -2,6 +2,7 @@ import { createSignal } from "solid-js"
 import type { ComposerModel } from "@/composer/model"
 import type { useLanguage } from "@/runtime/i18n/language"
 import type { LocalVoice, usePlatform } from "@/runtime/platform/platform"
+import type { useServerSDK } from "@/runtime/server/client"
 import { announce } from "@/session/announce"
 import { plainText } from "@/session/timeline/reply-announcement"
 import { startRecorder, type Recorder } from "./recorder"
@@ -27,6 +28,9 @@ const state = {
   recorder: undefined as Recorder | undefined,
   queue: Promise.resolve(),
   composer: undefined as Composer | undefined,
+  // Words heard but not sent yet, kept while the user is still talking so a paused sentence goes as one message.
+  pending: [] as string[],
+  talking: false,
   waiting: [] as Array<(composer: Composer) => void>,
 }
 
@@ -50,7 +54,9 @@ export const voiceMode = {
     if (!allowed) return announce(options.language.t("voice.local.microphone.denied"), "assertive")
     state.options = options
     state.queue = Promise.resolve()
+    state.pending = []
     state.recorder = await startRecorder((wav) => {
+      state.talking = false
       state.queue = state.queue
         .then(() => options.voice.transcribe(wav))
         .then(heard)
@@ -58,8 +64,9 @@ export const voiceMode = {
           resume()
           announce(options.language.t("voice.local.failed", { error: String(error) }), "assertive")
         })
-    })
+    }, 1500)
     state.recorder.onSpeech(() => {
+      state.talking = true
       if (speaker.ids.length === 0) return
       speaker.held = true
       speaker.audio?.pause()
@@ -73,10 +80,12 @@ export const voiceMode = {
     const options = state.options
 
     if (!active() || !options) return
+    setActive(false)
     state.recorder?.stop()
     state.recorder = undefined
+    state.pending = []
+    state.talking = false
     stopSpeaking()
-    setActive(false)
     void options.platform.setVoiceCallActive?.(false)
     announce(options.language.t("voice.local.mode.stopped"))
   },
@@ -99,14 +108,20 @@ export const voiceMode = {
   },
 }
 
-async function heard(text: string) {
+async function heard(heardText: string) {
   const options = state.options
 
-  if (!text || !options) return resume()
+  if (heardText) state.pending.push(heardText)
+
+  if (!options || state.pending.length === 0) return resume()
+  stopSpeaking()
+
+  // The user started talking again while this was being understood, so the next utterance sends them together.
+  if (state.talking) return
+  const text = state.pending.splice(0).join(" ")
   const composer = await nextComposer()
 
-  if (!composer || !active()) return resume()
-  stopSpeaking()
+  if (!composer || !active()) return
   announce(options.language.t("voice.local.mode.heard", { text }))
 
   // An empty message box is filled directly, so screen reader focus stays where the user is reading. A draft
@@ -188,6 +203,40 @@ function play(wav: ArrayBuffer, speed: number) {
     // A clip that arrives while the user is talking waits until their words are understood.
     if (!speaker.held) void audio.play().catch(speaker.finish)
   })
+}
+
+// Model-facing guidance, not UI copy, so it stays English like other instructions the model reads.
+const guidance = [
+  "The user is talking with you through AccessCode Voice Mode.",
+  "Their messages are speech recognized on their Mac, so a word may be misheard: read for the intent behind it, and if a request is unclear or seems cut off, ask a short question instead of guessing.",
+  "Your reply is read aloud. Answer in a few short, plain sentences, as you would say them. No headings, tables, or lists unless asked, and ask at most one question at a time.",
+  "Do the work with tools as usual, then say briefly what you did. Put code in files, not in the reply.",
+].join(" ")
+
+const instructed = new Set<string>()
+
+/** Keeps the Voice Mode guidance on the shown session while Voice Mode is on, and takes it off afterwards. */
+export function syncVoiceGuidance(
+  api: ReturnType<typeof useServerSDK>["api"],
+  sessionID: string | undefined,
+  on: boolean,
+) {
+  // Turning Voice Mode off clears every session it was on, including ones the user switched away from.
+  if (!on) {
+    instructed.forEach((id) =>
+      void api.experimental.session.instructions.entry.remove({ sessionID: id, key: "voice-mode" }).catch(() => undefined),
+    )
+    instructed.clear()
+
+    return
+  }
+
+  if (sessionID && !instructed.has(sessionID)) {
+    instructed.add(sessionID)
+    void api.experimental.session.instructions.entry
+      .put({ sessionID, key: "voice-mode", value: guidance })
+      .catch(() => instructed.delete(sessionID))
+  }
 }
 
 /** The reply as short spoken sentences: code blocks are skipped and each line and sentence is spoken on its own. */

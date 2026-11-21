@@ -41,7 +41,8 @@ import { SessionHeaderSpacer } from "@/session/header/session-header"
 import { SessionHeaderGap } from "@/session/header/drag-area"
 import { SessionWorkingIndicator } from "@/session/header/session-working-indicator"
 import { announceCompletedReply } from "@/session/announce"
-import { voiceMode } from "@/voice/local/mode"
+import { syncVoiceGuidance, voiceMode } from "@/voice/local/mode"
+import { useServerSDK } from "@/runtime/server/client"
 import { watchReplyAnnouncement } from "./reply-announcement"
 
 type BlockingTask = { type: "shell"; partID: string; id?: string; label?: string; started: number }
@@ -501,6 +502,13 @@ function MessageTimelineView(
     const status = nextStatus() === "waitingShell" ? "working" : nextStatus()
 
     return status ? language.t(`session.timeline.status.${status}`) : ""
+  })
+
+  const serverSDK = useServerSDK()
+  // While Voice Mode is on, the model is told it is a spoken conversation, so it reads past misheard words and keeps
+  // replies short enough to listen to.
+  createEffect(() => {
+    if (props.active !== false) syncVoiceGuidance(serverSDK.api, sessionID(), voiceMode.active())
   })
 
   watchReplyAnnouncement({
