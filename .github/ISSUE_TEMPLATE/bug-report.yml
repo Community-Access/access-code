@@ -1,36 +1,21 @@
 name: Bug report
-description: Report an issue that should be fixed (avoid pasting giant AI generated summaries or your issue may be closed/ignored)
+description: Report something in AccessCode that is broken or hard to use
+labels: ["bug"]
 body:
   - type: textarea
     id: description
     attributes:
-      label: Description
-      description: Describe the bug you encountered
-      placeholder: What happened?
+      label: What happened
+      description: Describe the problem. Accessibility problems are bugs, so report anything your screen reader or other assistive technology has trouble with.
+      placeholder: What did you expect, and what happened instead?
     validations:
       required: true
-
-  - type: input
-    id: plugins
-    attributes:
-      label: Plugins
-      description: What plugins are you using?
-    validations:
-      required: false
-
-  - type: input
-    id: opencode-version
-    attributes:
-      label: OpenCode version
-      description: What version of OpenCode are you using?
-    validations:
-      required: false
 
   - type: textarea
     id: reproduce
     attributes:
       label: Steps to reproduce
-      description: How can we reproduce this issue?
+      description: How can we make it happen ourselves?
       placeholder: |
         1.
         2.
@@ -38,29 +23,46 @@ body:
     validations:
       required: false
 
-  - type: textarea
-    id: screenshot-or-link
+  - type: input
+    id: accesscode-version
     attributes:
-      label: Screenshot
-      description: Attach a screenshot or recording
-      placeholder: Drag and drop screenshot here
+      label: AccessCode version
+      description: Find it in Settings, About. For example 2.3.2-beta.6.
     validations:
       required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Computer
+      options:
+        - Mac
+        - Windows
+        - Linux
+    validations:
+      required: true
 
   - type: input
     id: os
     attributes:
-      label: Operating System
-      description: what OS are you using?
-      placeholder: e.g., macOS 26.0.1, Ubuntu 22.04, Windows 11
+      label: Operating system version
+      placeholder: For example macOS 27.3 or Windows 11 24H2
     validations:
       required: false
 
   - type: input
-    id: terminal
+    id: assistive-technology
     attributes:
-      label: Terminal
-      description: what terminal are you using?
-      placeholder: e.g., iTerm2, Ghostty, Alacritty, Windows Terminal
+      label: Screen reader or other assistive technology
+      description: Name and version, if you use one.
+      placeholder: For example VoiceOver, NVDA 2026.3, JAWS 2026, Voice Control, Full Keyboard Access
+    validations:
+      required: false
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots, recordings, or logs
+      description: Optional. Attach files or paste what your screen reader read.
     validations:
       required: false

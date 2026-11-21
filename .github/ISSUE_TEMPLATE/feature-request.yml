@@ -1,19 +1,19 @@
-name: 🚀 Feature Request
-description: Suggest an idea, feature, or enhancement
-title: "[FEATURE]:"
-
+name: Feature request
+description: Suggest an idea or improvement for AccessCode
+labels: ["enhancement"]
 body:
-  - type: checkboxes
-    id: verified
-    attributes:
-      label: Feature hasn't been suggested before.
-      options:
-        - label: I have verified this feature I'm about to request hasn't been suggested before.
-          required: true
-
   - type: textarea
+    id: request
     attributes:
-      label: Describe the enhancement you want to request
-      description: What do you want to change or add? What are the benefits of implementing this? Try to be detailed so we can understand your request better :)
+      label: What you would like
+      description: Describe the feature and how it would help you. Please search existing issues first.
     validations:
       required: true
+
+  - type: input
+    id: assistive-technology
+    attributes:
+      label: Screen reader or other assistive technology
+      description: Optional. What you use, if it matters for this request.
+    validations:
+      required: false
