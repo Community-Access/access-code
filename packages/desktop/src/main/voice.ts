@@ -65,6 +65,7 @@ let windowsSherpa: ReturnType<typeof createSherpaVoice> | undefined
 const activePacks = new Map<string, number>()
 const removingPacks = new Set<string>()
 const kokoro = "kokoro-int8-en-v1"
+const piper = "piper-libritts-en"
 const kokoroVoices = [
   "Alloy", "Aoede", "Bella", "Heart", "Jessica", "Kore", "Nicole", "Nova", "River", "Sarah", "Sky",
   "Adam", "Echo", "Eric", "Fenrir", "Liam", "Michael", "Onyx", "Puck", "Santa",
@@ -91,6 +92,7 @@ function sherpaVoice() {
     modelDir: (id) => path.join(app.getPath("userData"), "voice", "packs", id),
     phonemizer: {
       helperPath: path.join(resources, "misaki-worker.cjs"),
+      piperHelperPath: path.join(resources, "piper-worker.cjs"),
       modulePath: app.isPackaged
         ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "onnxruntime-node", "dist", "index.js")
         : createRequire(import.meta.url).resolve("onnxruntime-node"),
@@ -139,10 +141,16 @@ export async function voices() {
   if (process.platform !== "win32") return []
   const voices = await windowsVoice.voices()
   if (process.arch !== "x64") return voices
-  const installed = (await packManager().list()).some((pack) => pack.id === kokoro && pack.installed)
-  return installed
-    ? [...voices, ...kokoroVoices.map((name, index) => ({ id: `${kokoro}:${index}`, name: `Kokoro ${name} (US English)` }))]
-    : voices
+  const installed = await packManager().list()
+  return [
+    ...voices,
+    ...(installed.some((pack) => pack.id === kokoro && pack.installed)
+      ? kokoroVoices.map((name, index) => ({ id: `${kokoro}:${index}`, name: `Kokoro ${name} (US English)` }))
+      : []),
+    ...(installed.some((pack) => pack.id === piper && pack.installed)
+      ? Array.from({ length: 904 }, (_, index) => ({ id: `${piper}:${index}`, name: `Piper LibriTTS ${index + 1} (US English)` }))
+      : []),
+  ]
 }
 
 // Starts the download and returns at once; callers poll status() for progress.
@@ -200,15 +208,16 @@ export async function transcribe(wav: Uint8Array, recognizer?: string) {
 // Resolves to null when the request was cancelled, so a talked-over sentence never plays.
 export async function speak(id: string, text: string, voice: string) {
   if (process.platform === "win32") {
-    if (!voice.startsWith(`${kokoro}:`)) return windowsVoice.speak(id, text, voice)
-    if (removingPacks.has(kokoro)) throw new Error("The selected speech model is being removed")
-    activePacks.set(kokoro, (activePacks.get(kokoro) ?? 0) + 1)
+    const pack = voice.startsWith(`${kokoro}:`) ? kokoro : voice.startsWith(`${piper}:`) ? piper : undefined
+    if (!pack) return windowsVoice.speak(id, text, voice)
+    if (removingPacks.has(pack)) throw new Error("The selected speech model is being removed")
+    activePacks.set(pack, (activePacks.get(pack) ?? 0) + 1)
     try {
       return await sherpaVoice().speak(id, text, voice)
     } finally {
-      const count = activePacks.get(kokoro) ?? 1
-      if (count === 1) activePacks.delete(kokoro)
-      if (count > 1) activePacks.set(kokoro, count - 1)
+      const count = activePacks.get(pack) ?? 1
+      if (count === 1) activePacks.delete(pack)
+      if (count > 1) activePacks.set(pack, count - 1)
     }
   }
   const helper = await ready()

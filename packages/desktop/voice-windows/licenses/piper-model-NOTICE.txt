@@ -1,0 +1,49 @@
+The optional Piper LibriTTS high model was converted for sherpa-onnx:
+https://huggingface.co/csukuangfj/vits-piper-en_US-libritts-high/tree/b436d2684d7de5ded1112f173a742f5d47a40e89
+The original model card reports training from scratch on LibriTTS train-clean-360:
+https://huggingface.co/rhasspy/piper-voices/blob/375a0fe641dea077c2a47b4e9a056d6da521eed3/en/en_US/libritts/high/MODEL_CARD
+LibriTTS is prepared by Heiga Zen with assistance from Google Speech and
+Google Brain team members, and is distributed under CC BY 4.0:
+https://www.openslr.org/60/
+https://creativecommons.org/licenses/by/4.0/
+Zen et al., "LibriTTS: A Corpus Derived from LibriSpeech for Text-to-Speech",
+arXiv, 2019, https://arxiv.org/abs/1904.02882.
+
+The optional OpenPhonemizer US English ONNX model and dictionary are from
+OpenPhonemizer, converted by the Eternia launcher contributors:
+https://huggingface.co/nekwo/openphonemizer-en-us-onnx/tree/1e8cb072f1c2aa17286f235a7740b596ac7bea31
+The model card states BSD-3-Clause-Clear. The upstream license follows:
+https://github.com/NeuralVox/OpenPhonemizer/blob/main/LICENSE
+
+The Clear BSD License
+
+Copyright (c) 2024 mrfakename, NeuralVox, OpenPhonemizer Contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the disclaimer
+below) provided that the following conditions are met:
+
+  * Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+  * Neither the name of the copyright holder nor the names of its
+contributors may be used to endorse or promote products derived from this
+software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY
+THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

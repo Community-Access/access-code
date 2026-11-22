@@ -11,6 +11,7 @@ const helper = path.resolve(import.meta.dir, "../../voice-windows/sherpa-worker.
 const fixtures = process.env.OPENCODE_SHERPA_TEST_MODELS
 const moonshine = process.env.OPENCODE_SHERPA_MOONSHINE_FIXTURES
 const kokoro = process.env.OPENCODE_SHERPA_KOKORO_FIXTURES
+const piper = process.env.OPENCODE_SHERPA_PIPER_FIXTURES
 
 describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa Electron node-mode voice", () => {
   let root: string
@@ -103,6 +104,61 @@ describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa 
       })
       const audio = await readFile(path.join(moonshine!, "recorder.wav"))
       expect((await voice.transcribe(audio, "moonshine-tiny-en")).toLowerCase()).toBe("this is a simple voice test.")
+    },
+    120_000,
+  )
+
+  test.skipIf(!piper)(
+    "phonemizes contractions and unknown words and synthesizes Piper speakers through isolated workers",
+    async () => {
+      const phonemizer = path.resolve(import.meta.dir, "../../voice-windows/piper-worker.cjs")
+      const runtime = require.resolve("onnxruntime-node")
+      const model = path.join(piper!, "piper-libritts-en")
+      const result = spawnSync(executable, [phonemizer, runtime], {
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        input: JSON.stringify({ model, text: "I can't stop frobnication. It's 20,000. Button. API. O'Connor." }),
+        encoding: "utf8",
+        windowsHide: true,
+      })
+      expect(result.stderr).toBe("")
+      expect(result.status).toBe(0)
+      const pronunciation = JSON.parse(result.stdout).map((part: number[]) => String.fromCodePoint(...part)).join(" ")
+      expect(pronunciation).toContain("kænˈɑːt")
+      expect(pronunciation).toContain("ɪts")
+      expect(pronunciation).toContain("fɹ")
+      expect(pronunciation).toContain("bˈʌʔən")
+      expect(pronunciation).toContain("ˈeɪ pˈiː ˈaɪ")
+      expect(pronunciation).toContain("ˈoʊ ɐpˈɔstɹəfi")
+
+      const voice = createSherpaVoice(helper, {
+        executable,
+        modulePath,
+        modelDir: (id) => path.join(piper!, id),
+        phonemizer: {
+          helperPath: path.resolve(import.meta.dir, "../../voice-windows/misaki-worker.cjs"),
+          piperHelperPath: phonemizer,
+          modulePath: runtime,
+        },
+      })
+      const cancelled = voice.speak("piper-cancel", "Hello.", "piper-libritts-en:0")
+      voice.cancel("piper-cancel")
+      expect(await cancelled).toBeNull()
+      const [first, second] = await Promise.all([
+        voice.speak("piper-one", "Hello world.", "piper-libritts-en:0"),
+        voice.speak("piper-two", "Hello world.", "piper-libritts-en:1"),
+      ])
+      if (!first || !second) throw new Error("Piper sample unexpectedly cancelled")
+      expect(Buffer.from(first).toString("ascii", 0, 4)).toBe("RIFF")
+      expect(Buffer.from(first).readUInt32LE(24)).toBe(22050)
+      expect(first.length).toBeGreaterThan(44)
+      expect(Buffer.from(first).equals(Buffer.from(second))).toBe(false)
+      await expect(voice.speak("piper-unsupported", "Hello 🌍", "piper-libritts-en:0")).rejects.toThrow("Unsupported character")
+      await expect(voice.speak("piper-phoneme", "accouchement", "piper-libritts-en:0")).rejects.toThrow("Unsupported Piper phoneme")
+      await expect(voice.speak("piper-invalid", "Hello.", "piper-libritts-en:904")).rejects.toThrow("speaker index")
+      const short = await voice.speak("piper-short", "Hello ".repeat(45), "piper-libritts-en:0")
+      const long = await voice.speak("piper-long", "Hello ".repeat(90), "piper-libritts-en:0")
+      if (!short || !long) throw new Error("Piper long sample unexpectedly cancelled")
+      expect(long.length).toBeGreaterThan(short.length * 1.7)
     },
     120_000,
   )

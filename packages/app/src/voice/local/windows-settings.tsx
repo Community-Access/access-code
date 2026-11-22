@@ -35,6 +35,13 @@ export function DialogWindowsVoiceSettings(props: {
   const [packsState, setPacksState] = createSignal(initial())
   const packsView = createMemo(() => view(packsState()))
   const voices = () => packsView().voices
+  const visibleVoices = createMemo(() => {
+    const selected = local.settings.voice
+    const piper = selected.startsWith("piper-libritts-en:") && voices().some((voice) => voice.id === selected)
+      ? selected
+      : "piper-libritts-en:0"
+    return voices().filter((voice) => !voice.id.startsWith("piper-libritts-en:") || voice.id === piper)
+  })
   const dispatch = (event: Event) => {
     const current = packsState()
     const next = transition(current, event)
@@ -65,6 +72,7 @@ export function DialogWindowsVoiceSettings(props: {
   let previewPlayer: HTMLAudioElement | undefined
   let voiceSelect: HTMLSelectElement | undefined
   let recognizerSelect: HTMLSelectElement | undefined
+  let piperSpeaker: HTMLInputElement | undefined
   let voicesLoaded = false
   createEffect(() => {
     voices()
@@ -135,6 +143,7 @@ export function DialogWindowsVoiceSettings(props: {
   }
 
   const previewVoice = async () => {
+    if (local.settings.voice.startsWith("piper-libritts-en:") && piperSpeaker && !piperSpeaker.reportValidity()) return
     resetPreview()
     const id = uuid()
     setPreview({ type: "generating", id })
@@ -395,7 +404,9 @@ export function DialogWindowsVoiceSettings(props: {
                           ? language.t("voice.windows.packs.moonshine.description")
                           : pack().id === "kokoro-int8-en-v1"
                             ? language.t("voice.windows.packs.kokoro.description")
-                            : pack().description}
+                            : pack().id === "piper-libritts-en"
+                              ? language.t("voice.windows.packs.piper.description")
+                              : pack().description}
                     </p>
                     <p>
                       {language.t(
@@ -492,9 +503,28 @@ export function DialogWindowsVoiceSettings(props: {
               <Show when={local.settings.voice && !voices().some((voice) => voice.id === local.settings.voice)}>
                 <option value={local.settings.voice}>{language.t("voice.windows.voice.unavailable")}</option>
               </Show>
-              <For each={voices()}>{(voice) => <option value={voice.id}>{voice.name}</option>}</For>
+              <For each={visibleVoices()}>{(voice) => <option value={voice.id}>{voice.name}</option>}</For>
             </select>
           </label>
+          <Show when={local.settings.voice.startsWith("piper-libritts-en:") && voices().some((voice) => voice.id === local.settings.voice)}>
+            <label class="flex flex-col gap-1">
+              {language.t("voice.windows.voice.piperSpeaker")}
+              <input
+                ref={piperSpeaker}
+                type="number"
+                min="1"
+                max="904"
+                step="1"
+                required
+                value={Number(local.settings.voice.slice("piper-libritts-en:".length)) + 1}
+                onChange={(event) => {
+                  if (!event.currentTarget.reportValidity()) return
+                  resetPreview()
+                  local.setSettings("voice", `piper-libritts-en:${Number(event.currentTarget.value) - 1}`)
+                }}
+              />
+            </label>
+          </Show>
           <Button
             disabled={!voices().some((voice) => voice.id === local.settings.voice) || preview().type === "generating"}
             onClick={() => void previewVoice()}

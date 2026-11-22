@@ -4,12 +4,48 @@ const whisper = "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny.en/r
 const moonshine = "https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/bf2b762c076d8ea61e2af0b3851c9564fb77552e"
 const kokoro = "https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0/resolve/57adb37fc0e8d4bd430cfc1b8f8c2294945b9af2"
 const misaki = "https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/resolve/4b3a605d2f605318ab4f762ab9855c44106528b7"
+const piper = "https://huggingface.co/csukuangfj/vits-piper-en_US-libritts-high/resolve/b436d2684d7de5ded1112f173a742f5d47a40e89"
+const openphonemizer = "https://huggingface.co/nekwo/openphonemizer-en-us-onnx/resolve/1e8cb072f1c2aa17286f235a7740b596ac7bea31"
 
 // The three hashes also match the MIT-licensed conversion archive at
 // https://huggingface.co/runanywhere/sherpa-onnx-whisper-tiny.en/tree/76baba31555a91c0e00b63e4b91f7a01219cd8b4.
 // OpenAI's model card declares Apache-2.0:
 // https://huggingface.co/openai/whisper-tiny.en/blob/87c7102498dcde7456f24cfd30239ca606ed9063/README.md
 export const voiceCatalog: readonly VoicePack[] = [
+  {
+    id: "piper-libritts-en",
+    name: "Piper LibriTTS English",
+    kind: "speech",
+    description: "On-device US English speech with 904 numbered speakers.",
+    license: "CC BY 4.0 dataset; BSD-3-Clause-Clear phonemizer",
+    source: "https://huggingface.co/rhasspy/piper-voices/blob/375a0fe641dea077c2a47b4e9a056d6da521eed3/en/en_US/libritts/high/MODEL_CARD",
+    files: [
+      {
+        path: "model.onnx",
+        url: `${piper}/en_US-libritts-high.onnx`,
+        size: 136673944,
+        sha256: "c6c0eeb0bf6aa67875dd1d2b37d014357dee2aba96f5481686da522dc6b0b93a",
+      },
+      {
+        path: "tokens.txt",
+        url: `${piper}/tokens.txt`,
+        size: 763,
+        sha256: "42d1a69ed2b91a51928a711aa228ed9f3dc021c6d359a3e9c4f37eb1d20f80bd",
+      },
+      {
+        path: "openphonemizer.onnx",
+        url: `${openphonemizer}/openphonemizer-en_us-fp16.onnx`,
+        size: 30977712,
+        sha256: "a77b17647a02cb9ac42025cfc60c8e83c70f36785183a4388f17722fb1c7dc9b",
+      },
+      {
+        path: "openphonemizer.json",
+        url: `${openphonemizer}/openphonemizer-en_us.json`,
+        size: 9223033,
+        sha256: "36dda6260c7e560a4d846528387fd07ababcd1012a52b530063fefadd5987db0",
+      },
+    ],
+  },
   {
     id: "whisper-tiny-en",
     name: "Whisper Tiny English",

@@ -12,7 +12,7 @@ const output = path.join(dir, "resources/voice")
 if (process.platform === "win32") {
   await $`bun ./voice-windows/build.ts`.cwd(dir)
   await Promise.all(
-    ["sherpa-worker.cjs", "misaki-worker.cjs", "english-text.cjs"].map((file) =>
+    ["sherpa-worker.cjs", "misaki-worker.cjs", "piper-worker.cjs", "english-text.cjs"].map((file) =>
       copyFile(path.join(dir, "voice-windows", file), path.join(output, file)),
     ),
   )

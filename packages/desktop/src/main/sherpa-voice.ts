@@ -16,7 +16,7 @@ export function createSherpaVoice(
     executable: string
     modulePath: string
     modelDir: (id: string) => string
-    phonemizer?: { helperPath: string; modulePath: string }
+    phonemizer?: { helperPath: string; modulePath: string; piperHelperPath?: string }
   },
 ) {
   const pending = new Map<string, AbortController>()
@@ -73,7 +73,7 @@ export function createSherpaVoice(
     pending.set(id, controller)
     let directory: string | undefined
     try {
-      const match = /^(kokoro-int8-en-v0_19|kokoro-int8-en-v1):(\d+)$/.exec(voice)
+      const match = /^(kokoro-int8-en-v0_19|kokoro-int8-en-v1|piper-libritts-en):(\d+)$/.exec(voice)
       if (!match) throw new Error('Sherpa voice must be "<pack-id>:<speaker-index>"')
       const model = options.modelDir(match[1])
       // Keep scratch files beside the user-owned packs, not in the installed application's resources.
@@ -81,15 +81,18 @@ export function createSherpaVoice(
       if (controller.signal.aborted) return null
       const output = path.join(directory, "output.wav")
       const phonemizer = options.phonemizer
-      if (match[1] === "kokoro-int8-en-v1" && !phonemizer) throw new Error("Kokoro phonemizer is unavailable")
+      const piper = match[1] === "piper-libritts-en"
+      const phonemizerPath = piper ? phonemizer?.piperHelperPath : phonemizer?.helperPath
+      if ((piper || match[1] === "kokoro-int8-en-v1") && !phonemizerPath)
+        throw new Error(`${piper ? "Piper" : "Kokoro"} phonemizer is unavailable`)
       const phonemes =
-        match[1] === "kokoro-int8-en-v1" && phonemizer
+        (piper || match[1] === "kokoro-int8-en-v1") && phonemizer && phonemizerPath
           ? Schema.decodeUnknownSync(Phonemes)(
-              await run({ model, text }, controller.signal, phonemizer.helperPath, phonemizer.modulePath),
+              await run({ model, text }, controller.signal, phonemizerPath, phonemizer.modulePath),
             )
           : undefined
       if (controller.signal.aborted) return null
-      await run({ type: "speak", model, output, text, speaker: Number(match[2]), phonemes }, controller.signal)
+      await run({ type: "speak", model, output, text, speaker: Number(match[2]), phonemes, voiceModel: piper ? "piper" : "kokoro" }, controller.signal)
       if (controller.signal.aborted) return null
       const audio = new Uint8Array(await readFile(output))
       return controller.signal.aborted ? null : audio

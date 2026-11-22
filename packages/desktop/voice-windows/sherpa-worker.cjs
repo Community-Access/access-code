@@ -64,6 +64,27 @@ async function main() {
 
   if (typeof request.output !== "string" || !path.isAbsolute(request.output) || typeof request.text !== "string")
     throw new Error("An absolute output WAV path and synthesis text are required")
+  if (request.voiceModel === "piper") {
+    if (!Number.isSafeInteger(request.speaker) || request.speaker < 0) throw new Error("Invalid Piper speaker index")
+    if (!Array.isArray(request.phonemes) || !request.phonemes.length || request.phonemes.some(
+      (sentence) => !Array.isArray(sentence) || !sentence.length ||
+        sentence.some((codepoint) => !Number.isInteger(codepoint) || codepoint < 0 || codepoint > 0x10ffff),
+    )) throw new Error("Invalid phonemes for Piper speech")
+    const sherpa = require(process.argv[2])
+    const tts = new sherpa.OfflineTts({
+      model: { vits: { model: file("model.onnx"), tokens: file("tokens.txt"), lengthScale: 1 }, numThreads: 2, provider: "cpu" },
+      maxNumSentences: 1,
+    })
+    if (request.speaker >= tts.numSpeakers) throw new Error(`Piper speaker index must be below ${tts.numSpeakers}`)
+    const audio = tts.generate({
+      text: "",
+      enableExternalBuffer: false,
+      generationConfig: { sid: request.speaker, speed: 1, phonemeCodepoints: request.phonemes },
+    })
+    if (!audio.samples.length) throw new Error("Piper produced no audio")
+    if (!sherpa.writeWave(request.output, audio)) throw new Error("Could not write Piper WAV")
+    return
+  }
   if (request.phonemes === undefined && !/[\p{L}\p{N}]/u.test(request.text))
     throw new Error("Kokoro synthesis requires words")
   if (!Number.isSafeInteger(request.speaker) || request.speaker < 0) throw new Error("Invalid Kokoro speaker index")

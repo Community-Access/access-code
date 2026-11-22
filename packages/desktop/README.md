@@ -82,8 +82,11 @@ remove it later. Downloads are checked against pinned file sizes and SHA-256 has
 selecting one does not change the reply voice. Kokoro English is an optional US English reply voice pack.
 It uses the [Misaki ONNX phonemizer](https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/tree/4b3a605d2f605318ab4f762ab9855c44106528b7);
 unfamiliar words use its neural fallback. Some context-dependent words may be pronounced incorrectly, and
-unsupported characters are reported as errors rather than omitted. No model downloads automatically.
-Piper and other downloadable speech voices are not yet available.
+unsupported characters are reported as errors rather than omitted. Piper LibriTTS English is another optional
+US English speech pack, with 904 numbered speakers selected in voice settings. It uses OpenPhonemizer and a
+Sherpa-converted Piper model; unknown words use neural phonemization. Unsupported characters or phonemes are
+reported as errors. Pronunciation, including contractions, needs listening tests. The pack is about 177 MB;
+no model downloads automatically. Other downloadable speech voices are not yet available.
 Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
 The `windows_voice` experimental flag controls these features using the connected server's global configuration.
 It defaults on for local and dev builds and off for releases; set `experimental.windows_voice` in configuration
@@ -96,6 +99,9 @@ The separate phonemizer process uses ONNX Runtime Node 1.30.0; its license and t
 from the [official 1.30.0 Windows Python wheel](https://pypi.org/project/onnxruntime/1.30.0/#files)
 (SHA-256 `3bdd1752a8502ac1a7ccc6e878d16db6943df574d54ed7f01058a6806ae05be4`).
 Update the notices when updating either bundled runtime.
+The Piper and OpenPhonemizer attribution and license notice is in `resources\voice\licenses\piper-model-NOTICE.txt`.
+The Piper model card reports training on LibriTTS, which is distributed under CC BY 4.0.
+Voice-model terms, dataset attribution and runtime notice completeness require qualified review before release.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with

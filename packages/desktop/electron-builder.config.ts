@@ -163,7 +163,7 @@ const getBase = (appId: string): Configuration => {
       if (arch === "x64") {
         if ((await stat(path.join(resources, "voice", "sherpa-worker.cjs"))).size === 0)
           throw new Error("Bundled sherpa voice worker must be non-empty")
-        for (const name of ["misaki-worker.cjs", "english-text.cjs"]) {
+        for (const name of ["misaki-worker.cjs", "piper-worker.cjs", "english-text.cjs"]) {
           if ((await stat(path.join(resources, "voice", name))).size === 0)
             throw new Error(`Bundled phonemizer worker must be non-empty: ${name}`)
         }
@@ -189,6 +189,7 @@ const getBase = (appId: string): Configuration => {
           "onnxruntime-node-LICENSE.txt",
           "onnxruntime-node-ThirdPartyNotices.txt",
           "misaki-model-NOTICE.txt",
+          "piper-model-NOTICE.txt",
         ]) {
           if ((await stat(path.join(resources, "voice", "licenses", name))).size === 0)
             throw new Error(`Bundled voice license must be non-empty: ${name}`)
