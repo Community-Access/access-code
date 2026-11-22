@@ -64,6 +64,7 @@ export type ElectronAPI = {
     error: string | null
   }>
   voiceDownload(): Promise<void>
+  voiceVoices(): Promise<Array<{ id: string; name: string }>>
   voiceCancelDownload(): Promise<void>
   voiceRemove(): Promise<void>
   voiceTranscribe(audio: ArrayBuffer): Promise<string>

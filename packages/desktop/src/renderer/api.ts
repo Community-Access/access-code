@@ -66,6 +66,7 @@ export const api: ElectronAPI = {
   requestMicrophone: () => invoke("WindowRequestMicrophone"),
   setVoiceCallActive: (active) => invoke("WindowSetVoiceCallActive", { active }),
   voiceStatus: () => invoke("VoiceStatus").then(mutable),
+  voiceVoices: () => invoke("VoiceVoices").then(mutable),
   voiceDownload: () => invoke("VoiceDownload"),
   voiceCancelDownload: () => invoke("VoiceCancelDownload"),
   voiceRemove: () => invoke("VoiceRemove"),

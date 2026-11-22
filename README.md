@@ -16,7 +16,7 @@ The current downloads, updated automatically when a release is published:
 
 ### Windows (in testing)
 
-- **AccessCode 2.3.2 for Windows** (beta): [exe (installer arm64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-arm64-installer.exe) · [zip (portable arm64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-arm64-portable.zip) · [exe (installer x64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-x64-installer.exe) · [zip (portable x64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-x64-portable.zip)
+- **AccessCode 2.3.2 for Windows** (beta): [exe (installer x64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-x64-installer.exe) · [zip (portable x64)](https://github.com/Community-Access/access-code/releases/download/accesscode-2.3.2-windows/accesscode-2.3.2-windows-x64-portable.zip)
 <!-- accesscode:downloads:end -->
 
 On a Mac, open the .dmg and drag AccessCode to Applications. It is signed and notarized, and it installs next to OpenCode, sharing your settings and conversations with it. It needs a Mac with Apple silicon.
@@ -71,7 +71,7 @@ Settings, Accessibility lets you choose how chats sound and read:
 
 ## Windows (in testing)
 
-Windows builds are in testing, and the current download is in the [Download](#download) section above. To build one yourself, follow the [Windows build instructions](./packages/desktop/README.md#windows-x64-installer). They make three versions:
+Windows x64 builds are in testing. Windows ARM64 builds are paused; only x64 builds will be published while support is unavailable. The current download is in the [Download](#download) section above. To build one yourself, follow the [Windows build instructions](./packages/desktop/README.md#windows-x64-installer). They make three versions:
 
 - **Installer:** `dist\desktop\accesscode-desktop-win-x64.exe` installs AccessCode for the current user.
 - **Unpacked app:** `dist\desktop\app\AccessCode Dev.exe` runs without installing and uses your normal profile.

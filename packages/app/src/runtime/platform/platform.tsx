@@ -43,6 +43,7 @@ export type LocalVoiceStatus = {
 /** On-device speech for dictation and voice mode (desktop on Apple silicon only). */
 export type LocalVoice = {
   status(): Promise<LocalVoiceStatus>
+  voices(): Promise<Array<{ id: string; name: string }>>
   /** Starts the one-time model download; poll status() for progress. */
   download(): Promise<void>
   cancelDownload(): Promise<void>

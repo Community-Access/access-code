@@ -13,6 +13,10 @@ export const VoiceStatus = Rpc.make("VoiceStatus", {
 
 export const VoiceDownload = Rpc.make("VoiceDownload")
 
+export const VoiceVoices = Rpc.make("VoiceVoices", {
+  success: Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String })),
+})
+
 export const VoiceCancelDownload = Rpc.make("VoiceCancelDownload")
 
 export const VoiceRemove = Rpc.make("VoiceRemove")
@@ -31,6 +35,7 @@ export const VoiceCancel = Rpc.make("VoiceCancel", { payload: { id: Schema.Strin
 
 export const VoiceRpcs = RpcGroup.make(
   VoiceStatus,
+  VoiceVoices,
   VoiceDownload,
   VoiceCancelDownload,
   VoiceRemove,

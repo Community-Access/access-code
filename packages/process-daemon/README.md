@@ -289,13 +289,9 @@ MIRIFLAGS=-Zmiri-tree-borrows cargo +nightly-2026-09-02 miri test --locked --man
 
 ### Windows CI
 
-The Windows jobs in the monorepo's
-`.github/workflows/check-process-daemon.yml` build for Windows x64 and ARM64 and execute
-tests natively on `windows-2025` and `windows-11-arm`, respectively. The ARM64
-job uses x64-hosted compilers targeting ARM64 because native ARM64 Zig 0.16
-crashes while building Ghostty; the tests themselves remain native ARM64.
-The job also applies a guarded one-line alignment fix to Zig 0.16's Windows
-stack-trace helper, which otherwise fails to compile for ARM64.
+The Windows job in the monorepo's
+`.github/workflows/check-process-daemon.yml` builds for Windows x64 and executes
+tests on `windows-2025`. Windows ARM64 builds and distributions are paused.
 The workflow runs on pull requests and pushes to `dev` that touch
 `packages/process-daemon`, independently of the release workflow.
 It checks formatting, builds the executable, runs all enabled tests, and checks

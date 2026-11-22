@@ -42,6 +42,7 @@ export function createDesktopPlatform(api: ElectronAPI, windowState: DesktopWind
     setVoiceCallActive: (active) => api.setVoiceCallActive(active),
     voice: {
       status: () => api.voiceStatus(),
+      voices: () => api.voiceVoices(),
       download: () => api.voiceDownload(),
       cancelDownload: () => api.voiceCancelDownload(),
       remove: () => api.voiceRemove(),

@@ -7,6 +7,7 @@ import path from "node:path"
 import { pipeline } from "node:stream/promises"
 import { createInterface } from "node:readline"
 import { fileURLToPath } from "node:url"
+import { createWindowsVoice } from "./windows-voice"
 
 // Local voice for dictation and voice mode: Liquid's LFM2.5 Audio model run by the bundled Swift helper
 // (packages/desktop/voice). The model is downloaded once, on request, into the app's data folder.
@@ -49,7 +50,18 @@ const helperPath = () =>
     ? path.join(process.resourcesPath, "voice", "accesscode-voice")
     : path.join(path.dirname(fileURLToPath(import.meta.url)), "../../resources/voice/accesscode-voice")
 
+const windowsHelperPath = () =>
+  app.isPackaged
+    ? path.join(process.resourcesPath, "voice", "accesscode-sapi.exe")
+    : path.join(path.dirname(fileURLToPath(import.meta.url)), "../../resources/voice/accesscode-sapi.exe")
+
+const windowsVoice = createWindowsVoice(windowsHelperPath())
+
 export function status(): Status {
+  if (process.platform === "win32") {
+    const supported = existsSync(windowsHelperPath())
+    return { supported, installed: supported, download: null, error: null }
+  }
   return {
     supported: process.platform === "darwin" && process.arch === "arm64" && existsSync(helperPath()),
     installed: existsSync(path.join(modelDir(), files[files.length - 1].name)),
@@ -58,8 +70,14 @@ export function status(): Status {
   }
 }
 
+export async function voices() {
+  if (process.platform !== "win32") return []
+  return windowsVoice.voices()
+}
+
 // Starts the download and returns at once; callers poll status() for progress.
 export function download() {
+  if (process.platform === "win32") throw new Error("Windows system speech does not require a model download")
   if (state.download || status().installed) return
   const controller = new AbortController()
   state.download = { received: 0, controller }
@@ -78,12 +96,14 @@ export function cancelDownload() {
 }
 
 export async function remove() {
+  if (process.platform === "win32") throw new Error("Windows system speech is managed by Windows")
   state.helper?.child.kill()
   state.helper = null
   await rm(modelDir(), { recursive: true, force: true })
 }
 
 export async function transcribe(wav: Uint8Array) {
+  if (process.platform === "win32") return windowsVoice.transcribe(wav)
   const helper = await ready()
   const input = path.join(helper.temp, `input-${state.next++}.wav`)
   await writeFile(input, wav)
@@ -94,6 +114,7 @@ export async function transcribe(wav: Uint8Array) {
 
 // Resolves to null when the request was cancelled, so a talked-over sentence never plays.
 export async function speak(id: string, text: string, voice: string) {
+  if (process.platform === "win32") return windowsVoice.speak(id, text, voice)
   const helper = await ready()
   const output = path.join(helper.temp, `speech-${state.next++}.wav`)
   const result = await helper.request({ type: "speak", text, voice, output }, id)
@@ -106,6 +127,7 @@ export async function speak(id: string, text: string, voice: string) {
 }
 
 export function cancel(id: string) {
+  if (process.platform === "win32") return windowsVoice.cancel(id)
   state.helper?.send({ type: "cancel", id })
 }
 

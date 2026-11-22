@@ -24,13 +24,39 @@ export type Recorder = {
  * `pauseMs` is the quiet that ends an utterance. Dictation keeps Perspective Chat's 800 ms because it joins every
  * utterance anyway; Voice Mode sends each one, so it waits longer and people can pause mid-thought.
  */
-export async function startRecorder(onUtterance: (wav: ArrayBuffer) => void, pauseMs = 800): Promise<Recorder> {
+export async function startRecorder(
+  onUtterance: (wav: ArrayBuffer) => void,
+  pauseMs = 800,
+  deviceID?: string,
+): Promise<Recorder> {
   const stream = await navigator.mediaDevices.getUserMedia({
     // Echo cancellation keeps the assistant's own speech from being heard as the user talking over it.
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    audio: {
+      channelCount: 1,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      ...(deviceID ? { deviceId: { exact: deviceID } } : {}),
+    },
   })
 
-  const context = new AudioContext({ sampleRate: rate })
+  let context: AudioContext | undefined
+  try {
+    context = new AudioContext({ sampleRate: rate })
+    return createRecorder(stream, context, onUtterance, pauseMs)
+  } catch (error) {
+    stream.getTracks().forEach((track) => track.stop())
+    if (context) void context.close()
+    throw error
+  }
+}
+
+function createRecorder(
+  stream: MediaStream,
+  context: AudioContext,
+  onUtterance: (wav: ArrayBuffer) => void,
+  pauseMs: number,
+): Recorder {
   const source = context.createMediaStreamSource(stream)
   // ScriptProcessorNode is deprecated but needs no separate worklet module, and 64 ms frames are plenty here.
   const processor = context.createScriptProcessor(frame, 1, 1)
@@ -77,11 +103,14 @@ export async function startRecorder(onUtterance: (wav: ArrayBuffer) => void, pau
   return {
     onSpeech: (callback) => listeners.push(callback),
     stop: () => {
-      if (state.speaking && state.speech.length > 0) onUtterance(encodeWav(state.speech))
-      processor.disconnect()
-      source.disconnect()
-      stream.getTracks().forEach((track) => track.stop())
-      void context.close()
+      try {
+        if (state.speaking && state.speech.length > 0) onUtterance(encodeWav(state.speech))
+      } finally {
+        processor.disconnect()
+        source.disconnect()
+        stream.getTracks().forEach((track) => track.stop())
+        void context.close()
+      }
     },
   }
 }

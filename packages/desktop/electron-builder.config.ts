@@ -135,6 +135,8 @@ const getBase = (appId: string): Configuration => {
 
       if (context.electronPlatformName !== "win32") return
 
+      await NativeArch.verify(path.join(resources, "voice", "accesscode-sapi.exe"), arch)
+
       const prebuilds = path.join(
         resources,
         "app.asar.unpacked/node_modules",

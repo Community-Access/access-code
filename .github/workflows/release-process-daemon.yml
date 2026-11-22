@@ -168,9 +168,6 @@ jobs:
           - runner: windows-2025
             target: x86_64-pc-windows-msvc
             arch: x64
-          - runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            arch: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:

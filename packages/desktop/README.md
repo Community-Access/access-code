@@ -26,7 +26,7 @@ Both read the same environment as every other release package:
 | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `OPENCODE_CHANNEL` | `dev` (default), `beta`, or `latest`/`prod`. Picks the app identity, icons and bundled CLI.                     |
 | `OPENCODE_VERSION` | Version stamped into the app and its packages.                                                                  |
-| `OPENCODE_TARGET`  | `darwin-arm64`, `darwin-x64`, `windows-arm64`, `windows-x64`, `linux-x64`, `linux-arm64`. Defaults to the host. |
+| `OPENCODE_TARGET`  | `darwin-arm64`, `darwin-x64`, `windows-x64`, `linux-x64`, `linux-arm64`. Defaults to the host. Windows ARM64 packaging is paused. |
 
 The CLI is placed outside `app.asar` in the application's resources directory, and packaging fails if it is missing.
 `bun run build` uses `packages/cli/dist` when that holds the target's CLI. Otherwise `dev` (and `local`, unset or unrecognized)
@@ -73,22 +73,27 @@ The resulting installer is `dist\desktop\accesscode-desktop-win-x64.exe`. The te
 removed after packaging. This procedure does not sign or publish the installer.
 
 The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
-portable editions for x64 and ARM64. These are for testing, not public release.
+portable editions for x64. These are for testing, not public release. Windows ARM64 packaging is paused.
+
+The `windows-voice` test branch has experimental SAPI-only voice support. It uses Windows voices and a recognizer
+installed on the device, which may not be available on every device. Microphone and voice previews are included,
+but real accessibility and interruption testing remains outstanding; optional model packs are not available.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with
-the maintainer. The workflow builds x64 and ARM64 and uploads an unpacked app and a portable folder for each.
+the maintainer. The workflow builds x64 and uploads an unpacked app and a portable folder.
 
-On the signing machine, check out the same commit and download the four unsigned stable payloads. For each
-architecture, manually sign the release-owned binaries in both folders and verify their signatures and publisher.
+On the signing machine, check out the same commit and download the two unsigned stable payloads. Manually sign the
+release-owned binaries in both folders and verify their signatures and publisher.
 Preserve and verify the expected third-party signatures. Archive the signed portable folder with its marker intact.
 Set `OPENCODE_CHANNEL=latest`, the matching `OPENCODE_VERSION` and `OPENCODE_TARGET`, and point `OPENCODE_DESKTOP_APP`
 at the signed unpacked app. Run the Inno packaging command above, then sign and verify the resulting installer.
-Stage each installer outside `dist/desktop` before packing the next architecture, since packing clears that directory.
+The resulting signed installer is x64.
 
 To publish automatic updates, run `.github\release\write-accesscode-windows-feed.ps1` with the signed installer
-directory, stable version and signing subject. Publish both signed installers and the generated `latest.yml`
-together as assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
+directory, stable version and signing subject. It verifies and lists the signed x64 installer in `latest.yml`.
+Publish the signed installer and generated feed together as assets of the latest
+[AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
 Do not publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
 
 #### Sign Windows builds with Azure Artifact Signing
@@ -115,10 +120,10 @@ signature. Azure holds the private key; no local PFX is needed.
    bypass Quill's policy against signing Dev and Beta builds.
 4. For a release, agree on the publisher with the Access Code maintainer first.
    Sign the release-owned binaries in the staged payload before compiling Inno
-   Setup, then sign and verify the resulting installer. Set
+   Setup, then sign and verify the resulting x64 installer. Set
    `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` to the exact approved signer subject
-   before packaging, and generate `latest.yml` only after both final installers
-   are signed. A signature from the Quill profile is not automatically
+   before packaging, and generate `latest.yml` only after the final installer
+   is signed. A signature from the Quill profile is not automatically
    appropriate for an official Access Code release.
 
 See [Microsoft's Artifact Signing integration guide](https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations)

@@ -24,9 +24,6 @@ jobs:
           - desktop: windows-x64
             cli: windows-x64-baseline
             install: ""
-          - desktop: windows-arm64
-            cli: windows-arm64
-            install: --cpu=*
     env:
       OPENCODE_CHANNEL: dev
       CSC_IDENTITY_AUTO_DISCOVERY: "false"

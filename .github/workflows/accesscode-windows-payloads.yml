@@ -32,9 +32,6 @@ jobs:
           - desktop: windows-x64
             cli: windows-x64-baseline
             install: ""
-          - desktop: windows-arm64
-            cli: windows-arm64
-            install: --cpu=*
     env:
       OPENCODE_CHANNEL: latest
       OPENCODE_VERSION: ${{ inputs.version }}
