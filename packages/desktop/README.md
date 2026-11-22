@@ -81,6 +81,14 @@ recognizer (about 104 MB): choose **Install** to download it, or cancel or remov
 against pinned file sizes and SHA-256 hashes. The model runs locally; selecting it does not change the reply voice.
 No model downloads automatically. Kokoro and other downloadable speech voices are not yet available.
 Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
+The `windows_voice` experimental flag controls these features using the connected server's global configuration.
+It defaults on for local and dev builds and off for releases; set `experimental.windows_voice` in configuration
+or use `OPENCODE_FLAGS=windows_voice` on the server to opt in. Changes to configuration refresh the controls.
+
+Windows x64 builds include the sherpa-onnx license and the ONNX Runtime license and third-party notices under
+`resources\voice\licenses`. These notices come from [sherpa-onnx 2.0.1](https://github.com/k2-fsa/sherpa-onnx/tree/v2.0.1)
+and its [ONNX Runtime 1.28.2 Windows x64 static-CRT archive](https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-win-x64-MT-Release-1.28.2.tar.bz2).
+Update them when updating the bundled native runtime.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with

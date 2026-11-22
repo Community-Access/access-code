@@ -12,6 +12,7 @@ const output = path.join(dir, "resources/voice")
 if (process.platform === "win32") {
   await $`bun ./voice-windows/build.ts`.cwd(dir)
   await copyFile(path.join(dir, "voice-windows/sherpa-worker.cjs"), path.join(output, "sherpa-worker.cjs"))
+  await cp(path.join(dir, "voice-windows/licenses"), path.join(output, "licenses"), { recursive: true })
   process.exit(0)
 }
 

@@ -1,11 +1,21 @@
 import { Button } from "@opencode/ui/button"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { uuid } from "@opencode/util/uuid"
-import { createSignal, onCleanup, onMount, Show, type Accessor, type Setter } from "solid-js"
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  type Accessor,
+  type Setter,
+} from "solid-js"
 import type { ComposerModel } from "@/composer/model"
 import type { LocalVoice } from "@/runtime/platform/platform"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useLanguage } from "@/runtime/i18n/language"
+import { useServerSDK } from "@/runtime/server/client"
 import { announce } from "@/session/announce"
 import { useCommand } from "@/shell/commands/command"
 import { insert, voiceMode } from "./mode"
@@ -19,11 +29,35 @@ import { DialogWindowsVoiceSettings } from "./windows-settings"
 export function LocalVoiceActions(props: { controller: ComposerModel }) {
   const platform = usePlatform()
   const language = useLanguage()
+  const sdk = useServerSDK()
   const windows = useWindowsVoiceSettings()
   const [supported, setSupported] = createSignal(false)
   const dictation = createSignal<DictationState>({ type: "idle" })
+  const isWindows = () => platform.platform === "desktop" && platform.os === "windows"
+  const [windowsVoice, { refetch }] = createResource(
+    () => (isWindows() && supported() && sdk.connection.status() === "connected" ? sdk.api : false),
+    (api) => api.experimental.voice.localWindows(),
+  )
+
+  createEffect(() => {
+    if (windowsVoice.state !== "errored") return
+    announce(language.t("voice.local.failed", { error: String(windowsVoice.error) }), "assertive")
+  })
+
+  createEffect(() => {
+    if (!isWindows() || windowsVoice.state !== "ready" || windowsVoice.latest?.enabled !== false) return
+    if (voiceMode.engaged()) voiceMode.end()
+  })
 
   onMount(() => {
+    if (isWindows())
+      onCleanup(
+        sdk.event.on("config.updated", () => {
+          void Promise.resolve(refetch()).catch((error: unknown) =>
+            console.error("Windows voice flag refresh failed", error),
+          )
+        }),
+      )
     void platform.voice?.status()
       .then((status) => setSupported(status.supported))
       .catch((error: unknown) => announce(language.t("voice.local.failed", { error: String(error) }), "assertive"))
@@ -33,7 +67,13 @@ export function LocalVoiceActions(props: { controller: ComposerModel }) {
     <Show
       when={
         supported() &&
-        (platform.platform !== "desktop" || platform.os !== "windows" || windows.ready()) &&
+        (!isWindows() ||
+          (windows.ready() &&
+            (voiceMode.engaged() ||
+              dictation[0]().type !== "idle" ||
+              (sdk.connection.status() === "connected" &&
+                (windowsVoice.state === "ready" || windowsVoice.state === "refreshing") &&
+                windowsVoice.latest?.enabled)))) &&
         platform.voice
       }
     >

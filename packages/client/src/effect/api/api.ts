@@ -1562,6 +1562,12 @@ export interface ExperimentalGenerateApi<E = never> {
   readonly decisions: ExperimentalGenerateDecisionsOperation<E>
 }
 
+export type ExperimentalVoiceLocalWindowsOutput = { readonly enabled: boolean }
+export type ExperimentalVoiceLocalWindowsOperation<E = never> = () => Effect.Effect<
+  ExperimentalVoiceLocalWindowsOutput,
+  E
+>
+
 export type ExperimentalVoiceModelsOutput = {
   readonly models: ReadonlyArray<{
     readonly model: string
@@ -1590,6 +1596,7 @@ export type ExperimentalVoiceSessionOperation<E = never> = (
 ) => Effect.Effect<ExperimentalVoiceSessionOutput, E>
 
 export interface ExperimentalVoiceApi<E = never> {
+  readonly localWindows: ExperimentalVoiceLocalWindowsOperation<E>
   readonly models: ExperimentalVoiceModelsOperation<E>
   readonly session: ExperimentalVoiceSessionOperation<E>
 }

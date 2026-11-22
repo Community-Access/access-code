@@ -119,6 +119,7 @@ import type {
   ExperimentalGenerateVideoGetOutput,
   ExperimentalGenerateDecisionsInput,
   ExperimentalGenerateDecisionsOutput,
+  ExperimentalVoiceLocalWindowsOutput,
   ExperimentalVoiceModelsOutput,
   ExperimentalVoiceSessionInput,
   ExperimentalVoiceSessionOutput,
@@ -1275,6 +1276,17 @@ export function make(options: ClientOptions) {
           ).then((value) => value.data),
       },
       voice: {
+        localWindows: (requestOptions?: RequestOptions) =>
+          request<ExperimentalVoiceLocalWindowsOutput>(
+            {
+              method: "GET",
+              path: `/api/experimental/voice/local-windows`,
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404, 503],
+              empty: false,
+            },
+            requestOptions,
+          ),
         models: (requestOptions?: RequestOptions) =>
           request<{ readonly data: ExperimentalVoiceModelsOutput }>(
             {

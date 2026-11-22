@@ -148,6 +148,14 @@ const getBase = (appId: string): Configuration => {
       if (arch === "x64") {
         if ((await stat(path.join(resources, "voice", "sherpa-worker.cjs"))).size === 0)
           throw new Error("Bundled sherpa voice worker must be non-empty")
+        for (const name of [
+          "sherpa-onnx-LICENSE.txt",
+          "onnxruntime-LICENSE.txt",
+          "onnxruntime-ThirdPartyNotices.txt",
+        ]) {
+          if ((await stat(path.join(resources, "voice", "licenses", name))).size === 0)
+            throw new Error(`Bundled voice license must be non-empty: ${name}`)
+        }
         const sherpa = path.join(resources, "app.asar.unpacked", "node_modules", "sherpa-onnx-win-x64")
         await Promise.all(
           [

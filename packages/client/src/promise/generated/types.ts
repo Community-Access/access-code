@@ -2640,6 +2640,7 @@ export type ConfigEntry =
           automations?: boolean
           artifacts?: boolean
           video_generate?: boolean
+          windows_voice?: boolean
           console_watches?: boolean
           mcp_events?: boolean
           full_codemode?: boolean
@@ -4112,6 +4113,8 @@ export type ExperimentalGenerateDecisionsInput = {
 }
 
 export type ExperimentalGenerateDecisionsOutput = GenerateDecisionsResponse["data"]
+
+export type ExperimentalVoiceLocalWindowsOutput = { enabled: boolean }
 
 export type ExperimentalVoiceModelsOutput = VoiceModelsResponse["data"]
 
