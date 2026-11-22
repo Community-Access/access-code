@@ -88,6 +88,7 @@ Sherpa-converted Piper model; unknown words use neural phonemization. Unsupporte
 reported as errors. Pronunciation, including contractions, needs listening tests. The pack is about 177 MB;
 no model downloads automatically. Other downloadable speech voices are not yet available.
 Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
+Use the [Windows voice test plan](./WINDOWS-VOICE-TESTING.md) to record hands-on results.
 The `windows_voice` experimental flag controls these features using the connected server's global configuration.
 It defaults on for local and dev builds and off for releases; set `experimental.windows_voice` in configuration
 or use `OPENCODE_FLAGS=windows_voice` on the server to opt in. Changes to configuration refresh the controls.
