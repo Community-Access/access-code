@@ -76,9 +76,10 @@ The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds
 portable editions for x64. These are for testing, not public release. Windows ARM64 packaging is paused.
 
 The `windows-voice` test branch has experimental Windows voice support. Windows speech voices and recognition depend
-on what is installed on the device. Voice settings offer an optional, independently selected Whisper Tiny English
-recognizer (about 104 MB): choose **Install** to download it, or cancel or remove it later. The download is checked
-against pinned file sizes and SHA-256 hashes. The model runs locally; selecting it does not change the reply voice.
+on what is installed on the device. Voice settings offer independently selected Whisper Tiny English (about 104 MB)
+and Moonshine Tiny English (about 124 MB) recognition models. Choose **Install** to download one, or cancel or
+remove it later. Downloads are checked against pinned file sizes and SHA-256 hashes. The models run locally;
+selecting one does not change the reply voice.
 No model downloads automatically. Kokoro and other downloadable speech voices are not yet available.
 Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
 The `windows_voice` experimental flag controls these features using the connected server's global configuration.

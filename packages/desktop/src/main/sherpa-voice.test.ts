@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { watch } from "node:fs"
-import { copyFile, cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises"
+import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { createSherpaVoice } from "./sherpa-voice"
@@ -8,6 +8,7 @@ import { createSherpaVoice } from "./sherpa-voice"
 const require = createRequire(import.meta.url)
 const helper = path.resolve(import.meta.dir, "../../voice-windows/sherpa-worker.cjs")
 const fixtures = process.env.OPENCODE_SHERPA_TEST_MODELS
+const moonshine = process.env.OPENCODE_SHERPA_MOONSHINE_FIXTURES
 
 describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa Electron node-mode voice", () => {
   let root: string
@@ -33,6 +34,9 @@ describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa 
       ),
     )
     await expect(voice.transcribe(new Uint8Array(44), "whisper-tiny-en")).rejects.toThrow("Invalid recorder WAV")
+    await mkdir(path.join(root, "moonshine-tiny-en"))
+    await writeFile(path.join(root, "moonshine-tiny-en", "tokens.txt"), "fixture")
+    await expect(voice.transcribe(new Uint8Array(44), "moonshine-tiny-en")).rejects.toThrow("Invalid recorder WAV")
     await expect(voice.transcribe(new Uint8Array(), "../unsupported")).rejects.toThrow("Unsupported recognition pack")
     await mkdir(path.join(root, "kokoro-int8-en-v0_19"))
     await Promise.all(
@@ -85,6 +89,21 @@ describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa 
       voice.cancel("active")
     }
   })
+
+  // Real model fixtures are opt-in and not shipped with the test suite.
+  test.skipIf(!moonshine)(
+    "recognizes an English sample with Moonshine through Electron",
+    async () => {
+      const voice = createSherpaVoice(helper, {
+        executable,
+        modulePath,
+        modelDir: (id) => path.join(moonshine!, id),
+      })
+      const audio = await readFile(path.join(moonshine!, "recorder.wav"))
+      expect((await voice.transcribe(audio, "moonshine-tiny-en")).toLowerCase()).toBe("this is a simple voice test.")
+    },
+    120_000,
+  )
 
   // Model fixtures are opt-in and never shipped. This cold CPU inference needs a larger CI budget.
   test.skipIf(!fixtures)(

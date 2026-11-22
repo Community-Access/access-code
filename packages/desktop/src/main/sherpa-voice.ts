@@ -48,13 +48,14 @@ export function createSherpaVoice(
     })
 
   const transcribe = async (audio: Uint8Array, id: string) => {
-    if (id !== "whisper-tiny-en") throw new Error(`Unsupported recognition pack: ${id}`)
+    if (id !== "whisper-tiny-en" && id !== "moonshine-tiny-en")
+      throw new Error(`Unsupported recognition pack: ${id}`)
     const model = options.modelDir(id)
     const directory = await mkdtemp(path.join(path.dirname(model), ".sherpa-job-"))
     try {
       const input = path.join(directory, "input.wav")
       await writeFile(input, audio)
-      return Schema.decodeUnknownSync(Text)(await run({ type: "transcribe", model, input }))
+      return Schema.decodeUnknownSync(Text)(await run({ type: "transcribe", model, input, recognizer: id }))
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

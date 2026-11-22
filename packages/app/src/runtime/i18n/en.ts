@@ -73,6 +73,7 @@ export const dict = {
   "voice.windows.packs.title": "Optional voice models",
   "voice.windows.packs.about": "Models are downloaded only when you choose Install. Removing a model does not change your selected recognizer or voice.",
   "voice.windows.packs.whisper.description": "On-device English speech recognition. Smaller and faster than larger Whisper models.",
+  "voice.windows.packs.moonshine.description": "On-device English speech recognition with automatic punctuation.",
   "voice.windows.packs.recognition": "Recognition",
   "voice.windows.packs.speech": "Speech",
   "voice.windows.packs.details": "{{kind}} · {{size}} MB · License: {{license}}",

@@ -23,15 +23,31 @@ async function main() {
   if (request.type === "transcribe") {
     if (typeof request.input !== "string" || !path.isAbsolute(request.input))
       throw new Error("An absolute input WAV path is required")
-    const encoder = file("encoder.int8.onnx")
-    const decoder = file("decoder.int8.onnx")
+    if (request.recognizer !== "whisper-tiny-en" && request.recognizer !== "moonshine-tiny-en")
+      throw new Error(`Unsupported recognition pack: ${request.recognizer}`)
     const tokens = file("tokens.txt")
     const audio = readRecorderWave(request.input)
     const sherpa = require(process.argv[2])
     const recognizer = new sherpa.OfflineRecognizer({
       featConfig: { sampleRate: 16000, featureDim: 80 },
       modelConfig: {
-        whisper: { encoder, decoder, language: "en", task: "transcribe" },
+        ...(request.recognizer === "whisper-tiny-en"
+          ? {
+              whisper: {
+                encoder: file("encoder.int8.onnx"),
+                decoder: file("decoder.int8.onnx"),
+                language: "en",
+                task: "transcribe",
+              },
+            }
+          : {
+              moonshine: {
+                preprocessor: file("preprocess.onnx"),
+                encoder: file("encode.int8.onnx"),
+                uncachedDecoder: file("uncached_decode.int8.onnx"),
+                cachedDecoder: file("cached_decode.int8.onnx"),
+              },
+            }),
         tokens,
         numThreads: 2,
         provider: "cpu",

@@ -156,7 +156,8 @@ export async function remove() {
 export async function transcribe(wav: Uint8Array, recognizer?: string) {
   if (process.platform === "win32") {
     if (!recognizer || recognizer === "sapi") return windowsVoice.transcribe(wav)
-    if (recognizer !== "whisper-tiny-en") throw new Error(`Unknown recognition model: ${recognizer}`)
+    if (recognizer !== "whisper-tiny-en" && recognizer !== "moonshine-tiny-en")
+      throw new Error(`Unknown recognition model: ${recognizer}`)
     if (removingPacks.has(recognizer)) throw new Error("The selected recognition model is being removed")
     activePacks.set(recognizer, (activePacks.get(recognizer) ?? 0) + 1)
     try {
