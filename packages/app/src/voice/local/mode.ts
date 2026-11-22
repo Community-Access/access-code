@@ -23,6 +23,7 @@ type Options = {
   settings: () => {
     voice: string
     speed: number
+    recognizer?: string
     volume?: number
     microphone?: string
     interruption?: "steer" | "cancel"
@@ -88,7 +89,7 @@ export const voiceMode = {
         if (!activeAttempt(run)) return
         state.talking = false
         state.queue = state.queue
-          .then(() => (activeAttempt(run) ? options.voice.transcribe(wav) : ""))
+          .then(() => (activeAttempt(run) ? options.voice.transcribe(wav, options.settings().recognizer) : ""))
           .then((text) => heard(text, run))
           .catch((error: unknown) => {
             if (!activeAttempt(run)) return

@@ -75,9 +75,12 @@ removed after packaging. This procedure does not sign or publish the installer.
 The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
 portable editions for x64. These are for testing, not public release. Windows ARM64 packaging is paused.
 
-The `windows-voice` test branch has experimental SAPI-only voice support. It uses Windows voices and a recognizer
-installed on the device, which may not be available on every device. Microphone and voice previews are included,
-but real accessibility and interruption testing remains outstanding; optional model packs are not available.
+The `windows-voice` test branch has experimental Windows voice support. Windows speech voices and recognition depend
+on what is installed on the device. Voice settings offer an optional, independently selected Whisper Tiny English
+recognizer (about 104 MB): choose **Install** to download it, or cancel or remove it later. The download is checked
+against pinned file sizes and SHA-256 hashes. The model runs locally; selecting it does not change the reply voice.
+No model downloads automatically. Kokoro and other downloadable speech voices are not yet available.
+Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with

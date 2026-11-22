@@ -1,0 +1,132 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { watch } from "node:fs"
+import { copyFile, cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises"
+import { createRequire } from "node:module"
+import path from "node:path"
+import { createSherpaVoice } from "./sherpa-voice"
+
+const require = createRequire(import.meta.url)
+const helper = path.resolve(import.meta.dir, "../../voice-windows/sherpa-worker.cjs")
+const fixtures = process.env.OPENCODE_SHERPA_TEST_MODELS
+
+describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa Electron node-mode voice", () => {
+  let root: string
+  let executable: string
+  let modulePath: string
+
+  beforeAll(async () => {
+    root = await mkdtemp(path.resolve(import.meta.dir, "../../.sherpa-test-"))
+    executable = require("electron")
+    modulePath = require.resolve("sherpa-onnx-node")
+  })
+  afterAll(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  test("reports worker stderr and rejects invalid recorder audio before native inference", async () => {
+    const voice = createSherpaVoice(helper, { executable, modulePath, modelDir: (id) => path.join(root, id) })
+    await expect(voice.transcribe(new Uint8Array(), "whisper-tiny-en")).rejects.toThrow("Missing model file")
+    await mkdir(path.join(root, "whisper-tiny-en"))
+    await Promise.all(
+      ["encoder.int8.onnx", "decoder.int8.onnx", "tokens.txt"].map((name) =>
+        writeFile(path.join(root, "whisper-tiny-en", name), "fixture"),
+      ),
+    )
+    await expect(voice.transcribe(new Uint8Array(44), "whisper-tiny-en")).rejects.toThrow("Invalid recorder WAV")
+    await expect(voice.transcribe(new Uint8Array(), "../unsupported")).rejects.toThrow("Unsupported recognition pack")
+    await mkdir(path.join(root, "kokoro-int8-en-v0_19"))
+    await Promise.all(
+      ["model.int8.onnx", "voices.bin", "tokens.txt"].map((name) =>
+        writeFile(path.join(root, "kokoro-int8-en-v0_19", name), "fixture"),
+      ),
+    )
+    await expect(voice.speak("missing-lexicon", "Hello.", "kokoro-int8-en-v0_19:0")).rejects.toThrow(
+      "archived espeak-ng-data is no longer supported",
+    )
+    expect((await readdir(root)).filter((name) => name.startsWith(".sherpa-job-"))).toEqual([])
+  })
+
+  test("cancels before launch and after a child opens its output, then releases the request ID", async () => {
+    const worker = path.join(root, "holding-worker.cjs")
+    const model = path.join(root, "kokoro-int8-en-v0_19")
+    await mkdir(model, { recursive: true })
+    await writeFile(
+      worker,
+      `const fs = require("node:fs"); const path = require("node:path");
+      const chunks = []; process.stdin.on("data", (chunk) => chunks.push(chunk));
+      process.stdin.on("end", () => {
+        const r = JSON.parse(Buffer.concat(chunks));
+        fs.openSync(r.output, "w");
+        fs.writeFileSync(path.join(r.model, "started"), "");
+        setInterval(() => {}, 1000);
+      });`,
+    )
+    const voice = createSherpaVoice(worker, { executable, modulePath, modelDir: () => model })
+    const early = voice.speak("early", "Hello.", "kokoro-int8-en-v0_19:0")
+    voice.cancel("early")
+    expect(await early).toBeNull()
+    const started = Promise.withResolvers<void>()
+    const watcher = watch(model, (_, filename) => {
+      if (filename === "started") started.resolve()
+    })
+    try {
+      const running = voice.speak("active", "Hello.", "kokoro-int8-en-v0_19:0")
+      await expect(voice.speak("active", "Duplicate.", "kokoro-int8-en-v0_19:0")).rejects.toThrow("already active")
+      await started.promise
+      expect((await readdir(root)).filter((name) => name.startsWith(".sherpa-job-"))).toHaveLength(1)
+      voice.cancel("active")
+      expect(await running).toBeNull()
+      expect((await readdir(root)).filter((name) => name.startsWith(".sherpa-job-"))).toEqual([])
+      const reused = voice.speak("active", "Hello.", "kokoro-int8-en-v0_19:0")
+      voice.cancel("active")
+      expect(await reused).toBeNull()
+    } finally {
+      watcher.close()
+      voice.cancel("active")
+    }
+  })
+
+  // Model fixtures are opt-in and never shipped. This cold CPU inference needs a larger CI budget.
+  test.skipIf(!fixtures)(
+    "synthesizes Kokoro and recognizes the sample through packaged, unpacked addon paths",
+    async () => {
+      const builder = createRequire(require.resolve("electron-builder"))
+      const appBuilder = createRequire(builder.resolve("app-builder-lib"))
+      const asar = appBuilder("@electron/asar")
+      const app = path.join(root, "app")
+      const resources = path.join(root, "resources")
+      await mkdir(path.join(app, "node_modules"), { recursive: true })
+      await mkdir(path.join(resources, "voice"), { recursive: true })
+      await cp(path.dirname(modulePath), path.join(app, "node_modules", "sherpa-onnx-node"), { recursive: true })
+      const native = createRequire(modulePath).resolve("sherpa-onnx-win-x64")
+      await cp(path.dirname(native), path.join(app, "node_modules", "sherpa-onnx-win-x64"), { recursive: true })
+      await copyFile(helper, path.join(resources, "voice", "sherpa-worker.cjs"))
+      await asar.createPackageWithOptions(app, path.join(resources, "app.asar"), { unpackDir: "node_modules" })
+      const voice = createSherpaVoice(path.join(resources, "voice", "sherpa-worker.cjs"), {
+        executable,
+        modulePath: path.join(resources, "app.asar", "node_modules", "sherpa-onnx-node", "sherpa-onnx.js"),
+        modelDir: (id) => path.join(fixtures!, id),
+      })
+      const audio = await voice.speak("sample", "This is a simple voice test.", "kokoro-int8-en-v0_19:0")
+      if (!audio) throw new Error("Sample unexpectedly cancelled")
+      const wav = Buffer.from(audio)
+      expect(wav.toString("ascii", 0, 4)).toBe("RIFF")
+      expect(wav.readUInt32LE(24)).toBe(24000)
+      expect(wav.length).toBeGreaterThan(44)
+      const samples = Math.floor((((wav.length - 44) / 2) * 16000) / 24000)
+      const recorder = Buffer.alloc(44 + samples * 2)
+      wav.copy(recorder, 0, 0, 44)
+      recorder.writeUInt32LE(recorder.length - 8, 4)
+      recorder.writeUInt32LE(16000, 24)
+      recorder.writeUInt32LE(32000, 28)
+      recorder.writeUInt32LE(samples * 2, 40)
+      Array.from({ length: samples }).forEach((_, index) =>
+        recorder.writeInt16LE(wav.readInt16LE(44 + Math.floor((index * 24000) / 16000) * 2), 44 + index * 2),
+      )
+      const text = await voice.transcribe(recorder, "whisper-tiny-en")
+      expect(text.toLowerCase()).toBe("this is a simple voice test.")
+      console.log(`Electron packaged Kokoro: ${wav.length} bytes, 24000 Hz; Whisper: ${JSON.stringify(text)}`)
+    },
+    120_000,
+  )
+})

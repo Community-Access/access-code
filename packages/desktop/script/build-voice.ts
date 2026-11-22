@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
-import { cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises"
+import { copyFile, cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
@@ -11,6 +11,7 @@ const output = path.join(dir, "resources/voice")
 
 if (process.platform === "win32") {
   await $`bun ./voice-windows/build.ts`.cwd(dir)
+  await copyFile(path.join(dir, "voice-windows/sherpa-worker.cjs"), path.join(output, "sherpa-worker.cjs"))
   process.exit(0)
 }
 

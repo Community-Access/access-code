@@ -17,12 +17,33 @@ export const VoiceVoices = Rpc.make("VoiceVoices", {
   success: Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String })),
 })
 
+export const VoicePacks = Rpc.make("VoicePacks", {
+  success: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+      kind: Schema.Literals(["recognition", "speech"]),
+      description: Schema.String,
+      license: Schema.String,
+      source: Schema.String,
+      size: Schema.Number,
+      installed: Schema.Boolean,
+      download: Schema.NullOr(Schema.Struct({ received: Schema.Number, total: Schema.Number })),
+      error: Schema.NullOr(Schema.String),
+    }),
+  ),
+})
+
+export const VoiceInstallPack = Rpc.make("VoiceInstallPack", { payload: { id: Schema.String } })
+export const VoiceCancelPack = Rpc.make("VoiceCancelPack", { payload: { id: Schema.String } })
+export const VoiceRemovePack = Rpc.make("VoiceRemovePack", { payload: { id: Schema.String } })
+
 export const VoiceCancelDownload = Rpc.make("VoiceCancelDownload")
 
 export const VoiceRemove = Rpc.make("VoiceRemove")
 
 export const VoiceTranscribe = Rpc.make("VoiceTranscribe", {
-  payload: { audio: Transferable.Uint8Array },
+  payload: { audio: Transferable.Uint8Array, recognizer: Schema.optionalKey(Schema.String) },
   success: Schema.String,
 })
 
@@ -36,6 +57,10 @@ export const VoiceCancel = Rpc.make("VoiceCancel", { payload: { id: Schema.Strin
 export const VoiceRpcs = RpcGroup.make(
   VoiceStatus,
   VoiceVoices,
+  VoicePacks,
+  VoiceInstallPack,
+  VoiceCancelPack,
+  VoiceRemovePack,
   VoiceDownload,
   VoiceCancelDownload,
   VoiceRemove,

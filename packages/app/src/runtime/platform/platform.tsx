@@ -40,7 +40,20 @@ export type LocalVoiceStatus = {
   error: string | null
 }
 
-/** On-device speech for dictation and voice mode (desktop on Apple silicon only). */
+export type LocalVoicePack = {
+  id: string
+  name: string
+  kind: "recognition" | "speech"
+  description: string
+  license: string
+  source: string
+  size: number
+  installed: boolean
+  download: { received: number; total: number } | null
+  error: string | null
+}
+
+/** On-device speech for dictation and voice mode. */
 export type LocalVoice = {
   status(): Promise<LocalVoiceStatus>
   voices(): Promise<Array<{ id: string; name: string }>>
@@ -48,8 +61,12 @@ export type LocalVoice = {
   download(): Promise<void>
   cancelDownload(): Promise<void>
   remove(): Promise<void>
+  packs(): Promise<LocalVoicePack[]>
+  installPack(id: string): Promise<void>
+  cancelPack(id: string): Promise<void>
+  removePack(id: string): Promise<void>
   /** 16 kHz mono WAV in, recognized text out. */
-  transcribe(audio: ArrayBuffer): Promise<string>
+  transcribe(audio: ArrayBuffer, recognizer?: string): Promise<string>
   /** Speech for one sentence as a WAV, or null when cancelled. */
   speak(id: string, text: string, voice: string): Promise<ArrayBuffer | null>
   cancel(id: string): Promise<void>

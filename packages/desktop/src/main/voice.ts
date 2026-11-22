@@ -1,13 +1,17 @@
-import { app } from "electron"
+import { app, net } from "electron"
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { createWriteStream, existsSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { createRequire } from "node:module"
 import { pipeline } from "node:stream/promises"
 import { createInterface } from "node:readline"
 import { fileURLToPath } from "node:url"
 import { createWindowsVoice } from "./windows-voice"
+import { createSherpaVoice } from "./sherpa-voice"
+import { voiceCatalog } from "./voice-catalog"
+import { createVoicePacks } from "./voice-packs"
 
 // Local voice for dictation and voice mode: Liquid's LFM2.5 Audio model run by the bundled Swift helper
 // (packages/desktop/voice). The model is downloaded once, on request, into the app's data folder.
@@ -56,6 +60,53 @@ const windowsHelperPath = () =>
     : path.join(path.dirname(fileURLToPath(import.meta.url)), "../../resources/voice/accesscode-sapi.exe")
 
 const windowsVoice = createWindowsVoice(windowsHelperPath())
+let windowsPacks: ReturnType<typeof createVoicePacks> | undefined
+const activePacks = new Map<string, number>()
+const removingPacks = new Set<string>()
+
+function packManager() {
+  if (process.platform !== "win32" || process.arch !== "x64")
+    throw new Error("Windows voice models are available only on Windows x64")
+  windowsPacks ??= createVoicePacks(path.join(app.getPath("userData"), "voice", "packs"), voiceCatalog, net.fetch)
+  return windowsPacks
+}
+
+function sherpaVoice() {
+  const resources = app.isPackaged
+    ? path.join(process.resourcesPath, "voice")
+    : path.join(path.dirname(fileURLToPath(import.meta.url)), "../../resources/voice")
+  const modulePath = app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "sherpa-onnx-node", "sherpa-onnx.js")
+    : createRequire(import.meta.url).resolve("sherpa-onnx-node")
+  return createSherpaVoice(path.join(resources, "sherpa-worker.cjs"), {
+    executable: process.execPath,
+    modulePath,
+    modelDir: (id) => path.join(app.getPath("userData"), "voice", "packs", id),
+  })
+}
+
+export async function packs() {
+  if (process.platform !== "win32" || process.arch !== "x64") return []
+  return packManager().list()
+}
+
+export function installPack(id: string) {
+  return packManager().start(id)
+}
+
+export function cancelPack(id: string) {
+  return packManager().cancel(id)
+}
+
+export async function removePack(id: string) {
+  if (activePacks.has(id)) throw new Error("Cannot remove a voice model while it is in use")
+  removingPacks.add(id)
+  try {
+    await packManager().remove(id)
+  } finally {
+    removingPacks.delete(id)
+  }
+}
 
 export function status(): Status {
   if (process.platform === "win32") {
@@ -102,8 +153,22 @@ export async function remove() {
   await rm(modelDir(), { recursive: true, force: true })
 }
 
-export async function transcribe(wav: Uint8Array) {
-  if (process.platform === "win32") return windowsVoice.transcribe(wav)
+export async function transcribe(wav: Uint8Array, recognizer?: string) {
+  if (process.platform === "win32") {
+    if (!recognizer || recognizer === "sapi") return windowsVoice.transcribe(wav)
+    if (recognizer !== "whisper-tiny-en") throw new Error(`Unknown recognition model: ${recognizer}`)
+    if (removingPacks.has(recognizer)) throw new Error("The selected recognition model is being removed")
+    activePacks.set(recognizer, (activePacks.get(recognizer) ?? 0) + 1)
+    try {
+      const pack = (await packManager().list()).find((item) => item.id === recognizer)
+      if (!pack?.installed) throw new Error("The selected recognition model is not installed")
+      return await sherpaVoice().transcribe(wav, recognizer)
+    } finally {
+      const count = activePacks.get(recognizer) ?? 1
+      if (count === 1) activePacks.delete(recognizer)
+      if (count > 1) activePacks.set(recognizer, count - 1)
+    }
+  }
   const helper = await ready()
   const input = path.join(helper.temp, `input-${state.next++}.wav`)
   await writeFile(input, wav)

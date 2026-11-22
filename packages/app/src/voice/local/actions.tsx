@@ -96,7 +96,10 @@ function DictateButton(props: {
           .then(() => {
             const current = dictation()
             if ((current.type !== "recording" && current.type !== "stopping") || current.id !== id) return ""
-            return props.voice.transcribe(wav)
+            return props.voice.transcribe(
+              wav,
+              platform.platform === "desktop" && platform.os === "windows" ? props.windows.settings.recognizer : undefined,
+            )
           })
           .then((text) => {
             const current = dictation()
@@ -165,7 +168,11 @@ function DictateButton(props: {
       title={language.t("voice.local.dictate.hint")}
       disabled={voiceMode.engaged() || dictation().type === "starting" || dictation().type === "stopping"}
       onClick={() =>
-        void (dictation().type === "recording" ? stop() : setup(start)).catch((error: unknown) =>
+        void (dictation().type === "recording"
+          ? stop()
+          : platform.platform === "desktop" && platform.os === "windows"
+            ? start()
+            : setup(start)).catch((error: unknown) =>
           announce(language.t("voice.local.failed", { error: String(error) }), "assertive"),
         )
       }

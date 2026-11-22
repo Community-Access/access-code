@@ -78,6 +78,9 @@ const getBase = (appId: string): Configuration => {
     extraMetadata: process.env.OPENCODE_VERSION
       ? { desktopName, version: process.env.OPENCODE_VERSION }
       : { desktopName },
+    ...(target.os === "win32" && target.cpu === "x64"
+      ? { asarUnpack: ["**/node_modules/sherpa-onnx-node/**/*", "**/node_modules/sherpa-onnx-win-x64/**/*"] }
+      : {}),
     files: [
       "out/**/*",
       "resources/**/*",
@@ -100,6 +103,12 @@ const getBase = (appId: string): Configuration => {
       // Keep js-yaml's CommonJS sources and dist/js-yaml.mjs ESM entry, not browser bundles or its CLI.
       "!**/node_modules/js-yaml/dist/{js-yaml.js,js-yaml.min.js,*.map}",
       "!**/node_modules/js-yaml/bin{,/**/*}",
+      ...(target.os === "win32"
+        ? [
+            "!**/node_modules/sherpa-onnx-{darwin-*,linux-*,win-arm64,win-ia32}{,/**/*}",
+            ...(target.cpu === "x64" ? [] : ["!**/node_modules/sherpa-onnx-{node,win-x64}{,/**/*}"]),
+          ]
+        : ["!**/node_modules/sherpa-onnx-{node,darwin-*,linux-*,win-*}{,/**/*}"]),
     ],
     extraResources: [
       {
@@ -136,6 +145,24 @@ const getBase = (appId: string): Configuration => {
       if (context.electronPlatformName !== "win32") return
 
       await NativeArch.verify(path.join(resources, "voice", "accesscode-sapi.exe"), arch)
+      if (arch === "x64") {
+        if ((await stat(path.join(resources, "voice", "sherpa-worker.cjs"))).size === 0)
+          throw new Error("Bundled sherpa voice worker must be non-empty")
+        const sherpa = path.join(resources, "app.asar.unpacked", "node_modules", "sherpa-onnx-win-x64")
+        await Promise.all(
+          [
+            "sherpa-onnx.node",
+            "sherpa-onnx-c-api.dll",
+            "sherpa-onnx-cxx-api.dll",
+            "onnxruntime.dll",
+            "onnxruntime_providers_shared.dll",
+          ].map(async (name) => {
+            const file = path.join(sherpa, name)
+            if ((await stat(file)).size === 0) throw new Error(`Bundled sherpa native file must be non-empty: ${file}`)
+            await NativeArch.verify(file, "x64")
+          }),
+        )
+      }
 
       const prebuilds = path.join(
         resources,
