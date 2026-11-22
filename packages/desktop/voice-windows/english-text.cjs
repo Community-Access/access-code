@@ -55,7 +55,7 @@ function integer(text) {
       const remainder = number % 100
       return [
         hundreds ? `${digits[hundreds]} hundred` : "",
-        remainder < 10 ? (remainder ? digits[remainder] : "") : remainder < 20 ? teens[remainder - 10] : `${tens[Math.floor(remainder / 10)]} ${digits[remainder % 10] === "zero" ? "" : digits[remainder % 10]}`,
+        remainder < 10 ? (remainder ? digits[remainder] : "") : remainder < 20 ? teens[remainder - 10] : `${tens[Math.floor(remainder / 10)]}${remainder % 10 ? ` ${digits[remainder % 10]}` : ""}`,
         scales[groups.length - index - 1],
       ].filter(Boolean).join(" ").trim()
     })
@@ -78,9 +78,9 @@ function normalize(text) {
       index += word[0].length
       continue
     }
-    const number = /^\d+(?:\.\d+)?/u.exec(rest)
+    const number = /^(?:\d{1,3}(?:,\d{3})+(?!\d)|\d+)(?:\.\d+)?/u.exec(rest)
     if (number) {
-      const [whole, fraction] = number[0].split(".")
+      const [whole, fraction] = number[0].replaceAll(",", "").split(".")
       tokens.push(integer(whole))
       if (fraction) tokens.push("point", [...fraction].map((digit) => digits[Number(digit)]).join(" "))
       index += number[0].length

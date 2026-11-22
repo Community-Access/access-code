@@ -10,6 +10,10 @@ describe("English voice text normalization", () => {
       "C colon backslash src backslash file dot ts colon minus twelve point five zero plus zero point two five percent",
     )
     expect(normalize("issue #1024 and 007")).toBe("issue hash one thousand twenty four and zero zero seven")
+    expect(normalize("$20,000.25 and 1,234,567")).toBe(
+      "dollar twenty thousand point two five and one million two hundred thirty four thousand five hundred sixty seven",
+    )
+    expect(normalize("12,34")).toBe("twelve , thirty four")
     expect(normalize("“Hello”—£2 × 3…")).toBe("\" Hello \" dash pound two times three .")
   })
 
