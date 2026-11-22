@@ -6,10 +6,10 @@ fail, or blocked; do not treat an untested scenario as a pass.
 
 ## Prepare
 
-1. Download the unsigned installer or portable artifact from the Windows
-   installer workflow run for the `windows-voice` branch. GitHub may require
-   sign-in. Windows may warn that the publisher is unknown; verify the source
-   and only run the build if you trust it.
+1. Download the unsigned installer or portable ZIP from the
+   [Windows voice community test prerelease](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261122).
+   No GitHub account is required. Windows may warn that the publisher is
+   unknown; verify the source and only run the build if you trust it.
 2. Prefer the portable edition for initial testing. Extract the complete
    artifact to a new writable folder and keep `accesscode-portable.flag` beside
    `AccessCode Dev.exe`. Do not overwrite another portable folder or its
@@ -111,4 +111,4 @@ Automated tests verified downloads, prerecorded recognition and generated
 audio; they do not establish audible quality or usability. Live microphone,
 listening, installation, human interruption and screen-reader testing remain
 outstanding. Model terms, attribution and runtime notice completeness require
-qualified review before public release.
+qualified review.

@@ -73,7 +73,8 @@ The resulting installer is `dist\desktop\accesscode-desktop-win-x64.exe`. The te
 removed after packaging. This procedure does not sign or publish the installer.
 
 The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
-portable editions for x64. These are for testing, not public release. Windows ARM64 packaging is paused.
+portable editions for x64. The [Windows voice community test prerelease](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261122)
+provides public downloads for testing, not a stable release. Windows ARM64 packaging is paused.
 
 The `windows-voice` test branch has experimental Windows voice support. Windows speech voices and recognition depend
 on what is installed on the device. Voice settings offer independently selected Whisper Tiny English (about 104 MB)
@@ -102,7 +103,8 @@ from the [official 1.30.0 Windows Python wheel](https://pypi.org/project/onnxrun
 Update the notices when updating either bundled runtime.
 The Piper and OpenPhonemizer attribution and license notice is in `resources\voice\licenses\piper-model-NOTICE.txt`.
 The Piper model card reports training on LibriTTS, which is distributed under CC BY 4.0.
-Voice-model terms, dataset attribution and runtime notice completeness require qualified review before release.
+Voice-model terms, dataset attribution and runtime notice completeness require qualified review; the public
+prerelease is for testing only.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with
