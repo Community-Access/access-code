@@ -79,8 +79,11 @@ The `windows-voice` test branch has experimental Windows voice support. Windows 
 on what is installed on the device. Voice settings offer independently selected Whisper Tiny English (about 104 MB)
 and Moonshine Tiny English (about 124 MB) recognition models. Choose **Install** to download one, or cancel or
 remove it later. Downloads are checked against pinned file sizes and SHA-256 hashes. The models run locally;
-selecting one does not change the reply voice.
-No model downloads automatically. Kokoro and other downloadable speech voices are not yet available.
+selecting one does not change the reply voice. Kokoro English is an optional US English reply voice pack.
+It uses the [Misaki ONNX phonemizer](https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/tree/4b3a605d2f605318ab4f762ab9855c44106528b7);
+unfamiliar words use its neural fallback. Some context-dependent words may be pronounced incorrectly, and
+unsupported characters are reported as errors rather than omitted. No model downloads automatically.
+Piper and other downloadable speech voices are not yet available.
 Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
 The `windows_voice` experimental flag controls these features using the connected server's global configuration.
 It defaults on for local and dev builds and off for releases; set `experimental.windows_voice` in configuration
@@ -89,7 +92,10 @@ or use `OPENCODE_FLAGS=windows_voice` on the server to opt in. Changes to config
 Windows x64 builds include the sherpa-onnx license and the ONNX Runtime license and third-party notices under
 `resources\voice\licenses`. These notices come from [sherpa-onnx 2.0.1](https://github.com/k2-fsa/sherpa-onnx/tree/v2.0.1)
 and its [ONNX Runtime 1.28.2 Windows x64 static-CRT archive](https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-win-x64-MT-Release-1.28.2.tar.bz2).
-Update them when updating the bundled native runtime.
+The separate phonemizer process uses ONNX Runtime Node 1.30.0; its license and third-party notices are
+from the [official 1.30.0 Windows Python wheel](https://pypi.org/project/onnxruntime/1.30.0/#files)
+(SHA-256 `3bdd1752a8502ac1a7ccc6e878d16db6943df574d54ed7f01058a6806ae05be4`).
+Update the notices when updating either bundled runtime.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with

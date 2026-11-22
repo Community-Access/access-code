@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { spawnSync } from "node:child_process"
 import { watch } from "node:fs"
 import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
@@ -9,6 +10,7 @@ const require = createRequire(import.meta.url)
 const helper = path.resolve(import.meta.dir, "../../voice-windows/sherpa-worker.cjs")
 const fixtures = process.env.OPENCODE_SHERPA_TEST_MODELS
 const moonshine = process.env.OPENCODE_SHERPA_MOONSHINE_FIXTURES
+const kokoro = process.env.OPENCODE_SHERPA_KOKORO_FIXTURES
 
 describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa Electron node-mode voice", () => {
   let root: string
@@ -101,6 +103,74 @@ describe.skipIf(process.platform !== "win32" || process.arch !== "x64")("Sherpa 
       })
       const audio = await readFile(path.join(moonshine!, "recorder.wav"))
       expect((await voice.transcribe(audio, "moonshine-tiny-en")).toLowerCase()).toBe("this is a simple voice test.")
+    },
+    120_000,
+  )
+
+  test.skipIf(!kokoro)(
+    "synthesizes an unknown word and numbers through packaged, isolated native workers",
+    async () => {
+      const builder = createRequire(require.resolve("electron-builder"))
+      const appBuilder = createRequire(builder.resolve("app-builder-lib"))
+      const asar = appBuilder("@electron/asar")
+      const app = path.join(root, "kokoro-app")
+      const resources = path.join(root, "kokoro-resources")
+      const runtime = require.resolve("onnxruntime-node")
+      const common = createRequire(runtime).resolve("onnxruntime-common")
+      await mkdir(path.join(app, "node_modules"), { recursive: true })
+      await mkdir(path.join(resources, "voice"), { recursive: true })
+      await cp(path.dirname(modulePath), path.join(app, "node_modules", "sherpa-onnx-node"), { recursive: true })
+      const native = createRequire(modulePath).resolve("sherpa-onnx-win-x64")
+      await cp(path.dirname(native), path.join(app, "node_modules", "sherpa-onnx-win-x64"), { recursive: true })
+      await cp(path.dirname(path.dirname(runtime)), path.join(app, "node_modules", "onnxruntime-node"), { recursive: true })
+      await cp(path.dirname(path.dirname(path.dirname(common))), path.join(app, "node_modules", "onnxruntime-common"), { recursive: true })
+      for (const file of ["sherpa-worker.cjs", "misaki-worker.cjs", "english-text.cjs"])
+        await copyFile(path.resolve(import.meta.dir, "../../voice-windows", file), path.join(resources, "voice", file))
+      await asar.createPackageWithOptions(app, path.join(resources, "app.asar"), { unpackDir: "node_modules" })
+      const phonemizer = spawnSync(
+        executable,
+        [
+          path.join(resources, "voice", "misaki-worker.cjs"),
+          path.join(resources, "app.asar.unpacked", "node_modules", "onnxruntime-node", "dist", "index.js"),
+        ],
+        {
+          env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+          input: JSON.stringify({ model: path.join(kokoro!, "kokoro-int8-en-v1"), text: "Hello -2." }),
+          encoding: "utf8",
+          windowsHide: true,
+        },
+      )
+      expect(phonemizer.status).toBe(0)
+      expect(JSON.parse(phonemizer.stdout).map((part: number[]) => String.fromCodePoint(...part))).toEqual([
+        "həlˈO mˈInəs tˈu .",
+      ])
+      const voice = createSherpaVoice(path.join(resources, "voice", "sherpa-worker.cjs"), {
+        executable,
+        modulePath: path.join(resources, "app.asar", "node_modules", "sherpa-onnx-node", "sherpa-onnx.js"),
+        modelDir: (id) => path.join(kokoro!, id),
+        phonemizer: {
+          helperPath: path.join(resources, "voice", "misaki-worker.cjs"),
+          modulePath: path.join(resources, "app.asar", "node_modules", "onnxruntime-node", "dist", "index.js"),
+        },
+      })
+      const cancelled = voice.speak("cancelled-kokoro", "Hello.", "kokoro-int8-en-v1:3")
+      voice.cancel("cancelled-kokoro")
+      expect(await cancelled).toBeNull()
+      const audio = await voice.speak("kokoro", "Frobnication is minus 12.50.", "kokoro-int8-en-v1:3")
+      if (!audio) throw new Error("Sample unexpectedly cancelled")
+      const wav = Buffer.from(audio)
+      expect(wav.toString("ascii", 0, 4)).toBe("RIFF")
+      expect(wav.readUInt32LE(24)).toBe(24000)
+      expect(wav.length).toBeGreaterThan(44)
+      const symbol = await voice.speak("symbol", "$", "kokoro-int8-en-v1:3")
+      expect(symbol?.length).toBeGreaterThan(44)
+      const half = await voice.speak("half", "Hello ".repeat(50).trim(), "kokoro-int8-en-v1:3")
+      const long = await voice.speak("long", "Hello ".repeat(100).trim(), "kokoro-int8-en-v1:3")
+      if (!half || !long) throw new Error("Long sample unexpectedly cancelled")
+      expect(long.length).toBeGreaterThan(half.length * 1.7)
+      await expect(voice.speak("unsupported", "Hello 🌍", "kokoro-int8-en-v1:3")).rejects.toThrow(
+        "Unsupported character",
+      )
     },
     120_000,
   )

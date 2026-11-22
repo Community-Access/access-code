@@ -64,11 +64,39 @@ async function main() {
 
   if (typeof request.output !== "string" || !path.isAbsolute(request.output) || typeof request.text !== "string")
     throw new Error("An absolute output WAV path and synthesis text are required")
-  if (!/[\p{L}\p{N}]/u.test(request.text)) throw new Error("Kokoro synthesis requires words")
+  if (request.phonemes === undefined && !/[\p{L}\p{N}]/u.test(request.text))
+    throw new Error("Kokoro synthesis requires words")
   if (!Number.isSafeInteger(request.speaker) || request.speaker < 0) throw new Error("Invalid Kokoro speaker index")
   const model = file("model.int8.onnx")
   const voices = file("voices.bin")
   const tokens = file("tokens.txt")
+  if (request.phonemes !== undefined) {
+    if (
+      !Array.isArray(request.phonemes) ||
+      !request.phonemes.length ||
+      request.phonemes.some(
+        (sentence) =>
+          !Array.isArray(sentence) ||
+          !sentence.length ||
+          sentence.some((codepoint) => !Number.isInteger(codepoint) || codepoint < 0 || codepoint > 0x10ffff),
+      )
+    )
+      throw new Error("Invalid phonemes for Kokoro speech")
+    const sherpa = require(process.argv[2])
+    const tts = new sherpa.OfflineTts({
+      model: { kokoro: { model, voices, tokens, lengthScale: 1 }, numThreads: 2, provider: "cpu" },
+      maxNumSentences: 1,
+    })
+    if (request.speaker >= tts.numSpeakers) throw new Error(`Kokoro speaker index must be below ${tts.numSpeakers}`)
+    const audio = tts.generate({
+      text: "",
+      enableExternalBuffer: false,
+      generationConfig: { sid: request.speaker, speed: 1, phonemeCodepoints: request.phonemes },
+    })
+    if (!audio.samples.length) throw new Error("Kokoro produced no audio")
+    if (!sherpa.writeWave(request.output, audio)) throw new Error("Could not write Kokoro WAV")
+    return
+  }
   // Since sherpa-onnx 2.0, archived espeak-ng-data is ignored. Do not call native
   // generation without a lexicon: it can crash instead of returning an error.
   const lexicon = path.join(request.model, "lexicon.txt")

@@ -393,7 +393,9 @@ export function DialogWindowsVoiceSettings(props: {
                         ? language.t("voice.windows.packs.whisper.description")
                         : pack().id === "moonshine-tiny-en"
                           ? language.t("voice.windows.packs.moonshine.description")
-                          : pack().description}
+                          : pack().id === "kokoro-int8-en-v1"
+                            ? language.t("voice.windows.packs.kokoro.description")
+                            : pack().description}
                     </p>
                     <p>
                       {language.t(

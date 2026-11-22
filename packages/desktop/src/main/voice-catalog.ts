@@ -2,6 +2,8 @@ import type { VoicePack } from "./voice-packs"
 
 const whisper = "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny.en/resolve/d026532c022fa99fd789d6b32446a1df7b6bfc43"
 const moonshine = "https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/bf2b762c076d8ea61e2af0b3851c9564fb77552e"
+const kokoro = "https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0/resolve/57adb37fc0e8d4bd430cfc1b8f8c2294945b9af2"
+const misaki = "https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/resolve/4b3a605d2f605318ab4f762ab9855c44106528b7"
 
 // The three hashes also match the MIT-licensed conversion archive at
 // https://huggingface.co/runanywhere/sherpa-onnx-whisper-tiny.en/tree/76baba31555a91c0e00b63e4b91f7a01219cd8b4.
@@ -79,6 +81,52 @@ export const voiceCatalog: readonly VoicePack[] = [
         url: `${moonshine}/LICENSE`,
         size: 1071,
         sha256: "29f60769d1779eb7e196d96b8d2dd471d0263cf8200c79e55c0c00183971ee1b",
+      },
+    ],
+  },
+  {
+    id: "kokoro-int8-en-v1",
+    name: "Kokoro English",
+    kind: "speech",
+    description: "On-device US English speech with multiple voices.",
+    license: "Apache-2.0",
+    source: "https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0/tree/57adb37fc0e8d4bd430cfc1b8f8c2294945b9af2",
+    files: [
+      {
+        path: "model.int8.onnx",
+        url: `${kokoro}/model.int8.onnx`,
+        size: 114202993,
+        sha256: "75635ea3b85a32d00094dcdd61a258aba87c160f7c264c304a7b3ae9d734195e",
+      },
+      {
+        path: "voices.bin",
+        url: `${kokoro}/voices.bin`,
+        size: 28200960,
+        sha256: "1c5a5b983d3d50d8586d437a51f3faa2da7919ce76a013c081e65671a3447c29",
+      },
+      {
+        path: "tokens.txt",
+        url: `${kokoro}/tokens.txt`,
+        size: 687,
+        sha256: "6ebb6bb288f20f3ae8d004d3c2ca27697da27c037d75e81a60e2a6a663f95425",
+      },
+      {
+        path: "LICENSE",
+        url: `${kokoro}/LICENSE`,
+        size: 11358,
+        sha256: "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      },
+      {
+        path: "misaki-en_us-g2p.onnx",
+        url: `${misaki}/misaki-en_us-g2p.onnx`,
+        size: 3438244,
+        sha256: "757759c3e3ccb0bf59c379b1671c9834a27543ceaefd6846850823633b9665a1",
+      },
+      {
+        path: "misaki-en_us-g2p.json",
+        url: `${misaki}/misaki-en_us-g2p.json`,
+        size: 5724857,
+        sha256: "8a8e3350713b0a00102425a5d5bd6b58b34854c74a3e8d837589f55212c51658",
       },
     ],
   },

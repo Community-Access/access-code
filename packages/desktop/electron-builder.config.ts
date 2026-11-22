@@ -79,7 +79,14 @@ const getBase = (appId: string): Configuration => {
       ? { desktopName, version: process.env.OPENCODE_VERSION }
       : { desktopName },
     ...(target.os === "win32" && target.cpu === "x64"
-      ? { asarUnpack: ["**/node_modules/sherpa-onnx-node/**/*", "**/node_modules/sherpa-onnx-win-x64/**/*"] }
+      ? {
+          asarUnpack: [
+            "**/node_modules/sherpa-onnx-node/**/*",
+            "**/node_modules/sherpa-onnx-win-x64/**/*",
+            "**/node_modules/onnxruntime-node/**/*",
+            "**/node_modules/onnxruntime-common/**/*",
+          ],
+        }
       : {}),
     files: [
       "out/**/*",
@@ -106,9 +113,17 @@ const getBase = (appId: string): Configuration => {
       ...(target.os === "win32"
         ? [
             "!**/node_modules/sherpa-onnx-{darwin-*,linux-*,win-arm64,win-ia32}{,/**/*}",
-            ...(target.cpu === "x64" ? [] : ["!**/node_modules/sherpa-onnx-{node,win-x64}{,/**/*}"]),
+            "!**/node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}{,/**/*}",
+            "!**/node_modules/onnxruntime-node/bin/napi-v6/win32/arm64{,/**/*}",
+            "!**/node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll",
+            ...(target.cpu === "x64"
+              ? []
+              : ["!**/node_modules/sherpa-onnx-{node,win-x64}{,/**/*}", "!**/node_modules/onnxruntime-{node,common}{,/**/*}"]),
           ]
-        : ["!**/node_modules/sherpa-onnx-{node,darwin-*,linux-*,win-*}{,/**/*}"]),
+        : [
+            "!**/node_modules/sherpa-onnx-{node,darwin-*,linux-*,win-*}{,/**/*}",
+            "!**/node_modules/onnxruntime-{node,common}{,/**/*}",
+          ]),
     ],
     extraResources: [
       {
@@ -148,10 +163,32 @@ const getBase = (appId: string): Configuration => {
       if (arch === "x64") {
         if ((await stat(path.join(resources, "voice", "sherpa-worker.cjs"))).size === 0)
           throw new Error("Bundled sherpa voice worker must be non-empty")
+        for (const name of ["misaki-worker.cjs", "english-text.cjs"]) {
+          if ((await stat(path.join(resources, "voice", name))).size === 0)
+            throw new Error(`Bundled phonemizer worker must be non-empty: ${name}`)
+        }
+        for (const file of [
+          path.join("onnxruntime-node", "dist", "index.js"),
+          path.join("onnxruntime-common", "dist", "cjs", "index.js"),
+        ]) {
+          if ((await stat(path.join(resources, "app.asar.unpacked", "node_modules", file))).size === 0)
+            throw new Error(`Bundled phonemizer module must be non-empty: ${file}`)
+        }
+        const runtime = path.join(
+          resources, "app.asar.unpacked", "node_modules", "onnxruntime-node", "bin", "napi-v6", "win32", "x64",
+        )
+        for (const name of ["onnxruntime_binding.node", "onnxruntime.dll"]) {
+          const file = path.join(runtime, name)
+          if ((await stat(file)).size === 0) throw new Error(`Bundled ONNX Runtime file must be non-empty: ${file}`)
+          await NativeArch.verify(file, "x64")
+        }
         for (const name of [
           "sherpa-onnx-LICENSE.txt",
           "onnxruntime-LICENSE.txt",
           "onnxruntime-ThirdPartyNotices.txt",
+          "onnxruntime-node-LICENSE.txt",
+          "onnxruntime-node-ThirdPartyNotices.txt",
+          "misaki-model-NOTICE.txt",
         ]) {
           if ((await stat(path.join(resources, "voice", "licenses", name))).size === 0)
             throw new Error(`Bundled voice license must be non-empty: ${name}`)
