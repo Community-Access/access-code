@@ -213,7 +213,6 @@ jobs:
           - { target: linux-arm64, host: blacksmith-4vcpu-ubuntu-2404-arm }
           - { target: linux-x64, host: blacksmith-4vcpu-ubuntu-2404 }
           - { target: darwin-arm64, host: blacksmith-6vcpu-macos-26 }
-          - { target: windows-arm64, host: blacksmith-4vcpu-windows-2025 }
           - { target: windows-x64, host: blacksmith-4vcpu-windows-2025 }
     runs-on: ${{ matrix.host }}
     env: *env
@@ -233,11 +232,9 @@ jobs:
           OPENCODE_TARGET: ${{ matrix.target }}
           OPENCODE_MODELS_SNAPSHOT: ${{ github.workspace }}/.cache/models-catalog/api.json
       - name: Test
-        if: matrix.target != 'windows-arm64'
         working-directory: packages/cli
         run: bun run script/service-smoke.ts --node
       - name: Verify bundled models catalog
-        if: matrix.target != 'windows-arm64'
         run: bun packages/cli/script/catalog-smoke.ts "packages/cli/dist/node/cli-node-$OPENCODE_TARGET/bin/opencode2-node$EXE"
         env:
           OPENCODE_TARGET: ${{ matrix.target }}
@@ -311,8 +308,8 @@ jobs:
           path: dist/docker
 
   # macOS and Windows pack an unsigned app; Linux packs the final AppImage, deb and rpm.
-  # Dev and beta package macOS x64 on Apple Silicon and Windows arm64 on Blacksmith for speed. electron-builder's
-  # afterPack rejects a bundle whose CLI or node-pty does not match the target CPU.
+  # Dev and beta package macOS x64 on Apple Silicon for speed. electron-builder's afterPack rejects a bundle whose
+  # CLI or node-pty does not match the target CPU.
   build-desktop:
     needs: [plan, tag, build-cli]
     if: needs.plan.outputs.desktop == 'true'
@@ -326,13 +323,9 @@ jobs:
             host: ${{ (needs.plan.outputs.channel == 'dev' || needs.plan.outputs.channel == 'beta') && 'blacksmith-6vcpu-macos-26' || 'macos-26-intel' }}
             install: ${{ (needs.plan.outputs.channel == 'dev' || needs.plan.outputs.channel == 'beta') && '--os=darwin --cpu=*' || '--os=darwin --cpu=x64' }}
           - { target: darwin-arm64, host: blacksmith-6vcpu-macos-26, install: --os=darwin --cpu=arm64 }
-          # github-hosted: blacksmith lacks the ARM64 MSVC cross-compilation toolchain
-          - target: windows-arm64
-            host: ${{ (needs.plan.outputs.channel == 'dev' || needs.plan.outputs.channel == 'beta') && 'blacksmith-4vcpu-windows-2025' || 'windows-2025' }}
-            install: --cpu=*
-          - { target: windows-x64, host: blacksmith-4vcpu-windows-2025 }
-          - { target: linux-x64, host: blacksmith-4vcpu-ubuntu-2404 }
-          - { target: linux-arm64, host: blacksmith-4vcpu-ubuntu-2404-arm }
+          - { target: windows-x64, host: blacksmith-4vcpu-windows-2025, install: "" }
+          - { target: linux-x64, host: blacksmith-4vcpu-ubuntu-2404, install: "" }
+          - { target: linux-arm64, host: blacksmith-4vcpu-ubuntu-2404-arm, install: "" }
     runs-on: ${{ matrix.host }}
     env: *env
     steps:
@@ -380,10 +373,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: windows-arm64
-            host: ${{ (needs.plan.outputs.channel == 'dev' || needs.plan.outputs.channel == 'beta') && 'blacksmith-4vcpu-windows-2025' || 'windows-2025' }}
-            install: --cpu=*
-          - { target: windows-x64, host: blacksmith-4vcpu-windows-2025 }
+          - { target: windows-x64, host: blacksmith-4vcpu-windows-2025, install: "" }
     runs-on: ${{ matrix.host }}
     env: *env
     steps:
@@ -539,12 +529,6 @@ jobs:
         with:
           name: sign-windows
           path: ${{ runner.temp }}/out
-      - name: Upload arm64 app
-        if: needs.plan.outputs.desktop == 'true'
-        uses: ./.github/release/upload
-        with:
-          name: sign-desktop-windows-arm64
-          path: ${{ runner.temp }}/work/desktop-windows-arm64
       - name: Upload x64 app
         if: needs.plan.outputs.desktop == 'true'
         uses: ./.github/release/upload

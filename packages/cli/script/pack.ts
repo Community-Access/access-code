@@ -48,6 +48,7 @@ async function packDistribution(input: {
   for (const filepath of new Bun.Glob("*/package.json").scanSync({ cwd: input.root })) {
     const item = await Bun.file(`${input.root}/${filepath}`).json()
     if (!item.name.startsWith(input.packagePrefix)) continue
+    if (item.name === `${input.packagePrefix}windows-arm64`) continue
     binaries[item.name] = item.version
   }
   console.log(input.name, "binaries", binaries)

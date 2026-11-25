@@ -39,6 +39,7 @@ import { parseClientSlashCommand } from "./client-slash-command"
 
 export type ComposerModel = ComposerEditorModel & {
   readonly model: ComposerControls["model"]
+  interruptVoice?(): Promise<void>
 }
 
 const sendFailedTitle = {
@@ -576,6 +577,12 @@ export function createComposerModel(adapter: ComposerAdapter, options?: { queue?
   })
 
   Object.defineProperty(controller, "model", { get: () => adapter.controls().model })
+  Object.defineProperty(controller, "interruptVoice", {
+    value: async () => {
+      if (adapter.kind !== "active-session" || !adapter.working()) return
+      await serverSDK.api.session.interrupt({ sessionID: adapter.session().id, resume: true })
+    },
+  })
 
   command.register("composer-editor", () => [
     {

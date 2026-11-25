@@ -1,14 +1,24 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
-import { cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises"
+import { copyFile, cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-// Builds the local voice helper (voice/) into resources/voice with the MLX Metal shader bundle it loads at runtime.
-// Only Apple silicon Macs run it; other targets skip it and the app hides voice features there.
+// Builds the local voice helper into resources/voice for Windows and Apple silicon Macs.
 const dir = path.resolve(import.meta.dir, "..")
 
 const output = path.join(dir, "resources/voice")
+
+if (process.platform === "win32") {
+  await $`bun ./voice-windows/build.ts`.cwd(dir)
+  await Promise.all(
+    ["sherpa-worker.cjs", "misaki-worker.cjs", "piper-worker.cjs", "english-text.cjs"].map((file) =>
+      copyFile(path.join(dir, "voice-windows", file), path.join(output, file)),
+    ),
+  )
+  await cp(path.join(dir, "voice-windows/licenses"), path.join(output, "licenses"), { recursive: true })
+  process.exit(0)
+}
 
 if (process.platform !== "darwin" || process.arch !== "arm64") {
   console.log("Voice helper skipped: it only builds on Apple silicon Macs.")

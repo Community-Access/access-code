@@ -18,7 +18,7 @@ Electron updater manifests are available at `/api/<channel>/desktop/<distributio
 curl 'https://opencode.ai/update/api/beta/desktop/opencode/latest-mac.yml'
 ```
 
-Use `latest.yml` for Windows, `latest-mac.yml` for macOS, `latest-linux.yml` for Linux x64,
+Use `latest.yml` for the Windows x64 installer, `latest-mac.yml` for macOS, `latest-linux.yml` for Linux x64,
 and `latest-linux-arm64.yml` for Linux ARM64. The distribution selects the stored download
 URLs (`opencode` or `github`). Each manifest includes the selected artifact's version,
 file URLs, SHA-512 checksums, sizes, and release date. Existing minimum-version selection

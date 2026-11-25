@@ -26,7 +26,7 @@ Both read the same environment as every other release package:
 | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `OPENCODE_CHANNEL` | `dev` (default), `beta`, or `latest`/`prod`. Picks the app identity, icons and bundled CLI.                     |
 | `OPENCODE_VERSION` | Version stamped into the app and its packages.                                                                  |
-| `OPENCODE_TARGET`  | `darwin-arm64`, `darwin-x64`, `windows-arm64`, `windows-x64`, `linux-x64`, `linux-arm64`. Defaults to the host. |
+| `OPENCODE_TARGET`  | `darwin-arm64`, `darwin-x64`, `windows-x64`, `linux-x64`, `linux-arm64`. Defaults to the host. Windows ARM64 packaging is paused. |
 
 The CLI is placed outside `app.asar` in the application's resources directory, and packaging fails if it is missing.
 `bun run build` uses `packages/cli/dist` when that holds the target's CLI. Otherwise `dev` (and `local`, unset or unrecognized)
@@ -73,22 +73,54 @@ The resulting installer is `dist\desktop\accesscode-desktop-win-x64.exe`. The te
 removed after packaging. This procedure does not sign or publish the installer.
 
 The [Windows CI workflow](../../.github/workflows/accesscode-windows.yml) builds unsigned Dev installers and
-portable editions for x64 and ARM64. These are for testing, not public release.
+portable editions for x64. The [Windows voice community test prerelease](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261122)
+provides public downloads for testing, not a stable release. Windows ARM64 packaging is paused.
+
+The `windows-voice` test branch has experimental Windows voice support. Windows speech voices and recognition depend
+on what is installed on the device. Voice settings offer independently selected Whisper Tiny English (about 104 MB)
+and Moonshine Tiny English (about 124 MB) recognition models. Choose **Install** to download one, or cancel or
+remove it later. Downloads are checked against pinned file sizes and SHA-256 hashes. The models run locally;
+selecting one does not change the reply voice. Kokoro English is an optional US English reply voice pack.
+It uses the [Misaki ONNX phonemizer](https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/tree/4b3a605d2f605318ab4f762ab9855c44106528b7);
+unfamiliar words use its neural fallback. Some context-dependent words may be pronounced incorrectly, and
+unsupported characters are reported as errors rather than omitted. Piper LibriTTS English is another optional
+US English speech pack, with 904 numbered speakers selected in voice settings. It uses OpenPhonemizer and a
+Sherpa-converted Piper model; unknown words use neural phonemization. Unsupported characters or phonemes are
+reported as errors. Pronunciation, including contractions, needs listening tests. The pack is about 177 MB;
+no model downloads automatically. Other downloadable speech voices are not yet available.
+Microphone and voice previews are included, but real accessibility and interruption testing remains outstanding.
+Use the [Windows voice test plan](./WINDOWS-VOICE-TESTING.md) to record hands-on results.
+The `windows_voice` experimental flag controls these features using the connected server's global configuration.
+It defaults on for local and dev builds and off for releases; set `experimental.windows_voice` in configuration
+or use `OPENCODE_FLAGS=windows_voice` on the server to opt in. Changes to configuration refresh the controls.
+
+Windows x64 builds include the sherpa-onnx license and the ONNX Runtime license and third-party notices under
+`resources\voice\licenses`. These notices come from [sherpa-onnx 2.0.1](https://github.com/k2-fsa/sherpa-onnx/tree/v2.0.1)
+and its [ONNX Runtime 1.28.2 Windows x64 static-CRT archive](https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-win-x64-MT-Release-1.28.2.tar.bz2).
+The separate phonemizer process uses ONNX Runtime Node 1.30.0; its license and third-party notices are
+from the [official 1.30.0 Windows Python wheel](https://pypi.org/project/onnxruntime/1.30.0/#files)
+(SHA-256 `3bdd1752a8502ac1a7ccc6e878d16db6943df574d54ed7f01058a6806ae05be4`).
+Update the notices when updating either bundled runtime.
+The Piper and OpenPhonemizer attribution and license notice is in `resources\voice\licenses\piper-model-NOTICE.txt`.
+The Piper model card reports training on LibriTTS, which is distributed under CC BY 4.0.
+Voice-model terms, dataset attribution and runtime notice completeness require qualified review; the public
+prerelease is for testing only.
 
 For a stable Windows release, run the [unsigned payload build](../../.github/workflows/accesscode-windows-payloads.yml)
 from `main`. Enter the stable version from `package.json` and the exact Authenticode publisher subject agreed with
-the maintainer. The workflow builds x64 and ARM64 and uploads an unpacked app and a portable folder for each.
+the maintainer. The workflow builds x64 and uploads an unpacked app and a portable folder.
 
-On the signing machine, check out the same commit and download the four unsigned stable payloads. For each
-architecture, manually sign the release-owned binaries in both folders and verify their signatures and publisher.
+On the signing machine, check out the same commit and download the two unsigned stable payloads. Manually sign the
+release-owned binaries in both folders and verify their signatures and publisher.
 Preserve and verify the expected third-party signatures. Archive the signed portable folder with its marker intact.
 Set `OPENCODE_CHANNEL=latest`, the matching `OPENCODE_VERSION` and `OPENCODE_TARGET`, and point `OPENCODE_DESKTOP_APP`
 at the signed unpacked app. Run the Inno packaging command above, then sign and verify the resulting installer.
-Stage each installer outside `dist/desktop` before packing the next architecture, since packing clears that directory.
+The resulting signed installer is x64.
 
 To publish automatic updates, run `.github\release\write-accesscode-windows-feed.ps1` with the signed installer
-directory, stable version and signing subject. Publish both signed installers and the generated `latest.yml`
-together as assets of the latest [AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
+directory, stable version and signing subject. It verifies and lists the signed x64 installer in `latest.yml`.
+Publish the signed installer and generated feed together as assets of the latest
+[AccessCode GitHub release](https://github.com/Community-Access/access-code/releases).
 Do not publish unsigned installers to this feed. Automatic updates are off in local and preview builds.
 
 #### Sign Windows builds with Azure Artifact Signing
@@ -115,10 +147,10 @@ signature. Azure holds the private key; no local PFX is needed.
    bypass Quill's policy against signing Dev and Beta builds.
 4. For a release, agree on the publisher with the Access Code maintainer first.
    Sign the release-owned binaries in the staged payload before compiling Inno
-   Setup, then sign and verify the resulting installer. Set
+   Setup, then sign and verify the resulting x64 installer. Set
    `ACCESSCODE_WINDOWS_UPDATE_PUBLISHER` to the exact approved signer subject
-   before packaging, and generate `latest.yml` only after both final installers
-   are signed. A signature from the Quill profile is not automatically
+   before packaging, and generate `latest.yml` only after the final installer
+   is signed. A signature from the Quill profile is not automatically
    appropriate for an official Access Code release.
 
 See [Microsoft's Artifact Signing integration guide](https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations)

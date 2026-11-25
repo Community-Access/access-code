@@ -56,6 +56,7 @@ const allTargets: {
   { os: "win32", arch: "x64" },
   { os: "win32", arch: "x64", avx2: false },
 ]
+const defaultTargets = allTargets.filter((item) => item.os !== "win32" || item.arch !== "arm64")
 
 const targets =
   requestedTarget !== undefined
@@ -66,7 +67,7 @@ const targets =
           if (item.avx2 === false) return baselineFlag
           return item.abi === undefined
         })
-      : allTargets
+      : defaultTargets
 if (!targets.length) throw new Error(`Unknown build target: ${requestedTarget}`)
 
 // Bun 1.4.4 skips native packages for the other libc by default, but the musl targets need them.

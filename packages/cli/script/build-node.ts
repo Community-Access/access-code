@@ -42,11 +42,12 @@ const allTargets = [
   nodeTarget("win32", "arm64"),
   nodeTarget("win32", "x64"),
 ]
+const defaultTargets = allTargets.filter((target) => target.platform !== "win32" || target.arch !== "arm64")
 const targets = requested
   ? allTargets.filter((target) => targetName(target) === requested)
   : single || bundleOnly
     ? [nodeTarget(process.platform, process.arch)]
-    : allTargets
+    : defaultTargets
 
 process.chdir(dir)
 if (!skipInstall) run(process.execPath, ["install", "--os=*", "--cpu=*"])

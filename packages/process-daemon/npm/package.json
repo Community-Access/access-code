@@ -31,7 +31,6 @@
     "@opencode/pty-linux-arm64-musl": "0.6.0",
     "@opencode/pty-linux-x64-gnu": "0.6.0",
     "@opencode/pty-linux-x64-musl": "0.6.0",
-    "@opencode/pty-win32-arm64": "0.6.0",
     "@opencode/pty-win32-x64": "0.6.0"
   },
   "publishConfig": {

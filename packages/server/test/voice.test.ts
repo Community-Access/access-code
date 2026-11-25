@@ -44,6 +44,37 @@ const voice = makeLocationNode({
   deps: [],
 })
 
+it.live("resolves the Windows local voice flag from global configuration", () =>
+  Effect.gen(function* () {
+    const tmp = yield* Effect.acquireDisposable(Effect.promise(() => tmpdir("opencode-windows-voice-flag-")))
+    yield* Effect.forEach([false, true], (enabled) =>
+      Effect.gen(function* () {
+        const global = path.join(tmp.path, String(enabled))
+        yield* Effect.promise(() => fs.mkdir(global))
+        yield* Effect.promise(() =>
+          fs.writeFile(
+            path.join(global, "opencode.json"),
+            JSON.stringify({
+              experimental: { windows_voice: enabled },
+            }),
+          ),
+        )
+        const handler = yield* ServerFetch.make({
+          database: { path: ":memory:" },
+          config: { directory: global },
+          fs: { filewatcher: false },
+          models: { fetch: false },
+        })
+        const response = yield* Effect.promise(() =>
+          handler(new Request("http://opencode.local/api/experimental/voice/local-windows")),
+        )
+        expect(response.status).toBe(200)
+        expect(yield* Effect.promise(() => response.json())).toEqual({ enabled })
+      }),
+    )
+  }),
+)
+
 it.live("routes experimental voice models and session endpoints", () =>
   Effect.gen(function* () {
     const tmp = yield* Effect.acquireDisposable(Effect.promise(() => tmpdir("opencode-voice-endpoint-")))

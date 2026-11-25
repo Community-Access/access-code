@@ -60,7 +60,10 @@ jobs:
             const platforms = { Mac: { stable: null, pre: null }, Windows: { stable: null, pre: null } }
             for (const release of published) {
               for (const platform of Object.keys(platforms)) {
-                const assets = (release.assets || []).filter((asset) => platformOf(asset.name) === platform)
+                const assets = (release.assets || []).filter(
+                  (asset) =>
+                    platformOf(asset.name) === platform && !(platform === "Windows" && /arm64/i.test(asset.name)),
+                )
                 if (!assets.length) continue
                 const bucket = release.prerelease ? "pre" : "stable"
                 if (platforms[platform][bucket]) continue

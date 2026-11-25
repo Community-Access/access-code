@@ -25,3 +25,25 @@ export function useLocalVoiceSettings() {
 
   return { settings, setSettings }
 }
+
+const WindowsVoiceSettings = Persistence.struct({
+  voice: Schema.String,
+  recognizer: Schema.String,
+  microphone: Schema.String,
+  speed: Schema.Number.check(Schema.isBetween({ minimum: 0.5, maximum: 2 })),
+  volume: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+  interruption: Schema.Literals(["steer", "cancel"]),
+})
+
+export function useWindowsVoiceSettings() {
+  const [settings, setSettings, , ready] = persisted(Persist.global("voice.windows"), WindowsVoiceSettings, {
+    voice: "",
+    recognizer: "sapi",
+    microphone: "",
+    speed: 1,
+    volume: 1,
+    interruption: "steer",
+  })
+
+  return { settings, setSettings, ready }
+}

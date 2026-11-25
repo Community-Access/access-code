@@ -17,7 +17,6 @@ const targets = [
   { target: "aarch64-unknown-linux-musl", platform: "linux", arch: "arm64", libc: "musl", suffix: "musl" },
   { target: "x86_64-unknown-linux-gnu", platform: "linux", arch: "x64", libc: "glibc", suffix: "gnu" },
   { target: "x86_64-unknown-linux-musl", platform: "linux", arch: "x64", libc: "musl", suffix: "musl" },
-  { target: "aarch64-pc-windows-msvc", platform: "win32", arch: "arm64" },
   { target: "x86_64-pc-windows-msvc", platform: "win32", arch: "x64" },
 ]
 

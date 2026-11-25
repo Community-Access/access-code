@@ -1,0 +1,9 @@
+The optional Misaki US English ONNX phonemizer contains word lists and G2P
+logic from misaki, the PeterReid/graphemes_to_phonemes_en_us fallback model,
+and the hexgrad/Kokoro-82M vocabulary. Its ONNX conversion and packaging were
+made for the Eternia launcher. The phonemizer's model card identifies these
+components as Apache-2.0:
+
+https://huggingface.co/nekwo/misaki-en-us-g2p-onnx/tree/4b3a605d2f605318ab4f762ab9855c44106528b7
+
+The optional Kokoro pack includes a copy of the Apache License 2.0.

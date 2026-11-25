@@ -47,6 +47,19 @@ export const VoiceTransport = Schema.Union([
 
 export const VoiceGroup = HttpApiGroup.make("server.voice")
   .add(
+    HttpApiEndpoint.get("voice.localWindows", "/api/experimental/voice/local-windows", {
+      success: Schema.Struct({ enabled: Schema.Boolean }),
+      error: [ServiceUnavailableError, LocationNotFoundError],
+    }).annotateMerge(
+      OpenApi.annotations({
+        identifier: "experimental.voice.localWindows",
+        summary: "Check local Windows voice availability",
+        description:
+          "Experimental: may change without compatibility guarantees. Resolve the local Windows voice feature flag using the server's global configuration.",
+      }),
+    ),
+  )
+  .add(
     HttpApiEndpoint.get("voice.models", "/api/experimental/voice/models", {
       success: Schema.Struct({
         data: Schema.Struct({

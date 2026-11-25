@@ -1,4 +1,5 @@
 import type { DesktopMenuAction, DesktopZoomLevel } from "@opencode/app/desktop-menu"
+import type { LocalVoicePack } from "@opencode/app/desktop"
 import type { DesktopNativeBundle } from "@opencode/app/i18n/desktop-native"
 import type { StorageSnapshot } from "../shared/ipc-transport"
 import type { WindowBootstrap } from "../shared/window-bootstrap"
@@ -64,9 +65,14 @@ export type ElectronAPI = {
     error: string | null
   }>
   voiceDownload(): Promise<void>
+  voiceVoices(): Promise<Array<{ id: string; name: string }>>
+  voicePacks(): Promise<LocalVoicePack[]>
+  voiceInstallPack(id: string): Promise<void>
+  voiceCancelPack(id: string): Promise<void>
+  voiceRemovePack(id: string): Promise<void>
   voiceCancelDownload(): Promise<void>
   voiceRemove(): Promise<void>
-  voiceTranscribe(audio: ArrayBuffer): Promise<string>
+  voiceTranscribe(audio: ArrayBuffer, recognizer?: string): Promise<string>
   voiceSpeak(id: string, text: string, voice: string): Promise<ArrayBuffer | null>
   voiceCancel(id: string): Promise<void>
   getWindowFullscreen(): Promise<boolean>

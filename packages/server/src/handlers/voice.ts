@@ -1,5 +1,6 @@
 import { Location } from "@opencode/core/location"
 import { LocationServiceMap } from "@opencode/core/location-services"
+import { Flag } from "@opencode/core/flag"
 import { AbsolutePath } from "@opencode/core/schema"
 import { Voice } from "@opencode/core/voice"
 import { InvalidRequestError, ServiceUnavailableError } from "@opencode/protocol/errors"
@@ -15,6 +16,16 @@ export const VoiceHandler = HttpApiBuilder.group(Api, "server.voice", (handlers)
     const locations = yield* LocationServiceMap.Service
     const services = locations.get(Location.Ref.make({ directory: AbsolutePath.make(global.config) }))
     return handlers
+      .handle(
+        "voice.localWindows",
+        Effect.fn("server.voice.localWindows")(
+          function* () {
+            return { enabled: yield* Flag.enabled("windows_voice") }
+          },
+          Effect.provide(services),
+          locationErrors,
+        ),
+      )
       .handle(
         "voice.models",
         Effect.fn("server.voice.models")(
