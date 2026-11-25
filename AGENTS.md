@@ -1,7 +1,12 @@
 - After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit generated client files directly.
 - Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk` composes Client, Core, and Server.
 - This repository does not use Changesets. Do not add `.changeset` files; follow the existing release workflow instead.
-- The default branch is `dev`. Base branches and worktrees on `origin/dev`, target PRs at `dev`, and diff against `origin/dev` unless told otherwise.
+- AccessCode's default branch is `main`. For AccessCode work, base branches and worktrees on `origin/main`, target PRs at `main`, and diff against `origin/main` unless told otherwise. The fork's `dev` branch is not the baseline for AccessCode releases.
+
+## AccessCode Desktop Development
+
+- Run `bun run dev:desktop` from the repository root on a branch based on `origin/main`. This launches **AccessCode Dev** with a separate development profile and local backend. Leave installed AccessCode and its background service running.
+- On Windows, the desktop launcher needs the directory containing `bun.exe` on `PATH`; a PowerShell or npm command shim alone is not enough. See [Desktop testing](./CONTRIBUTING.md#desktop-testing) for the npm workaround and Windows packaging instructions.
 
 ## Live TUI Testing
 
