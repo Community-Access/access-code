@@ -1,4 +1,4 @@
-# Contributing to OpenCode
+# Contributing to AccessCode
 
 The changes most likely to be accepted are:
 
@@ -22,7 +22,7 @@ New providers should rarely require OpenCode changes. Add the provider to [model
 
 ## Development
 
-OpenCode requires the Bun version in the `packageManager` field of [`package.json`](./package.json) or newer. From the repository root:
+AccessCode requires the Bun version in the `packageManager` field of [`package.json`](./package.json) or newer. From the repository root:
 
 ```bash
 bun install
@@ -42,9 +42,27 @@ For web development, run the backend and app in separate terminals. Other interf
 ```bash
 bun dev serve --port 4096
 bun run dev:web
-bun run dev:desktop
 bun run dev:site
 ```
+
+### Desktop testing
+
+From the repository root on a branch based on `origin/main`, run:
+
+```sh
+bun run dev:desktop
+```
+
+This opens **AccessCode Dev** with a separate development profile and local backend, so you can test it alongside the installed AccessCode app. `dev:live` is for the terminal UI, not the desktop app. Use **Settings > About** to record the version you tested.
+
+On Windows, Electron needs `bun.exe` on `PATH` to start its backend. If Bun was installed globally with npm and PowerShell can run `bun` but AccessCode Dev reports `spawn bun ENOENT`, run these commands from the repository root:
+
+```powershell
+$env:Path = "$(npm root -g)\bun\bin;$env:Path"
+bun run dev:desktop
+```
+
+This changes `PATH` only for the current shell and its child processes. To test an installer or portable build instead, see the [Windows desktop build instructions](./packages/desktop/README.md#windows-x64-installer).
 
 ### Packages
 
@@ -79,9 +97,9 @@ Follow the repository [style guide](./AGENTS.md).
 
 Bug fixes, chores, and tests must reference an existing issue. Documentation, refactor, and feature PRs are exempt from the automated linked-issue check. When required, use `Fixes #123` or `Closes #123` in the PR description.
 
-Before implementing new functionality, open a feature request describing the problem, why it belongs in OpenCode, and your proposed approach if you have one. Wait for design approval before opening the implementation PR.
+Before implementing new functionality, open a feature request describing the problem, why it belongs in AccessCode, and your proposed approach if you have one. Wait for design approval before opening the implementation PR.
 
-Base branches on `dev` and complete the provided pull request template.
+Base AccessCode branches on `origin/main`, target `main` in `Community-Access/access-code`, and complete the provided pull request template.
 
 ### Keep It Focused
 
