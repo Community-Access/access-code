@@ -69,7 +69,8 @@ const ensure = Effect.fn("BackgroundService.ensure")(function* (mode: Background
         ...setup.cli.command,
         "serve",
         "--service",
-        ...(setup.isolated ? ["--hostname", "0.0.0.0", "--port", String(0x0c0c)] : []),
+        // OpenCode Dev uses 0x0c0c; AccessCode Dev keeps a separate fixed port so two copies still contend.
+        ...(setup.isolated ? ["--hostname", "0.0.0.0", "--port", String(0x0c0d)] : []),
         // AccessCode: its own fixed port, so it never binds or takes over the stock OpenCode service on 0xc0de.
         ...(!setup.isolated && app.isPackaged
           ? ["--hostname", "127.0.0.1", "--port", portableRoot ? "0" : String(ACCESSCODE_PORT)]

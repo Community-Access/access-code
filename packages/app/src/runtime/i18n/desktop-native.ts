@@ -232,7 +232,8 @@ function locale(value: string) {
 const normalizeScript = (script?: string) => (script === "Aran" ? "Arab" : script)
 
 export const DESKTOP_NATIVE_ENGLISH = {
-  "desktop.microphoneUsage": "AccessCode uses your microphone for voice calls.",
+  "desktop.microphoneUsage":
+    "AccessCode uses your microphone for experimental hosted voice calls. Raw microphone audio is sent to OpenAI.",
   "desktop.documentsFolderUsage":
     "AccessCode uses files in your Documents folder for projects you open and commands you run there.",
   "desktop.desktopFolderUsage": "AccessCode uses files on your Desktop for projects you open and commands you run there.",

@@ -60,6 +60,7 @@ const EXCEPTIONS: [RegExp, string][] = [
 // Pure black is a token only for video letterboxing (--media-black).
 const scale = new Set([...SCALE.light, ...SCALE.dark, "#000000"])
 
+// Bun.Glob uses platform separators; exception patterns use forward slashes.
 const files = (
   await Promise.all(ROOTS.map((root) => Array.fromAsync(new Bun.Glob(`${root}/**/*.css`).scan({ cwd: repo() }))))
 ).flat().map((file) => file.replaceAll("\\", "/"))

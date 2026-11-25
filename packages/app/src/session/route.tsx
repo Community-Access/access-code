@@ -13,7 +13,9 @@ import { LocationProvider } from "@/workspaces/location"
 import { ModelsProvider } from "@/providers/models/models"
 import { useProviders } from "@/providers/catalog/providers"
 import { useLanguage } from "@/runtime/i18n/language"
+import { usePlatform } from "@/runtime/platform/platform"
 import { useNotification } from "@/shell/notifications/notification"
+import { projectLabel } from "@/shell/project-label"
 import { ComposerPersistenceProvider } from "@/composer/persistence"
 import { useData, useServer } from "@/runtime/server/current"
 import { ServerConnection } from "@/runtime/server/registry"
@@ -39,6 +41,8 @@ export function TargetSessionRouteContent() {
   const params = useParams<{ serverKey: string; id: string }>()
   const data = useData()
   const server = useServer()
+  const platform = usePlatform()
+  const language = useLanguage()
   const tabs = useTabs()
 
   const resolution = createSessionResolution(
@@ -53,7 +57,17 @@ export function TargetSessionRouteContent() {
 
   const view = createMemo(() => sessionRouteView(resolution(), server.health))
   const viewed = createMemo(() => viewedSessionID(view()))
-  const title = createMemo(() => sessionDocumentTitle(view()))
+  const windows = platform.platform === "desktop" && platform.os === "windows"
+  const title = createMemo(() => {
+    const current = view()
+    if (!windows) return sessionDocumentTitle(current)
+    if (current.type !== "ready") return undefined
+    const project = server.ctx.projects.forSession(current.session)
+    const name = projectLabel(project ?? { worktree: current.session.location.directory }, language.t("project.rootFolder"))
+    return data.session.status(current.sessionID) === "running"
+      ? language.t("session.documentTitle.windowsWorking", { project: name })
+      : language.t("session.documentTitle.windows", { project: name })
+  })
   const modelDirectory = createMemo(() => sessionModelDirectory(resolution()))
 
   // Kept once the session leaves `ready`: the session providers can still read it while the route
@@ -86,7 +100,8 @@ export function TargetSessionRouteContent() {
   return (
     <>
       <MarkSessionViewed sessionID={viewed} />
-      <SessionDocumentTitle title={title} />
+      {/* a11y: needs manual verification — confirm NVDA and JAWS announce native Windows title changes. */}
+      <SessionDocumentTitle title={title} windows={windows} />
       <ModelsProvider directory={modelDirectory()}>
         <TargetSessionSettingsCommand />
         <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)}>
@@ -287,11 +302,11 @@ function MarkSessionViewed(props: { sessionID: () => string | undefined }) {
 }
 
 // Browser tabs and desktop windows are otherwise indistinguishable, so name them after the open session.
-function SessionDocumentTitle(props: { title: () => string | undefined }) {
+function SessionDocumentTitle(props: { title: () => string | undefined; windows: boolean }) {
   // Keyed: <Title> reads its text inside a meta effect, which would hit a stale Show accessor once the session is deleted.
   return (
     <Show when={props.title()} keyed>
-      {(value) => <Title>{`${value} · OpenCode`}</Title>}
+      {(value) => <Title>{props.windows ? value : `${value} · OpenCode`}</Title>}
     </Show>
   )
 }

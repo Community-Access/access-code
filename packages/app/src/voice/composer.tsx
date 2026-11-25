@@ -1,5 +1,7 @@
 import { motionTuning } from "@opencode/ui/motion-tuning"
 import { Button } from "@opencode/ui/button"
+import { useDialog } from "@opencode/ui/context/dialog"
+import { Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle } from "@opencode/ui/dialog"
 import { Icon } from "@opencode/ui/icon"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Loader } from "@opencode/ui/loader"
@@ -49,6 +51,7 @@ export function VoiceComposer(props: ParentProps<{ session: SessionInfo | undefi
   const server = useServer()
   const language = useLanguage()
   const platform = usePlatform()
+  const dialog = useDialog()
   const [state, setState] = createStore({ enabled: toggle() })
   onCleanup(motionTuning.subscribe(() => setState("enabled", toggle())))
 
@@ -72,7 +75,38 @@ export function VoiceComposer(props: ParentProps<{ session: SessionInfo | undefi
             onClick={() => {
               const session = props.session
 
-              if (session) voice.start(server.key, server.ctx, session)
+              if (!session) return
+              void dialog.show(() => (
+                <Dialog fit>
+                  <DialogHeader>
+                    <DialogTitle>{language.t("voice.consent.title")}</DialogTitle>
+                  </DialogHeader>
+                  <DialogBody class="px-5 pb-5">
+                    <p class="text-[13px] leading-[20px] text-v2-text-text-base">
+                      {language.t("voice.consent.body")}
+                    </p>
+                    <ul class="mt-3 list-disc space-y-2 pl-5 text-[13px] leading-[20px] text-v2-text-text-base">
+                      <li>{language.t("voice.consent.audio")}</li>
+                      <li>{language.t("voice.consent.models")}</li>
+                      <li>{language.t("voice.consent.charges")}</li>
+                    </ul>
+                  </DialogBody>
+                  <DialogFooter>
+                    <Button variant="ghost" autofocus onClick={() => dialog.close()}>
+                      {language.t("common.cancel")}
+                    </Button>
+                    <Button
+                      variant="contrast"
+                      onClick={() => {
+                        dialog.close()
+                        voice.start(server.key, server.ctx, session)
+                      }}
+                    >
+                      {language.t("voice.consent.accept")}
+                    </Button>
+                  </DialogFooter>
+                </Dialog>
+              ))
             }}
           >
             {language.t("voice.call")}

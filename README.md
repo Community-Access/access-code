@@ -40,6 +40,22 @@ AccessCode is not tied to one company or one kind of model. Connect as many prov
 
 Any server that speaks the OpenAI API works, so you can run models privately and offline with tools such as LM Studio, Ollama, MLX servers or TensorFold. Your code never leaves your Mac.
 
+**oMLX:** AccessCode discovers chat models from oMLX at `http://127.0.0.1:8000/v1` without listing each model. If your oMLX server requires an API key, add its key to `opencode.json`:
+
+```json
+{
+  "providers": {
+    "omlx": {
+      "settings": {
+        "apiKey": "your-omlx-api-key"
+      }
+    }
+  }
+}
+```
+
+If oMLX uses another port, add `"baseURL": "http://127.0.0.1:8080/v1"` alongside `apiKey`. AccessCode sends the key as a bearer token when it requests `/v1/models`.
+
 ## What AccessCode adds
 
 ### Works with VoiceOver

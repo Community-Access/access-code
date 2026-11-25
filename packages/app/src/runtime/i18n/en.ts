@@ -7,6 +7,8 @@ export const dict = {
   "shell.heading.session": "AccessCode session",
   "shell.heading.settings": "AccessCode Settings",
   "project.rootFolder": "Root folder",
+  "session.documentTitle.windows": "{{project}} - OpenCode",
+  "session.documentTitle.windowsWorking": "Working - {{project}} - OpenCode",
   "session.location.trigger": "Session location: {{location}}",
   "common.closeTabNamed": "Close {{title}}",
   "experiment.voiceCalls": "Voice calls",
@@ -125,6 +127,16 @@ export const dict = {
   "voice.windows.interruption.cancel": "Stop speaking and cancel the current work",
   "voice.windows.settings.open": "Voice settings",
   "voice.windows.settings.close": "Close voice settings",
+  "voice.consent.title": "Use a hosted voice model?",
+  "voice.consent.body":
+    "This experimental call does not use an on-device voice model. Starting the call sends data to hosted services.",
+  "voice.consent.audio":
+    "Your live microphone audio is sent to OpenAI through WebRTC for gpt-live-1 speech recognition and speech.",
+  "voice.consent.models":
+    "Conversation text and session context may be sent through the gpt-6.1-sol delegator to the tools and sessions you control.",
+  "voice.consent.charges":
+    "This may use paid API access and incur provider charges according to the server's configured credentials.",
+  "voice.consent.accept": "I understand, start voice call",
   ...DESKTOP_NATIVE_ENGLISH,
   "session.location.unavailable": "Session location unavailable",
   "session.location.description": "Choose another directory to continue this session.",
@@ -214,8 +226,8 @@ export const dict = {
   "command.agent.cycle.description": "Switch to the next agent",
   "command.agent.cycle.reverse": "Cycle agent backwards",
   "command.agent.cycle.reverse.description": "Switch to the previous agent",
-  "command.model.variant.cycle": "Cycle model variant",
-  "command.model.variant.cycle.description": "Switch to the next model variant",
+  "command.model.variant.cycle": "Cycle model power",
+  "command.model.variant.cycle.description": "Switch to the next power setting",
   "command.prompt.mode.shell": "Shell",
   "command.prompt.mode.normal": "Prompt",
   "command.prompt.focus": "Focus message editor",
