@@ -6,13 +6,13 @@ fail, or blocked; do not treat an untested scenario as a pass.
 
 ## Prepare
 
-1. Download the unsigned installer or portable ZIP from the
-   [Windows voice community test prerelease](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261122).
-   No GitHub account is required. Windows may warn that the publisher is
-   unknown; verify the source and only run the build if you trust it.
+1. Download the signed installer or portable ZIP from the
+   [updated Windows voice community test prerelease](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261125-signed).
+   No GitHub account is required. Verify the Authenticode publisher is Jeffrey
+   Bishop on the installer and the executables inside the portable ZIP.
 2. Prefer the portable edition for initial testing. Extract the complete
    artifact to a new writable folder and keep `accesscode-portable.flag` beside
-   `AccessCode Dev.exe`. Do not overwrite another portable folder or its
+   `AccessCode.exe`. Do not overwrite another portable folder or its
    `AccessCode-data` profile. The installer uses normal application data, so
    use a disposable Windows account or a backed-up test environment for it.
    Do not stop or replace a production app or server.
@@ -21,9 +21,9 @@ fail, or blocked; do not treat an untested scenario as a pass.
    quiet room. Actual conversational replies require a configured model
    provider and may incur its normal network charges.
 4. Open a disposable project and session. The `windows_voice` experimental
-   flag must be enabled on the connected server. It defaults on in dev builds;
-   otherwise configure `experimental.windows_voice` or start the test server
-   with `OPENCODE_FLAGS=windows_voice`. If controls are missing, record the
+   flag must be enabled on the connected server. It is off by default in this
+   release-channel build; configure `experimental.windows_voice` or start the
+   test server with `OPENCODE_FLAGS=windows_voice`. If controls are missing, record the
    build and server configuration rather than changing a production server.
    Open **Voice settings** from the message composer.
 5. Record the Windows version, CPU, build and artifact, screen reader and

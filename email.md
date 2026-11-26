@@ -1,4 +1,4 @@
-Subject: Help test Access Code's new Windows voice features
+Subject: Help test the updated, signed Access Code Windows voice build
 
 Hi everyone,
 
@@ -6,25 +6,30 @@ We'd love your help testing voice features in Access Code on Windows x64.
 
 ## Get the test build
 
-Visit the [Windows voice test release](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261122)
+Visit the [updated Windows voice test release](https://github.com/Community-Access/access-code/releases/tag/windows-voice-test-20261125-signed)
 and open the **Assets** section. Download:
 
-- [Portable edition: accesscode-portable-windows-x64.zip](https://github.com/Community-Access/access-code/releases/download/windows-voice-test-20261122/accesscode-portable-windows-x64.zip)
+- [Signed portable edition](https://github.com/Community-Access/access-code/releases/download/windows-voice-test-20261125-signed/accesscode-2.3.2-current-20261125-windows-x64-portable-signed.zip)
+- [Signed installer](https://github.com/Community-Access/access-code/releases/download/windows-voice-test-20261125-signed/accesscode-2.3.2-current-20261125-windows-x64-installer-signed.exe)
 
 The download is public; you don't need a GitHub account or have to build the
 code yourself. Please use these release assets rather than GitHub's source code
 ZIP files.
 
 We recommend starting with the portable edition. Extract the entire ZIP into a
-new writable folder, then run `AccessCode Dev.exe`. Keep
+new writable folder, then run `AccessCode.exe`. Keep
 `accesscode-portable.flag` beside it, and don't overwrite an existing portable
 installation.
 
-These are unsigned test builds, so Windows may display a publisher warning.
-Verify that you downloaded them from the official release page before running
-them. Windows ARM devices are not supported yet.
+The installer and the executables inside the portable ZIP are Authenticode
+signed and timestamped by **Jeffrey Bishop**. The ZIP itself is not an
+executable and is not Authenticode signed. Verify the publisher and the
+checksums below before running either build. Windows ARM devices are not
+supported yet.
 
-Portable ZIP SHA-256: `60a58ec4046f6203460f43355525f4ab9d5bef79a4e6fa85e8a3f6a52c13ef6b`
+Portable ZIP SHA-256: `85aee14cde1deca0eabc0732f57e235c88640ef2e7d1ed49c5163f38ffdb4c31`
+
+Installer SHA-256: `a0d1995631c248c1833d7ca0a33762c78bcfe054541f572fa1b1e2625b806046`
 
 ## Before you start
 
@@ -34,9 +39,12 @@ Start in a quiet room with headphones if possible. Use a disposable project
 and conversation, and don't stop or replace a production app or server.
 
 Open **Voice settings** near the message composer. Voice features require the
-`windows_voice` experimental flag on the connected server; it's on by default
-in development builds. If the controls are missing, record your build and
-server configuration rather than changing a production server.
+`windows_voice` experimental flag on the connected server. This signed build
+uses the release channel, where the flag is off by default. Enable
+`experimental.windows_voice` in your test configuration, or launch the test
+server with `OPENCODE_FLAGS=windows_voice`. If the controls are missing,
+record your build and server configuration rather than changing a production
+server.
 
 You can test the microphone and voice previews without sending a conversation
 prompt. Actual conversational replies require a configured model provider.
@@ -101,7 +109,7 @@ only the scenarios and equipment available to you.
     you can't test as blocked.
 
 For detailed steps and expected results, see the
-[Windows voice testing guide](https://github.com/Community-Access/access-code/blob/93fd7da52598818a772483ca9c9b38f1da3cb6f6/packages/desktop/WINDOWS-VOICE-TESTING.md).
+[Windows voice testing guide](https://github.com/Community-Access/access-code/blob/main/packages/desktop/WINDOWS-VOICE-TESTING.md).
 If voice settings are missing, check the guide's instructions for the
 experimental flag on the connected server; don't change a production server
 just to test.
